@@ -5,7 +5,8 @@ Only checks unambiguous bugs:
   1. {{ with space between braces (= Tornado won't parse as expression)
   2. [" key"] — space inside bracket-access key (sqlite3.Row won't find it)
   3. Split {% tags %}: {% if/for/end %} spanning multiple lines (Tornado rejects)
-  4. Known-dangerous patterns
+  4. Split {{ expressions }}: {{ expression }} spanning multiple lines (Tornado rejects)
+  5. Known-dangerous patterns
 """
 
 import sys
@@ -57,6 +58,25 @@ def check_file(filepath: Path) -> list[str]:
                 f"{filepath}:{i}:  split {{% tag %}} — "
                 f"Tornado requires complete tag on one line"
             )
+
+        # Split {{ expression }} — must be on one line (causes SyntaxError)
+        # Detect lines with {{ but no }} (not a {% tag)
+        if "{{" in stripped and "}}" not in stripped and "{%" not in stripped:
+            # Exclude lines that only have {{ in CSS/JS context (heuristic: must have alphabetic after {{)
+            if re.search(r"\{\{\s*\w", stripped):
+                issues.append(
+                    f"{filepath}:{i}:  split {{{{ expression }}}} — "
+                    f"opening {{{{ without closing }}}} on same line"
+                )
+        # Detect lines with }} but no {{ — continuation of a split expression
+        if "}}" in stripped and "{{" not in stripped:
+            # Only flag if there's meaningful content before }} (not just whitespace/HTML)
+            before = stripped.split("}}")[0].strip()
+            if before and re.search(r"[a-zA-Z_'\"]", before):
+                issues.append(
+                    f"{filepath}:{i}:  split {{{{ expression }}}} — "
+                    f"closing }}}} without opening {{{{ on same line"
+                )
 
     return issues
 
