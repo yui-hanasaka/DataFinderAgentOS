@@ -9,7 +9,7 @@ from app.models.chat import ChatRepository
 from app.models.db import get_connection
 from app.models.employee import EmployeeRepository
 from app.models.errors import log_error
-from app.models.model_engine import ModelRepository
+from app.models.model_engine import ModelRepository  # used by ChatSendHandler model resolution
 from app.models.rate_limit import check_rate_limit
 from app.models.skill_dispatcher import dispatch
 from app.models.validators import parse_int
@@ -37,8 +37,6 @@ class ChatHomeHandler(ChatBaseHandler):
         user_id = self._user_id()
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         employees = EmployeeRepository.list_all_active()
-        models = ModelRepository.list_all_enabled()
-        default_model = ModelRepository.get_default_model()
         self.render(
             "web/chat.html",
             title="对话",
@@ -48,10 +46,6 @@ class ChatHomeHandler(ChatBaseHandler):
             messages=[],
             employees=employees,
             current_employee_id=0,
-            models=models,
-            current_model_id=default_model["id"] if default_model else 0,
-            current_model_name=default_model["name"] if default_model else "未配置模型",
-            is_model_custom=False,
         )
 
 
@@ -64,21 +58,6 @@ class ChatSessionHandler(ChatBaseHandler):
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         messages = ChatRepository.list_messages(int(session_id))
         employees = EmployeeRepository.list_all_active()
-        models = ModelRepository.list_all_enabled()
-
-        # Resolve current model
-        model_row = None
-        is_model_custom = False
-        if session["model_id"]:
-            model_row = ModelRepository.get_model(session["model_id"])
-            if model_row:
-                is_model_custom = True
-        if not model_row and session["employee_id"]:
-            employee = EmployeeRepository.get_employee(session["employee_id"])
-            if employee and employee["model_id"]:
-                model_row = ModelRepository.get_model(employee["model_id"])
-        if not model_row:
-            model_row = ModelRepository.get_default_model()
 
         self.render(
             "web/chat.html",
@@ -89,10 +68,6 @@ class ChatSessionHandler(ChatBaseHandler):
             messages=messages,
             employees=employees,
             current_employee_id=session["employee_id"],
-            models=models,
-            current_model_id=model_row["id"] if model_row else 0,
-            current_model_name=model_row["name"] if model_row else "未配置模型",
-            is_model_custom=is_model_custom,
         )
 
 

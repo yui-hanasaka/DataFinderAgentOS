@@ -179,65 +179,36 @@
     box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
   }
 
-  /* ── Model Row ── */
-  .model-row-glass {
-    display:flex; align-items:center; justify-content:space-between; position:relative;
-    padding:10px 12px; margin:6px 0;
-    border:1px solid rgba(139,130,255,.1); border-radius:11px;
-    background:rgba(20,18,48,.5); color:#a0a0d0; font-size:13px;
-    cursor:pointer; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    transition:all .25s ease; user-select:none;
+  /* ── Model info below employee ── */
+  .emp-model-info {
+    font-size: 11px;
+    color: #818cf8;
+    padding: 2px 12px 8px;
+    margin-top: -6px;
+    line-height: 1.4;
+    letter-spacing: .02em;
+    opacity: .85;
   }
-  .model-row-glass:hover {
-    border-color:rgba(139,130,255,.35); color:#d0d0f0;
-    background:rgba(28,26,58,.6);
-  }
-  .model-row-glass .model-label { display:flex; align-items:center; gap:6px; }
-  .model-row-glass .model-label small { font-size:11px; color:#818cf8; font-weight:400; }
-  .model-row-glass .model-arrow { font-size:10px; color:#6b6b9e; transition:transform .25s; }
-  .model-row-glass.open .model-arrow { transform:rotate(180deg); }
+  [data-theme="light"] .emp-model-info { color: #6366f1; }
 
-  .model-popover {
-    display:none; position:absolute; top:100%; left:0; right:0; margin-top:4px;
-    border:1px solid rgba(139,130,255,.12); border-radius:11px;
-    background:rgba(18,16,38,.92); backdrop-filter:blur(24px) saturate(150%);
-    -webkit-backdrop-filter:blur(24px) saturate(150%);
-    box-shadow:0 12px 40px rgba(0,0,0,.45); z-index:10; overflow:hidden;
+  .input-model-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #a0a0d0;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(99,102,241,.08);
+    border: 1px solid rgba(139,130,255,.1);
+    margin-right: 8px;
+    white-space: nowrap;
   }
-  .model-popover.show { display:block; }
-
-  .model-pop-item {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:9px 12px; font-size:13px; color:#c0c0e0; cursor:pointer;
-    border-bottom:1px solid rgba(139,130,255,.04); transition:all .15s;
+  .input-model-tag span { color: #818cf8; font-weight: 600; }
+  [data-theme="light"] .input-model-tag {
+    color: #5d5a80; background: rgba(99,102,241,.04); border-color: rgba(99,102,241,.06);
   }
-  .model-pop-item:last-child { border-bottom:none; }
-  .model-pop-item:hover { background:rgba(99,102,241,.1); color:#e0e0f8; }
-  .model-pop-item.active { background:rgba(99,102,241,.15); color:#fff; }
-  .model-pop-item.active::after { content:"✓"; font-size:11px; color:#818cf8; }
-
-  .model-type-tag {
-    font-size:10px; padding:1px 8px; border-radius:999px;
-    background:rgba(139,130,255,.08); color:#6b6b9e; font-weight:500;
-  }
-
-  /* Light theme model row */
-  [data-theme="light"] .model-row-glass {
-    background:rgba(255,255,255,.5); border-color:rgba(99,102,241,.06); color: #3d3a60;
-  }
-  [data-theme="light"] .model-row-glass:hover {
-    border-color:rgba(99,102,241,.25); background:rgba(255,255,255,.65); color:#2d2a4a;
-  }
-  [data-theme="light"] .model-row-glass .model-label small { color:#6366f1; }
-  [data-theme="light"] .model-row-glass .model-arrow { color:#8a86c0; }
-  [data-theme="light"] .model-popover {
-    background:rgba(255,255,255,.85); border-color:rgba(99,102,241,.08);
-    box-shadow:0 12px 40px rgba(99,102,241,.08);
-  }
-  [data-theme="light"] .model-pop-item { color:#4d4a70; border-color:rgba(99,102,241,.04); }
-  [data-theme="light"] .model-pop-item:hover { background:rgba(99,102,241,.06); color:#2d2a4a; }
-  [data-theme="light"] .model-pop-item.active { background:rgba(99,102,241,.08); color:#2d2a4a; }
-  [data-theme="light"] .model-type-tag { background:rgba(99,102,241,.06); color:#8a86c0; }
+  [data-theme="light"] .input-model-tag span { color: #6366f1; }
 
   .side-section-header {
     display: flex;
@@ -639,25 +610,13 @@
     </a>
     <button class="chat-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题"
       style="position:absolute;top:20px;right:14px;">🌙</button>
+    <button class="btn-glass" onclick="newSession()">✦ 新建对话</button>
     <select class="emp-select-glass" id="empSelect" onchange="switchEmployee(this.value)">
       {% for e in employees %}
-      <option value="{{ e["id"] }}" {% if e["id"]==current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
+      <option value="{{ e["id"] }}" data-model-name="{{ e["model_name"] or "未绑定" }}" {% if e["id"]==current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
       {% end %}
     </select>
-    <div class="model-row-glass" id="modelRow" {% if not current_session %}style="pointer-events:none;opacity:.5"{% end %}>
-      <span class="model-label">🤖 <span id="modelName">{{ current_model_name }}</span>{% if is_model_custom %} <small>(自选)</small>{% end %}</span>
-      <span class="model-arrow">▾</span>
-      <div class="model-popover" id="modelPopover">
-        {% for m in models %}
-        <div class="model-pop-item {% if m['id'] == current_model_id %}active{% end %}"
-             data-id="{{ m['id'] }}" onclick="event.stopPropagation();switchModel({{ m['id'] }})">
-          <span>{{ m['name'] }}</span>
-          <span class="model-type-tag">{{ m['model_type'] }}</span>
-        </div>
-        {% end %}
-      </div>
-    </div>
-    <button class="btn-glass" onclick="newSession()">✦ 新建对话</button>
+    <div class="emp-model-info" id="empModelInfo"></div>
 
     <div class="side-section-header" style="margin-top:16px">
       <h3>对话列表</h3>
@@ -731,6 +690,9 @@
         </div>
       </div>
 
+      <div style="display:flex;align-items:center;padding:0 0 6px">
+        <span class="input-model-tag" id="inputModelTag">🤖 <span></span></span>
+      </div>
       <div class="glass-input-row">
         <textarea id="msgInput"
           placeholder="{% if current_session %}输入消息… Enter 发送，Shift+Enter 换行{% else %}请先点击「✦ 新建对话」开始{% end %}" rows="1"
@@ -930,61 +892,19 @@
     }).catch(e => alert('删除失败：' + e.message));
   }
 
-  /* ── Model switching ── */
-  async function switchModel(modelId) {
-    if (!SESSION_ID) return;
-    var popover = document.getElementById('modelPopover');
-    popover.classList.remove('show');
-    document.getElementById('modelRow').classList.remove('open');
-
-    try {
-      var resp = await fetch('/chat/model', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-        body: JSON.stringify({session_id: SESSION_ID, model_id: modelId})
-      });
-      if (!resp.ok) {
-        var err = await resp.json().catch(function() { return {error: '切换失败'}; });
-        alert(err.error || '切换失败');
-        return;
-      }
-      var data = await resp.json();
-      if (data.ok) {
-        document.getElementById('modelName').textContent = data.model_name;
-        // Update custom tag
-        var label = document.querySelector('.model-label');
-        var tag = label.querySelector('small');
-        if (modelId === 0 && tag) tag.remove();
-        else if (modelId > 0 && !tag) {
-          var s = document.createElement('small');
-          s.textContent = '(自选)';
-          label.appendChild(s);
-        }
-        // Highlight active item
-        document.querySelectorAll('.model-pop-item').forEach(function(el) {
-          el.classList.toggle('active', parseInt(el.dataset.id) === modelId);
-        });
-      }
-    } catch(e) {
-      console.error('切换模型失败:', e);
-    }
+  /* ── Model info display ── */
+  function updateModelInfo() {
+    var sel = document.getElementById('empSelect');
+    var opt = sel.options[sel.selectedIndex];
+    var modelName = (opt && opt.dataset.modelName) || '未绑定';
+    var infoEl = document.getElementById('empModelInfo');
+    if (infoEl) { infoEl.textContent = '基地模型: ' + modelName; }
+    var tagSpan = document.querySelector('#inputModelTag span');
+    if (tagSpan) { tagSpan.textContent = modelName; }
   }
 
-  // Model row click toggles popover
-  document.getElementById('modelRow').addEventListener('click', function(e) {
-    if (!SESSION_ID) return;
-    var popover = document.getElementById('modelPopover');
-    popover.classList.toggle('show');
-    this.classList.toggle('open');
-    e.stopPropagation();
-  });
+  document.getElementById('empSelect').addEventListener('change', updateModelInfo);
+  updateModelInfo();
 
-  // Click outside closes popover
-  document.addEventListener('click', function() {
-    var popover = document.getElementById('modelPopover');
-    if (popover) { popover.classList.remove('show'); }
-    var row = document.getElementById('modelRow');
-    if (row) { row.classList.remove('open'); }
-  });
 </script>
 {% end %}

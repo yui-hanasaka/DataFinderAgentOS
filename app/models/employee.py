@@ -30,7 +30,10 @@ class EmployeeRepository:
     def list_all_active() -> list[sqlite3.Row]:
         with get_connection() as conn:
             return conn.execute(
-                "SELECT * FROM digital_employees WHERE status='enabled' ORDER BY id ASC"
+                "SELECT de.*, m.name AS model_name"
+                " FROM digital_employees de"
+                " LEFT JOIN ai_models m ON m.id = de.model_id"
+                " WHERE de.status='enabled' ORDER BY de.id ASC"
             ).fetchall()
 
     @staticmethod
