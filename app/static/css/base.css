@@ -723,6 +723,60 @@ body {
 }
 .permission-grid label:hover { border-color:rgba(99,102,241,.2); box-shadow:0 2px 8px rgba(99,102,241,.04); }
 
+/* ── Skill checkbox grid (digital employee form) ── */
+.skill-checkbox-grid {
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px;
+}
+.skill-checkbox {
+  display:flex; align-items:center; gap:0; cursor:pointer; position:relative;
+}
+.skill-checkbox input[type="checkbox"] {
+  position:absolute; opacity:0; width:0; height:0; pointer-events:none;
+}
+.skill-checkbox-visual {
+  display:flex; align-items:center; gap:6px; width:100%; padding:9px 13px; border-radius:10px;
+  font-size:13px; color:#4d4a70; font-weight:500;
+  background:rgba(255,255,255,.6); border:1px solid rgba(99,102,241,.08);
+  transition:all var(--spring) .2s; user-select:none;
+}
+.skill-checkbox-visual::before {
+  content:""; width:16px;height:16px;border-radius:5px; flex-shrink:0;
+  border:2px solid rgba(99,102,241,.2); background:rgba(255,255,255,.7);
+  transition:all var(--spring) .2s;
+}
+.skill-checkbox:hover .skill-checkbox-visual {
+  border-color:rgba(99,102,241,.2); background:rgba(99,102,241,.04);
+  box-shadow:0 2px 8px rgba(99,102,241,.04);
+}
+.skill-checkbox input:checked + .skill-checkbox-visual {
+  background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.04));
+  border-color:rgba(99,102,241,.25); color:#4c1d95; font-weight:600;
+}
+.skill-checkbox input:checked + .skill-checkbox-visual::before {
+  background:linear-gradient(135deg,#6366f1,#7c3aed); border-color:#6366f1;
+  box-shadow:0 2px 8px rgba(99,102,241,.3);
+  content:"✓"; color:#fff; font-size:10px; font-weight:700;
+  display:grid; place-items:center; line-height:1;
+}
+
+/* Dark theme */
+[data-theme="dark"] .skill-checkbox-visual {
+  background:rgba(20,18,48,.4); border-color:rgba(139,130,255,.06); color:#c0c0e0;
+}
+[data-theme="dark"] .skill-checkbox-visual::before {
+  border-color:rgba(139,130,255,.15); background:rgba(20,18,48,.5);
+}
+[data-theme="dark"] .skill-checkbox:hover .skill-checkbox-visual {
+  border-color:rgba(139,130,255,.15); background:rgba(139,130,255,.05);
+}
+[data-theme="dark"] .skill-checkbox input:checked + .skill-checkbox-visual {
+  background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.08));
+  border-color:rgba(139,130,255,.25); color:#c4b5fd;
+}
+[data-theme="dark"] .skill-checkbox input:checked + .skill-checkbox-visual::before {
+  background:linear-gradient(135deg,#818cf8,#6366f1); border-color:#818cf8;
+}
+
 .field-hint { font-size:11px; color:#9a96c8; }
 .required-tip { color:#e94c4c; }
 
@@ -1037,10 +1091,11 @@ body {
   .adm-grid-form { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .adm-form-section .adm-grid-form { grid-template-columns:1fr; }
   .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .skill-checkbox-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width:620px) {
   .adm-workspace { padding:14px 10px; }
-  .adm-module-grid, .adm-grid-form, .permission-grid { grid-template-columns:1fr; }
+  .adm-module-grid, .adm-grid-form, .permission-grid, .skill-checkbox-grid { grid-template-columns:1fr; }
   .adm-search { flex-direction:column; align-items:stretch; }
   .adm-search input { min-width:auto; }
   .table-title { flex-direction:column; gap:8px; align-items:flex-start; }
