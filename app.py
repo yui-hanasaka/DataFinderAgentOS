@@ -24,6 +24,7 @@ from app.controllers.auth import (
 from app.controllers.chat import (
     ChatBatchDeleteHandler,
     ChatDeleteHandler,
+    ChatEmployeeHandler,
     ChatExportHandler,
     ChatHomeHandler,
     ChatNewHandler,
@@ -97,6 +98,7 @@ def app() -> tornado.web.Application:
         (r"/chat/delete/(\d+)", ChatDeleteHandler),
         (r"/chat/batch-delete", ChatBatchDeleteHandler),
         (r"/chat/send/(\d+)", ChatSendHandler),
+        (r"/chat/employee", ChatEmployeeHandler),
         (r"/chat/export/(\d+)", ChatExportHandler),
         # user ask
         (r"/ask", AskHomeHandler),

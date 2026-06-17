@@ -1,6 +1,6 @@
 import secrets
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.crypto import hash_password
 from app.models.db import get_connection
@@ -37,73 +37,87 @@ class AdminRepository:
             ).fetchone()
 
     @staticmethod
-    def record_failed_login(admin_id: int) -> None:
-        """Increment failed_login_count; lock account when threshold reached."""
+    def verify_admin(username: str, password: str) -> tuple[bool, str, sqlite3.Row | None]:
+        """Returns (ok, error_message, admin_row_or_None)."""
+        row = AdminRepository.get_admin_by_username(username)
+        if not row:
+            return False, "用户名或密码错误", None
+
+        if row["status"] != "enabled":
+            if row["status"] == "locked":
+                return False, "账号已被锁定，请联系超级管理员解锁", None
+            return False, "账号已被禁用", None
+
+        # Check lockout by locked_until (SQLite stores UTC)
+        locked_until = row["locked_until"]
+        if locked_until:
+            try:
+                lock_time = datetime.strptime(locked_until, "%Y-%m-%d %H:%M:%S")
+                if datetime.now(timezone.utc).replace(tzinfo=None) < lock_time:
+                    return False, "账号已被临时锁定，请稍后再试", None
+            except ValueError:
+                pass
+
+        salt = bytes.fromhex(row["salt"])
+        if hash_password(password, salt) != row["password_hash"]:
+            # Record failed attempt
+            AdminRepository._record_failed_login(username)
+            # Check if account just became locked
+            updated = AdminRepository.get_admin_by_username(username)
+            if updated and updated["locked_until"]:
+                try:
+                    lock_time = datetime.strptime(
+                        updated["locked_until"], "%Y-%m-%d %H:%M:%S"
+                    )
+                    if datetime.now(timezone.utc).replace(tzinfo=None) < lock_time:
+                        return (
+                            False,
+                            "密码错误次数过多，账号已被临时锁定15分钟",
+                            None,
+                        )
+                except ValueError:
+                    pass
+            return False, "用户名或密码错误", None
+
+        # Login success — reset counters
+        AdminRepository._reset_failed_login(username)
+        return True, "", row
+
+    @staticmethod
+    def _record_failed_login(username: str) -> None:
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT failed_login_count FROM admin_users WHERE id=?",
-                (admin_id,),
+                "SELECT id, failed_login_count FROM admin_users WHERE username=?",
+                (username,),
             ).fetchone()
             if not row:
                 return
-            failed = (row["failed_login_count"] or 0) + 1
-            if failed >= AdminRepository.MAX_FAILED_ATTEMPTS:
+            new_count = int(row["failed_login_count"]) + 1
+            if new_count >= AdminRepository.MAX_FAILED_ATTEMPTS:
                 conn.execute(
-                    """UPDATE admin_users
-                       SET failed_login_count=?,
-                           locked_until=datetime('now','+'||?||' minutes')
-                       WHERE id=?""",
-                    (failed, AdminRepository.LOCK_DURATION_MINUTES, admin_id),
+                    "UPDATE admin_users SET failed_login_count=?, locked_until=datetime('now','+15 minutes') WHERE id=?",
+                    (new_count, row["id"]),
                 )
             else:
                 conn.execute(
                     "UPDATE admin_users SET failed_login_count=? WHERE id=?",
-                    (failed, admin_id),
+                    (new_count, row["id"]),
                 )
 
     @staticmethod
-    def record_successful_login(admin_id: int) -> None:
-        """Reset lockout counters and stamp last_login_at."""
+    def _reset_failed_login(username: str) -> None:
         with get_connection() as conn:
             conn.execute(
-                """UPDATE admin_users
-                   SET failed_login_count=0, locked_until=NULL,
-                       last_login_at=datetime('now')
-                   WHERE id=?""",
-                (admin_id,),
+                "UPDATE admin_users SET failed_login_count=0, locked_until=NULL, last_login_at=datetime('now') WHERE username=?",
+                (username,),
             )
-
-    @staticmethod
-    def verify_admin(username: str, password: str) -> bool:
-        row = AdminRepository.get_admin_by_username(username)
-        if not row or row["status"] != "enabled":
-            return False
-
-        # H2: check lockout before verifying password
-        # Use UTC — SQLite datetime('now') returns UTC
-        if row["locked_until"]:
-            locked = datetime.fromisoformat(row["locked_until"])
-            from datetime import timezone
-
-            if locked > datetime.now(timezone.utc).replace(tzinfo=None):
-                return False  # still locked
-
-        salt = bytes.fromhex(row["salt"])
-        pwd_ok = hash_password(password, salt) == row["password_hash"]
-
-        if pwd_ok:
-            AdminRepository.record_successful_login(row["id"])
-        else:
-            AdminRepository.record_failed_login(row["id"])
-
-        return pwd_ok
 
     @staticmethod
     def list_roles(
         keyword: str = "", page: int = 1, per_page: int = PER_PAGE
     ) -> tuple[list[sqlite3.Row], int]:
         where = ""
-        params = []
+        params: list[str] = []
         if keyword.strip():
             where = "where role_code like ? or role_name like ? or ifnull(description, '') like ?"
             params = [_like(keyword), _like(keyword), _like(keyword)]
@@ -209,7 +223,7 @@ class AdminRepository:
         keyword: str = "", page: int = 1, per_page: int = PER_PAGE
     ) -> tuple[list[sqlite3.Row], int]:
         where = ""
-        params = []
+        params: list[str] = []
         if keyword.strip():
             where = (
                 "where menu_code like ? or menu_name like ? or ifnull(url, '') like ?"
@@ -322,7 +336,7 @@ class AdminRepository:
         keyword: str = "", page: int = 1, per_page: int = PER_PAGE
     ) -> tuple[list[sqlite3.Row], int]:
         where = ""
-        params = []
+        params: list[str] = []
         if keyword.strip():
             where = "where au.username like ? or au.display_name like ? or ar.role_name like ?"
             params = [_like(keyword), _like(keyword), _like(keyword)]

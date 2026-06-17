@@ -4,23 +4,34 @@ from cryptography.fernet import Fernet
 
 _ENV_KEY = "DATAFINDER_SECRET_KEY"
 _PREFIX = "enc:v1:"
+_FERNET_CACHE: Fernet | None = None
+_WARNED = False
 
 
 def _get_fernet() -> Fernet:
+    global _FERNET_CACHE, _WARNED
+    if _FERNET_CACHE is not None:
+        return _FERNET_CACHE
     raw = os.environ.get(_ENV_KEY, "").strip()
     dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
     if raw:
-        return Fernet(raw.encode("utf-8"))
+        _FERNET_CACHE = Fernet(raw.encode("utf-8"))
+        return _FERNET_CACHE
+    if not raw and not dev:
+        dev = True  # auto-dev: no DATAFINDER_SECRET_KEY set
     if dev:
         # Ephemeral dev key — encrypted values will NOT survive restart
-        import warnings
+        if not _WARNED:
+            import warnings
 
-        warnings.warn(
-            "DEV mode with no DATAFINDER_SECRET_KEY — using ephemeral encryption key."
-            " Encrypted secrets will be lost on restart.",
-            stacklevel=2,
-        )
-        return Fernet(Fernet.generate_key())
+            warnings.warn(
+                "DEV mode with no DATAFINDER_SECRET_KEY — using ephemeral encryption key."
+                " Encrypted secrets will be lost on restart.",
+                stacklevel=2,
+            )
+            _WARNED = True
+        _FERNET_CACHE = Fernet(Fernet.generate_key())
+        return _FERNET_CACHE
     raise SystemExit(
         f"FATAL: {_ENV_KEY} is required for secret encryption in production."
     )

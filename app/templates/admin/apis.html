@@ -16,29 +16,8 @@
 <section class="admin-table-card">
 	<div class="table-title"><strong>接口列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead>
-			<tr>
-				<th>ID</th>
-				<th>名称</th>
-				<th>类型</th>
-				<th>Endpoint</th>
-				<th>Key</th>
-				<th>状态</th>
-				<th>操作</th>
-			</tr>
-		</thead>
-		<tbody>{% for api in api_keys %}<tr>
-				<td>{{ api['id'] }}</td>
-				<td>{{ api['name'] }}</td>
-				<td>{{ api['api_type'] }}</td>
-				<td class="text-truncate" style="max-width:140px" title="{{ api['endpoint'] }}">{{ api['endpoint'] or '-' }}</td>
-				<td>{{ api['api_key'][:4] + '****' if api['api_key'] else '-' }}</td>
-				<td>{{ api['status'] }}</td>
-				<td class="table-actions"><a href="/admin/apis?edit={{ api['id'] }}">查看/修改</a>
-					<form method="post" action="/admin/apis" data-confirm="确认删除该接口配置？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
-							value="{{ api['id'] }}"><button type="submit">删除</button></form>
-				</td>
-			</tr>{% end %}</tbody>
+		<thead><tr><th>ID</th><th>名称</th><th>类型</th><th>Endpoint</th><th>Key</th><th>状态</th><th>操作</th></tr></thead>
+		<tbody>{% for api in api_keys %}<tr><td>{{ api['id'] }}</td><td>{{ api['name'] }}</td><td>{{ api['api_type'] }}</td><td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="{{ api['endpoint'] }}">{{ api['endpoint'] or '-' }}</td><td>{{ api['api_key'][:4] + '****' if api['api_key'] else '-' }}</td><td>{{ api['status'] }}</td><td class="table-actions"><a href="/admin/apis?edit={{ api['id'] }}">查看/修改</a><form method="post" action="/admin/apis" data-confirm="确认删除该接口配置？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ api['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
 	</table>
 	<div class="admin-pagination">{% if page > 1 %}<a
 			href="/admin/apis?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{%
@@ -83,9 +62,7 @@
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light"
-						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
-				</div>
+				<div class="modal-footer"><button type="button" class="adm-btn adm-btn-ghost" data-bs-dismiss="modal">取消</button><button type="submit" class="adm-btn adm-btn-primary">确认保存</button></div>
 			</form>
 		</div>
 	</div>

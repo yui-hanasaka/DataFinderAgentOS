@@ -206,12 +206,15 @@ class AdminModelChatHandler(AdminBaseHandler):
                 delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
                 text = delta.get("content") or ""
                 reasoning = delta.get("reasoning_content") or ""
-                self.write(
-                    "data: "
-                    + json.dumps({"content": text, "reasoning": reasoning})
-                    + "\n\n"
-                )
-                await self.flush()
+                try:
+                    self.write(
+                        "data: "
+                        + json.dumps({"content": text, "reasoning": reasoning})
+                        + "\n\n"
+                    )
+                    await self.flush()
+                except Exception:
+                    break
             ModelRepository.record_usage(model_id, prompt_tokens, completion_tokens)
         except Exception as e:
             log_error("AdminModelChatHandler SSE stream", e)

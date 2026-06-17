@@ -15,8 +15,8 @@ class ChatRepository:
                     (user_id, employee_id, title),
                 )
                 return cur.lastrowid, None
-        except Exception as e:
-            return None, str(e)
+        except Exception:
+            return None, "创建会话失败"
 
     @staticmethod
     def get_session(session_id: int) -> sqlite3.Row | None:
@@ -44,6 +44,14 @@ class ChatRepository:
                 (user_id, per_page, offset),
             ).fetchall()
         return rows, total
+
+    @staticmethod
+    def update_session_employee(session_id: int, employee_id: int) -> None:
+        with get_connection() as conn:
+            conn.execute(
+                "UPDATE chat_sessions SET employee_id=?, updated_at=datetime('now') WHERE id=?",
+                (employee_id, session_id),
+            )
 
     @staticmethod
     def update_session_title(session_id: int, title: str) -> None:

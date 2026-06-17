@@ -108,10 +108,32 @@ class ChatBatchDeleteHandler(ChatBaseHandler):
         numeric_ids = [int(i) for i in ids if str(i).isdigit()]
         if not numeric_ids:
             self.set_status(400)
-            return self.write({"error": "请选择要删除的对话"})
+            return self.write({"error": "请选择有效的对话"})
         count = ChatRepository.delete_sessions(numeric_ids, user_id)
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"ok": True, "count": count})
+
+
+class ChatEmployeeHandler(ChatBaseHandler):
+    def post(self) -> None:
+        user_id = self._user_id()
+        try:
+            payload = json.loads(self.request.body or b"{}")
+        except json.JSONDecodeError:
+            self.set_status(400)
+            return self.write({"error": "请求体格式错误"})
+        session_id = int(payload.get("session_id") or 0)
+        employee_id = int(payload.get("employee_id") or 0)
+        if not session_id or not employee_id:
+            self.set_status(400)
+            return self.write({"error": "参数不完整"})
+        session = ChatRepository.get_session(session_id)
+        if not session or session["user_id"] != user_id:
+            self.set_status(403)
+            return self.write({"error": "无权限"})
+        ChatRepository.update_session_employee(session_id, employee_id)
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write({"ok": True})
 
 
 class ChatSendHandler(ChatBaseHandler):
@@ -227,21 +249,27 @@ class ChatSendHandler(ChatBaseHandler):
                 stream=True,
             )
             prompt_tokens = completion_tokens = 0
-            async for chunk in iter_sse_chunks(resp):
-                usage = chunk.get("usage") or {}
-                if usage:
-                    prompt_tokens = max(
-                        prompt_tokens, int(usage.get("prompt_tokens") or 0)
-                    )
-                    completion_tokens = max(
-                        completion_tokens, int(usage.get("completion_tokens") or 0)
-                    )
-                delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
-                text = delta.get("content") or ""
-                if text:
-                    full_reply.append(text)
-                    self.write(f"data: {json.dumps({'content': text})}\n\n")
-                    await self.flush()
+            try:
+                async for chunk in iter_sse_chunks(resp):
+                    usage = chunk.get("usage") or {}
+                    if usage:
+                        prompt_tokens = max(
+                            prompt_tokens, int(usage.get("prompt_tokens") or 0)
+                        )
+                        completion_tokens = max(
+                            completion_tokens, int(usage.get("completion_tokens") or 0)
+                        )
+                    delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
+                    text = delta.get("content") or ""
+                    if text:
+                        full_reply.append(text)
+                        try:
+                            self.write(f"data: {json.dumps({'content': text})}\n\n")
+                            await self.flush()
+                        except Exception:
+                            break
+            except Exception:
+                pass
             ModelRepository.record_usage(
                 model_row["id"], prompt_tokens, completion_tokens
             )

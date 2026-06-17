@@ -1,16 +1,390 @@
 {% extends "base.html" %}
+{% block head_extra %}
+<style>
+/* ── Watchtower Collect — Dark Sci-Fi Theme ── */
+.wtc-shell {
+  min-height:calc(100vh - 160px); display:flex; flex-direction:column; align-items:center;
+  padding:48px 24px 60px; position:relative;
+  font-family:"Microsoft YaHei","PingFang SC","Segoe UI",-apple-system,sans-serif;
+}
+
+/* ambient glow */
+.wtc-shell::before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(ellipse at 50% 30%, rgba(99,102,241,.08) 0, transparent 60%),
+             radial-gradient(ellipse at 30% 70%, rgba(139,92,246,.05) 0, transparent 50%);
+}
+
+/* ── Search Hero ── */
+.wtc-hero { position:relative; z-index:1; width:min(720px, 100%); text-align:center; margin-bottom:32px; }
+.wtc-hero h1 { margin:0 0 8px; font-size:32px; font-weight:800; letter-spacing:.04em;
+  background:linear-gradient(135deg, #c4b5fd, #818cf8, #6366f1);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.wtc-hero span { font-size:13px; color:var(--c-text-muted, #7c7ca8); }
+.wtc-search-box { display:flex; gap:0; margin-top:20px; border-radius:16px;
+  background:var(--c-surface, rgba(20,18,48,.7)); backdrop-filter:blur(24px);
+  border:1px solid rgba(139,130,255,.15); box-shadow:0 8px 40px rgba(0,0,0,.2);
+  overflow:hidden; transition:border-color .3s, box-shadow .3s; }
+.wtc-search-box:focus-within { border-color:rgba(139,130,255,.4); box-shadow:0 8px 40px rgba(99,102,241,.15); }
+.wtc-search-box input { flex:1; height:56px; padding:0 20px; border:0; outline:none;
+  background:transparent; color:var(--c-text, #e0e0f8); font-size:16px; }
+.wtc-search-box input::placeholder { color:rgba(160,160,200,.5); }
+.wtc-search-box button { height:56px; padding:0 32px; border:0;
+  background:linear-gradient(135deg, #6366f1, #7c3aed); color:#fff;
+  font-size:15px; font-weight:700; letter-spacing:.06em; cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12); transition:all var(--spring,.25s); }
+.wtc-search-box button:hover { background:linear-gradient(135deg, #7c6ff7, #8b44ff); }
+.wtc-search-box button:active { transform:scale(.96); }
+.wtc-search-box button:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Source Toggles ── */
+.wtc-sources { position:relative; z-index:1; width:min(720px, 100%); display:flex;
+  flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:20px; }
+.wtc-src-toggle { display:flex; align-items:center; gap:6px; padding:8px 16px;
+  border-radius:999px; border:1px solid rgba(139,130,255,.12);
+  background:var(--c-surface, rgba(20,18,48,.4)); backdrop-filter:blur(12px);
+  color:var(--c-text-muted, #9090b8); font-size:13px; cursor:pointer;
+  transition:all var(--spring,.25s); user-select:none; }
+.wtc-src-toggle:hover { border-color:rgba(139,130,255,.3); color:#c0c0e8; }
+.wtc-src-toggle.active { border-color:rgba(99,102,241,.5); background:rgba(99,102,241,.15);
+  color:#818cf8; box-shadow:0 0 16px rgba(99,102,241,.15); }
+.wtc-src-toggle .dot { width:8px;height:8px;border-radius:50%;background:currentColor;
+  opacity:.4; transition:opacity .25s; }
+.wtc-src-toggle.active .dot { opacity:1; box-shadow:0 0 8px currentColor; }
+
+/* ── Params Panel ── */
+.wtc-params { position:relative; z-index:1; width:min(720px, 100%); display:flex;
+  flex-wrap:wrap; gap:16px; align-items:center; justify-content:center;
+  margin-bottom:8px; padding:14px 24px; border-radius:14px;
+  background:var(--c-surface, rgba(20,18,48,.35)); backdrop-filter:blur(16px);
+  border:1px solid rgba(139,130,255,.08); }
+.wtc-params label { display:flex; align-items:center; gap:8px;
+  color:var(--c-text-muted, #9090b8); font-size:13px; }
+.wtc-params input { width:64px; height:36px; padding:0 8px; border-radius:8px;
+  border:1px solid rgba(139,130,255,.15); text-align:center;
+  background:rgba(18,16,38,.5); color:var(--c-text, #e0e0f8); font-size:14px; outline:none;
+  transition:border-color .2s; }
+.wtc-params input:focus { border-color:rgba(139,130,255,.4); }
+
+/* ── Status ── */
+.wtc-status { position:relative; z-index:1; width:min(720px, 100%); text-align:center;
+  margin:8px 0 16px; font-size:13px; color:var(--c-text-muted, #9090b8); }
+.wtc-status .count { color:#818cf8; font-weight:700; }
+.wtc-spinner { display:none; width:20px;height:20px;margin:0 auto 8px;
+  border:2px solid rgba(139,130,255,.15); border-top-color:#818cf8;
+  border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.wtc-spinner.active { display:block; }
+
+/* ── Gallery ── */
+.wtc-gallery { position:relative; z-index:1; width:min(960px, 100%);
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+@media(max-width:720px) { .wtc-gallery{grid-template-columns:1fr} }
+@media(min-width:721px) and (max-width:1024px) { .wtc-gallery{grid-template-columns:repeat(2,1fr)} }
+.wtc-card { position:relative; border-radius:14px; padding:20px;
+  background:var(--c-surface, rgba(20,18,48,.5)); backdrop-filter:blur(20px);
+  border:1px solid rgba(139,130,255,.08); cursor:pointer;
+  transition:all var(--spring,.25s); }
+.wtc-card:hover { border-color:rgba(139,130,255,.25); transform:translateY(-2px);
+  box-shadow:0 8px 30px rgba(0,0,0,.2); }
+.wtc-card.selected { border-color:rgba(99,102,241,.4); background:rgba(99,102,241,.08);
+  box-shadow:0 0 24px rgba(99,102,241,.1); }
+.wtc-card .check { position:absolute; top:12px; right:12px; width:24px;height:24px;
+  border-radius:50%; border:2px solid rgba(139,130,255,.2);
+  display:grid;place-items:center;font-size:12px; transition:all .2s; }
+.wtc-card.selected .check { border-color:#818cf8; background:#6366f1; color:#fff; }
+.wtc-card .src-badge { display:inline-block; padding:2px 10px; border-radius:999px;
+  background:rgba(99,102,241,.12); color:#818cf8; font-size:11px; margin-bottom:10px; }
+.wtc-card .card-title { font-size:15px; font-weight:600; color:var(--c-text, #e0e0f8);
+  line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden; margin-bottom:8px; }
+.wtc-card .card-snippet { font-size:12px; color:var(--c-text-muted, #9090b8);
+  line-height:1.5; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  overflow:hidden; margin-bottom:10px; }
+.wtc-card .card-meta { display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:var(--c-text-muted, #7878a0); }
+.wtc-card .card-link { color:#818cf8; text-decoration:none; font-size:11px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; display:inline-block; }
+
+/* ── Toolbar ── */
+.wtc-toolbar { position:sticky; bottom:0; z-index:10; width:min(960px, 100%);
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 24px; margin-top:24px; border-radius:14px;
+  background:var(--c-surface, rgba(20,18,48,.85)); backdrop-filter:blur(24px);
+  border:1px solid rgba(139,130,255,.12); box-shadow:0 -4px 24px rgba(0,0,0,.2); }
+.wtc-toolbar .sel-info { font-size:13px; color:var(--c-text-muted, #9090b8); }
+.wtc-toolbar .sel-info strong { color:#818cf8; }
+.wtc-toolbar .actions { display:flex; gap:10px; }
+.wtc-btn-ghost { padding:8px 20px; border-radius:10px; border:1px solid rgba(139,130,255,.2);
+  background:transparent; color:var(--c-text-muted, #9090b8); font-size:13px; cursor:pointer;
+  transition:all var(--spring,.25s); }
+.wtc-btn-ghost:hover { border-color:rgba(139,130,255,.4); color:#c0c0e8; }
+.wtc-btn-primary { padding:8px 24px; border-radius:10px; border:0;
+  background:linear-gradient(135deg, #6366f1, #7c3aed); color:#fff;
+  font-size:13px; font-weight:600; cursor:pointer; transition:all var(--spring,.25s);
+  box-shadow:0 4px 16px rgba(99,102,241,.25); }
+.wtc-btn-primary:hover { box-shadow:0 6px 24px rgba(99,102,241,.4); transform:translateY(-1px); }
+.wtc-btn-primary:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+/* ── Empty State ── */
+.wtc-empty { text-align:center; padding:60px 20px; color:var(--c-text-muted, #9090b8); }
+.wtc-empty .icon { font-size:48px; margin-bottom:12px; opacity:.5; }
+
+/* ── Light Theme Overrides ── */
+[data-theme="light"] .wtc-hero h1 { background:linear-gradient(135deg, #6366f1, #7c3aed);
+  -webkit-background-clip:text; background-clip:text; }
+[data-theme="light"] .wtc-search-box { background:rgba(255,255,255,.7); border-color:rgba(99,102,241,.08); }
+[data-theme="light"] .wtc-search-box input { color:#2d2a4a; }
+[data-theme="light"] .wtc-src-toggle { background:rgba(255,255,255,.5); }
+[data-theme="light"] .wtc-card { background:rgba(255,255,255,.7); }
+[data-theme="light"] .wtc-toolbar { background:rgba(255,255,255,.85); }
+</style>
+{% end %}
+
 {% block body %}
-<div class="adm-welcome-card">
-  <p>瞭望采集</p>
-  <h1>搜索引擎式采集</h1>
-  <span>选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库</span>
-</div>
-{% if msg %}<div class="adm-toast-auto">{{ msg }}</div>{% end %}
-<div class="adm-table-card">
-  <div class="table-title"><strong>采集界面</strong><span>功能开发中</span></div>
-  <div style="text-align:center;padding:40px;color:#8a86c0">
-    📡 搜索式采集界面即将上线 — 支持关键词搜索、多源切换、结果预览与保存
+<div class="wtc-shell">
+  <!-- Hero -->
+  <div class="wtc-hero">
+    <h1>🔭 智能瞭望采集</h1>
+    <span>选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库</span>
+    <div class="wtc-search-box">
+      <input type="text" id="searchKeyword" placeholder="输入搜索关键词，如「西华师范大学」" autofocus
+             onkeydown="if(event.key==='Enter')doSearch()">
+      <button id="btnSearch" onclick="doSearch()">开始采集</button>
+    </div>
+  </div>
+
+  <!-- Source Toggles -->
+  <div class="wtc-sources" id="sourceToggles">
+    {% for src in sources %}
+    <label class="wtc-src-toggle active" data-id="{{ src['id'] }}">
+      <span class="dot"></span>{{ src['name'] }}
+    </label>
+    {% end %}
+    {% if not sources %}
+    <span style="font-size:13px;color:var(--c-text-muted,#9090b8);padding:8px 0">
+      ⚠ 暂无启用的采集源，请先在<a href="/admin/watchtower" style="color:#818cf8">瞭望管理</a>中配置
+    </span>
+    {% end %}
+  </div>
+
+  <!-- Params -->
+  <div class="wtc-params">
+    <label>采集页数 <input type="number" id="paramPages" value="1" min="1" max="10"></label>
+    <label>每源条数 <input type="number" id="paramLimit" value="15" min="5" max="60"></label>
+    <span style="font-size:11px;color:var(--c-text-muted,#7878a0)">采集间隔 0.5s/页</span>
+  </div>
+
+  <!-- Status -->
+  <div class="wtc-status" id="statusArea">
+    <div class="wtc-spinner" id="spinner"></div>
+    <span id="statusText">输入关键词开始智能采集</span>
+  </div>
+
+  <!-- Gallery -->
+  <div class="wtc-gallery" id="gallery"></div>
+
+  <!-- Empty state -->
+  <div class="wtc-empty" id="emptyState">
+    <div class="icon">📡</div>
+    <p>搜索结果将在此以橱窗模式展示</p>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="wtc-toolbar" id="toolbar" style="display:none">
+    <div class="sel-info">已选择 <strong id="selCount">0</strong> / <span id="totalCount">0</span> 条</div>
+    <div class="actions">
+      <button class="wtc-btn-ghost" onclick="toggleSelectAll()" id="btnSelectAll">全选</button>
+      <button class="wtc-btn-primary" onclick="saveSelected()" id="btnSave" disabled>保存选中数据</button>
+    </div>
   </div>
 </div>
-<a href="/admin/watchtower" class="adm-btn adm-btn-ghost" style="margin:12px 0">← 返回瞭望管理</a>
+
+<script>
+var collectedItems = [];
+var selectedIds = new Set();
+var xsrf = (document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||'';
+
+/* ── Source Toggle ── */
+document.querySelectorAll('#sourceToggles .wtc-src-toggle').forEach(function(el){
+  el.addEventListener('click', function(){
+    this.classList.toggle('active');
+  });
+});
+
+function getSelectedSourceIds() {
+  var ids = [];
+  document.querySelectorAll('#sourceToggles .wtc-src-toggle.active').forEach(function(el){
+    ids.push(el.dataset.id);
+  });
+  return ids;
+}
+
+/* ── Search ── */
+async function doSearch() {
+  var keyword = document.getElementById('searchKeyword').value.trim();
+  if (!keyword) { return showAdmToast('请输入搜索关键词'); }
+
+  var srcIds = getSelectedSourceIds();
+  if (!srcIds.length) { return showAdmToast('请选择至少一个采集源'); }
+
+  var btn = document.getElementById('btnSearch');
+  btn.disabled = true; btn.textContent = '采集中…';
+  document.getElementById('spinner').classList.add('active');
+  document.getElementById('statusText').textContent = '正在采集数据…';
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  collectedItems = [];
+  selectedIds.clear();
+
+  var pages = parseInt(document.getElementById('paramPages').value) || 1;
+  var limit = parseInt(document.getElementById('paramLimit').value) || 15;
+
+  var body = new URLSearchParams();
+  body.set('action', 'search');
+  body.set('keyword', keyword);
+  body.set('source_ids', srcIds.join(','));
+  body.set('pages', String(pages));
+  body.set('limit', String(limit));
+  body.set('_xsrf', xsrf);
+
+  try {
+    var resp = await fetch(window.location.pathname, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body.toString()
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      collectedItems = data.items || [];
+      renderGallery();
+      document.getElementById('statusText').innerHTML =
+        '共采集到 <span class="count">' + data.total + '</span> 条结果';
+    } else {
+      document.getElementById('statusText').textContent = '✗ ' + (data.error || '采集失败');
+    }
+  } catch(e) {
+    document.getElementById('statusText').textContent = '✗ 网络请求失败';
+  } finally {
+    btn.disabled = false; btn.textContent = '开始采集';
+    document.getElementById('spinner').classList.remove('active');
+  }
+}
+
+/* ── Gallery ── */
+function renderGallery() {
+  var gallery = document.getElementById('gallery');
+  var html = '';
+  collectedItems.forEach(function(item, idx) {
+    var sel = selectedIds.has(idx) ? ' selected' : '';
+    var checkMark = selectedIds.has(idx) ? '✓' : '';
+    html += '<div class="wtc-card' + sel + '" data-index="' + idx + '" onclick="toggleCard(' + idx + ')">';
+    html += '<div class="check">' + checkMark + '</div>';
+    html += '<div class="src-badge">' + escHtml(item.source_name || '来源') + '</div>';
+    html += '<div class="card-title">' + escHtml(item.title || '(无标题)') + '</div>';
+    html += '<div class="card-snippet">' + escHtml(item.snippet || item.content || '') + '</div>';
+    html += '<div class="card-meta">';
+    html += '<span>' + escHtml(item.published_time || item.published_at || '') + '</span>';
+    if (item.url) {
+      html += '<a class="card-link" href="' + escHtml(item.url) + '" target="_blank" onclick="event.stopPropagation()" title="' + escHtml(item.url) + '">🔗 ' + escHtml(item.source || '链接') + '</a>';
+    }
+    html += '</div></div>';
+  });
+  gallery.innerHTML = html;
+  document.getElementById('emptyState').style.display = collectedItems.length ? 'none' : '';
+
+  if (collectedItems.length) {
+    document.getElementById('toolbar').style.display = 'flex';
+    document.getElementById('totalCount').textContent = collectedItems.length;
+    updateToolbar();
+  }
+}
+
+function toggleCard(idx) {
+  if (selectedIds.has(idx)) { selectedIds.delete(idx); }
+  else { selectedIds.add(idx); }
+  /* refresh visual */
+  var card = document.querySelector('.wtc-card[data-index="' + idx + '"]');
+  if (!card) return;
+  if (selectedIds.has(idx)) {
+    card.classList.add('selected');
+    card.querySelector('.check').textContent = '✓';
+  } else {
+    card.classList.remove('selected');
+    card.querySelector('.check').textContent = '';
+  }
+  updateToolbar();
+}
+
+function toggleSelectAll() {
+  var btn = document.getElementById('btnSelectAll');
+  if (selectedIds.size === collectedItems.length) {
+    selectedIds.clear();
+    btn.textContent = '全选';
+  } else {
+    collectedItems.forEach(function(_, i) { selectedIds.add(i); });
+    btn.textContent = '取消全选';
+  }
+  /* refresh all cards */
+  document.querySelectorAll('.wtc-card').forEach(function(card){
+    var idx = parseInt(card.dataset.index);
+    if (selectedIds.has(idx)) {
+      card.classList.add('selected');
+      card.querySelector('.check').textContent = '✓';
+    } else {
+      card.classList.remove('selected');
+      card.querySelector('.check').textContent = '';
+    }
+  });
+  updateToolbar();
+}
+
+function updateToolbar() {
+  document.getElementById('selCount').textContent = selectedIds.size;
+  document.getElementById('btnSave').disabled = selectedIds.size === 0;
+  var btn = document.getElementById('btnSelectAll');
+  btn.textContent = selectedIds.size === collectedItems.length ? '取消全选' : '全选';
+}
+
+/* ── Save ── */
+async function saveSelected() {
+  if (!selectedIds.size) return;
+  var ids = Array.from(selectedIds);
+  var items = ids.map(function(i) { return collectedItems[i]; });
+
+  try {
+    var saveResp = await fetch(window.location.pathname, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRFToken': xsrf
+      },
+      body: JSON.stringify({action: 'save', items: items})
+    });
+    var data = await saveResp.json();
+    if (data.ok) {
+      showAdmToast('✓ 成功保存 ' + data.saved + ' / ' + data.total + ' 条数据到数据仓库');
+      /* deselect saved */
+      ids.forEach(function(i) { selectedIds.delete(i); });
+      /* visually update */
+      ids.forEach(function(i) {
+        var card = document.querySelector('.wtc-card[data-index="' + i + '"]');
+        if (card) { card.classList.remove('selected'); card.querySelector('.check').textContent = ''; }
+      });
+      updateToolbar();
+    } else {
+      showAdmToast('✗ ' + (data.error || '保存失败'));
+    }
+  } catch(e) {
+    showAdmToast('保存失败，请重试');
+  }
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+<a href="/admin/watchtower" class="adm-btn adm-btn-ghost" style="position:relative;z-index:1;margin:12px 24px">← 返回瞭望管理</a>
 {% end %}

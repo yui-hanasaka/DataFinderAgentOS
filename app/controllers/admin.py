@@ -23,18 +23,27 @@ class AdminLoginHandler(BaseHandler):
 
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
-        if not AdminRepository.verify_admin(username, password):
+
+        # Per-account rate limit
+        if username:
+            if not check_rate_limit(f"admin_login_account:{username}", 5, 60):
+                self.set_status(429)
+                return self.render(
+                    "admin/login.html",
+                    title="后台登录",
+                    error="该账号登录尝试过于频繁，请稍后再试",
+                )
+
+        ok, err_msg, admin_row = AdminRepository.verify_admin(username, password)
+        if not ok:
             self.set_status(401)
-            self.render("admin/login.html", title="后台登录", error="用户名或密码错误")
-            return
+            return self.render("admin/login.html", title="后台登录", error=err_msg)
 
         self.set_auth_cookie("admin_username", username)
 
-        # H1: redirect to change-password if required
-        admin_row = AdminRepository.get_admin_by_username(username)
+        # Check must_change_password
         if admin_row and admin_row["must_change_password"]:
-            self.redirect("/admin/change-password")
-            return
+            return self.redirect("/admin/settings?must_change=1")
 
         self.redirect("/admin/home")
 
@@ -68,6 +77,8 @@ class AdminBaseHandler(BaseHandler):
             return
 
         # Check if this admin's role has a menu entry for this path
+        # Use regex fullmatch so dynamic routes like /admin/models/1/test
+        # match the base URL /admin/models stored in menus
         allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
         if not any(re.fullmatch(pattern, path) for pattern in allowed_urls):
             self.set_status(403)

@@ -28,43 +28,70 @@ class SourceRepository:
             ).fetchone()
 
     @staticmethod
-    def create_source(data: dict[str, object]) -> tuple[bool, str | None]:
-        try:
-            with get_connection() as conn:
-                conn.execute(
-                    "INSERT INTO watchtower_sources(name, source_type, url, fetch_interval, status) VALUES(?,?,?,?,?)",
-                    (
-                        data["name"],
-                        data["source_type"],
-                        data["url"],
-                        data["fetch_interval"],
-                        data["status"],
-                    ),
-                )
-            return True, None
-        except Exception as e:
-            return False, str(e)
-
-    @staticmethod
-    def update_source(
-        source_id: int, data: dict[str, object]
+    def create_source(
+        name: str,
+        source_type: str,
+        url: str,
+        fetch_interval: int,
+        status: str,
+        url_template: str = "",
+        request_headers: str = "",
+        config_json: str = "{}",
     ) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 conn.execute(
-                    "UPDATE watchtower_sources SET name=?, source_type=?, url=?, fetch_interval=?, status=? WHERE id=?",
+                    """INSERT INTO watchtower_sources(name, source_type, url, fetch_interval,
+                       status, url_template, request_headers, config_json)
+                       VALUES(?,?,?,?,?,?,?,?)""",
                     (
-                        data["name"],
-                        data["source_type"],
-                        data["url"],
-                        data["fetch_interval"],
-                        data["status"],
+                        name,
+                        source_type,
+                        url,
+                        fetch_interval,
+                        status,
+                        url_template,
+                        request_headers,
+                        config_json,
+                    ),
+                )
+            return True, None
+        except Exception:
+            return False, "创建采集源失败"
+
+    @staticmethod
+    def update_source(
+        source_id: int,
+        name: str,
+        source_type: str,
+        url: str,
+        fetch_interval: int,
+        status: str,
+        url_template: str = "",
+        request_headers: str = "",
+        config_json: str = "{}",
+    ) -> tuple[bool, str | None]:
+        try:
+            with get_connection() as conn:
+                conn.execute(
+                    """UPDATE watchtower_sources SET name=?, source_type=?, url=?,
+                       fetch_interval=?, status=?, url_template=?, request_headers=?,
+                       config_json=?, updated_at=datetime('now') WHERE id=?""",
+                    (
+                        name,
+                        source_type,
+                        url,
+                        fetch_interval,
+                        status,
+                        url_template,
+                        request_headers,
+                        config_json,
                         source_id,
                     ),
                 )
             return True, None
-        except Exception as e:
-            return False, str(e)
+        except Exception:
+            return False, "更新采集源失败"
 
     @staticmethod
     def delete_source(source_id: int) -> tuple[bool, str | None]:
@@ -75,8 +102,8 @@ class SourceRepository:
                 )
                 conn.execute("DELETE FROM watchtower_sources WHERE id=?", (source_id,))
             return True, None
-        except Exception as e:
-            return False, str(e)
+        except Exception:
+            return False, "删除采集源失败"
 
     @staticmethod
     def mark_fetched(source_id: int) -> None:
@@ -85,6 +112,13 @@ class SourceRepository:
                 "UPDATE watchtower_sources SET last_fetched=datetime('now') WHERE id=?",
                 (source_id,),
             )
+
+    @staticmethod
+    def list_all_enabled() -> list[sqlite3.Row]:
+        with get_connection() as conn:
+            return conn.execute(
+                "SELECT * FROM watchtower_sources WHERE status='enabled' ORDER BY id ASC"
+            ).fetchall()
 
 
 class ItemRepository:
@@ -169,3 +203,30 @@ class ItemRepository:
             return conn.execute(
                 "SELECT * FROM watchtower_items WHERE id=?", (item_id,)
             ).fetchone()
+
+    @staticmethod
+    def batch_add_items(items: list[dict]) -> int:
+        """批量保存采集条目，返回成功插入数量"""
+        count = 0
+        with get_connection() as conn:
+            for item in items:
+                try:
+                    conn.execute(
+                        """INSERT OR IGNORE INTO watchtower_items
+                           (source_id, title, content, url, published_at, keywords, raw_json)
+                           VALUES(?,?,?,?,?,?,?)""",
+                        (
+                            item["source_id"],
+                            item["title"],
+                            item.get("content", ""),
+                            item.get("url", ""),
+                            item.get("published_at", ""),
+                            item.get("keywords", "[]"),
+                            item.get("raw_json", "{}"),
+                        ),
+                    )
+                    if conn.total_changes:
+                        count += 1
+                except Exception:
+                    pass
+        return count
