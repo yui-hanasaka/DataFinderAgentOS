@@ -371,6 +371,55 @@ def _seed_business_data(conn):
         )
 
 
+def _migrate_watchtower_items():
+    """扩展watchtower_items表以支持深度采集追踪"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 检查列是否已存在
+    cursor.execute("PRAGMA table_info(watchtower_items)")
+    existing_columns = [row[1] for row in cursor.fetchall()]
+
+    if 'is_deep_collected' not in existing_columns:
+        cursor.execute("ALTER TABLE watchtower_items ADD COLUMN is_deep_collected INTEGER DEFAULT 0")
+
+    if 'deep_task_id' not in existing_columns:
+        cursor.execute("ALTER TABLE watchtower_items ADD COLUMN deep_task_id INTEGER DEFAULT NULL")
+
+    if 'deep_collected_at' not in existing_columns:
+        cursor.execute("ALTER TABLE watchtower_items ADD COLUMN deep_collected_at TEXT DEFAULT NULL")
+
+    conn.commit()
+    conn.close()
+
+
+def _migrate_deep_tasks():
+    """扩展deep_tasks表以支持进度追踪"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("PRAGMA table_info(deep_tasks)")
+    existing_columns = [row[1] for row in cursor.fetchall()]
+
+    if 'progress' not in existing_columns:
+        cursor.execute("ALTER TABLE deep_tasks ADD COLUMN progress INTEGER DEFAULT 0")
+
+    if 'total_items' not in existing_columns:
+        cursor.execute("ALTER TABLE deep_tasks ADD COLUMN total_items INTEGER DEFAULT 0")
+
+    if 'completed_items' not in existing_columns:
+        cursor.execute("ALTER TABLE deep_tasks ADD COLUMN completed_items INTEGER DEFAULT 0")
+
+    if 'failed_items' not in existing_columns:
+        cursor.execute("ALTER TABLE deep_tasks ADD COLUMN failed_items INTEGER DEFAULT 0")
+
+    if 'logs' not in existing_columns:
+        cursor.execute("ALTER TABLE deep_tasks ADD COLUMN logs TEXT DEFAULT '[]'")
+
+    conn.commit()
+    conn.close()
+
+
 def init_db():
     with get_connection() as conn:
         _init_users_table(conn)
@@ -379,3 +428,7 @@ def init_db():
         _init_model_tables(conn)
         _init_business_tables(conn)
         _seed_business_data(conn)
+
+    # 执行迁移
+    _migrate_watchtower_items()
+    _migrate_deep_tasks()
