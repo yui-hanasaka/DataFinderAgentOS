@@ -19,11 +19,26 @@ class AdminLoginHandler(BaseHandler):
 
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
-        if not AdminRepository.verify_admin(username, password):
+
+        # Per-account rate limit
+        if username:
+            if not check_rate_limit(f"admin_login_account:{username}", 5, 60):
+                self.set_status(429)
+                return self.render(
+                    "admin/login.html",
+                    title="后台登录",
+                    error="该账号登录尝试过于频繁，请稍后再试",
+                )
+
+        ok, err_msg, admin_row = AdminRepository.verify_admin(username, password)
+        if not ok:
             self.set_status(401)
-            return self.render(
-                "admin/login.html", title="后台登录", error="用户名或密码错误"
-            )
+            return self.render("admin/login.html", title="后台登录", error=err_msg)
+
+        # Check must_change_password
+        if admin_row and admin_row["must_change_password"]:
+            self.set_auth_cookie("admin_username", username)
+            return self.redirect("/admin/settings?must_change=1")
 
         self.set_auth_cookie("admin_username", username)
         self.redirect("/admin/home")
@@ -56,8 +71,14 @@ class AdminBaseHandler(BaseHandler):
             return
 
         # Check if this admin's role has a menu entry for this path
+        # Use prefix matching so dynamic routes like /admin/models/1/test
+        # match the base URL /admin/models stored in menus
         allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
-        if path not in allowed_urls:
+        if not any(
+            path == url or path.startswith(url + "/") or path.startswith(url + "?")
+            for url in allowed_urls
+            if url
+        ):
             self.set_status(403)
             return self.finish(
                 "<h3>403 · 无权限访问</h3><p>请联系超级管理员分配功能权限。</p>"
@@ -215,7 +236,7 @@ class AdminUserHandler(AdminBaseHandler):
             ok, msg = AdminRepository.update_user(
                 int(user_id),
                 self.get_body_argument("display_name", "").strip(),
-                int(self.get_body_argument("role_id", "0")),
+                int(self.get_body_argument("role_id", "0") or 0),
                 self.get_body_argument("status", "enabled"),
                 self.get_body_argument("password", "").strip(),
             )
@@ -227,7 +248,7 @@ class AdminUserHandler(AdminBaseHandler):
             self.get_body_argument("username", "").strip(),
             self.get_body_argument("password", "").strip(),
             self.get_body_argument("display_name", "").strip(),
-            int(self.get_body_argument("role_id", "0")),
+            int(self.get_body_argument("role_id", "0") or 0),
             self.get_body_argument("status", "enabled"),
         )
         self._redirect_with_message("/admin/users", msg or "用户已新增" if ok else msg)

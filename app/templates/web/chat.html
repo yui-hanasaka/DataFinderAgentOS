@@ -612,11 +612,13 @@ function newSession() {
 }
 
 function switchEmployee(id) {
-  fetch('/chat/employee', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-    body: JSON.stringify({employee_id: id})
-  }).then(() => window.location.reload());
+  if (SESSION_ID) {
+    fetch('/chat/employee', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
+      body: JSON.stringify({session_id: SESSION_ID, employee_id: id})
+    }).then(() => window.location.reload());
+  }
 }
 
 /* ── Batch delete ── */

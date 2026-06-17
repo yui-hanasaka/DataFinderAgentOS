@@ -39,13 +39,82 @@ class AdminRepository:
             ).fetchone()
 
     @staticmethod
-    def verify_admin(username: str, password: str) -> bool:
+    def verify_admin(username: str, password: str) -> tuple[bool, str, dict | None]:
+        """Returns (ok, error_message, admin_row_or_None)."""
         row = AdminRepository.get_admin_by_username(username)
-        if not row or row["status"] != "enabled":
-            return False
+        if not row:
+            return False, "用户名或密码错误", None
+
+        if row["status"] != "enabled":
+            if row["status"] == "locked":
+                return False, "账号已被锁定，请联系超级管理员解锁", None
+            return False, "账号已被禁用", None
+
+        # Check lockout by failed_login_count / locked_until
+        from datetime import datetime
+
+        locked_until = row["locked_until"]
+        if locked_until:
+            try:
+                lock_time = datetime.strptime(locked_until, "%Y-%m-%d %H:%M:%S")
+                if datetime.now() < lock_time:
+                    return False, "账号已被临时锁定，请稍后再试", None
+            except ValueError:
+                pass
 
         salt = bytes.fromhex(row["salt"])
-        return hash_password(password, salt) == row["password_hash"]
+        if hash_password(password, salt) != row["password_hash"]:
+            # Record failed attempt
+            AdminRepository._record_failed_login(username)
+            # Check if account just became locked
+            updated = AdminRepository.get_admin_by_username(username)
+            if updated and updated["locked_until"]:
+                try:
+                    lock_time = datetime.strptime(
+                        updated["locked_until"], "%Y-%m-%d %H:%M:%S"
+                    )
+                    if datetime.now() < lock_time:
+                        return (
+                            False,
+                            "密码错误次数过多，账号已被临时锁定15分钟",
+                            None,
+                        )
+                except ValueError:
+                    pass
+            return False, "用户名或密码错误", None
+
+        # Login success — reset counters
+        AdminRepository._reset_failed_login(username)
+        return True, "", row
+
+    @staticmethod
+    def _record_failed_login(username: str) -> None:
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, failed_login_count FROM admin_users WHERE username=?",
+                (username,),
+            ).fetchone()
+            if not row:
+                return
+            new_count = int(row["failed_login_count"]) + 1
+            if new_count >= 5:
+                conn.execute(
+                    "UPDATE admin_users SET failed_login_count=?, locked_until=datetime('now','+15 minutes') WHERE id=?",
+                    (new_count, row["id"]),
+                )
+            else:
+                conn.execute(
+                    "UPDATE admin_users SET failed_login_count=? WHERE id=?",
+                    (new_count, row["id"]),
+                )
+
+    @staticmethod
+    def _reset_failed_login(username: str) -> None:
+        with get_connection() as conn:
+            conn.execute(
+                "UPDATE admin_users SET failed_login_count=0, locked_until=NULL, last_login_at=datetime('now') WHERE username=?",
+                (username,),
+            )
 
     @staticmethod
     def list_roles(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):

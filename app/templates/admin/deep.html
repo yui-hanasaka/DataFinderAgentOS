@@ -1,44 +1,179 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>智能业务</p><h1>深度采集</h1><span>管理深度爬取任务，支持定时调度与手动触发。</span></div>
-	<button type="button" class="adm-btn adm-btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal">＋ 新增任务</button>
+  <div><p>智能业务</p><h1>深度采集</h1><span>对瞭望采集的数据进行深度解析，使用大模型提取结构化内容与摘要。</span></div>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
-<section class="admin-table-card">
-	<div class="table-title"><strong>任务列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
-	<table class="admin-table">
-		<thead><tr><th>ID</th><th>任务名</th><th>目标URL</th><th>深度</th><th>调度</th><th>状态</th><th>最后运行</th><th>操作</th></tr></thead>
-		<tbody>{% for task in tasks %}<tr><td>{{ task['id'] }}</td><td>{{ task['name'] }}</td><td class="text-truncate" style="max-width:160px" title="{{ task['target_url'] }}">{{ task['target_url'] }}</td><td>{{ task['depth'] }}</td><td>{{ task['schedule'] or '-' }}</td><td>{{ task['status'] }}</td><td>{{ task['last_run'] or '-' }}</td><td class="table-actions"><form method="post" action="/admin/deep"><input type="hidden" name="action" value="run">{% module xsrf_form_html() %}<input type="hidden" name="id" value="{{ task['id'] }}"><button type="submit">立即运行</button></form><form method="post" action="/admin/deep" data-confirm="确认删除该任务？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ task['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
-	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/deep?page={{ page - 1 }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/deep?page={{ page + 1 }}">下一页</a>{% end %}</div>
-</section>
-<div class="modal fade admin-edit-modal" id="taskModal" tabindex="-1">
-	<div class="modal-dialog modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header">
-				<div>
-					<h5 class="modal-title">新增深度采集任务</h5>
-					<small class="field-hint">配置目标 URL、爬取深度与调度规则。<span class="required-tip">* 为必填项</span></small>
-				</div>
-				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-			</div>
-			<form method="post" action="/admin/deep">
-				<div class="modal-body">
-					{% module xsrf_form_html() %}
-					<input type="hidden" name="action" value="add">
-					<section class="admin-form-section">
-						<div class="admin-grid-form">
-							<label class="required"><span>任务名</span><input type="text" name="name" placeholder="任务名称" required></label>
-							<label class="required"><span>深度</span><input type="number" name="depth" value="2" min="1" max="5" required></label>
-							<label class="required form-wide"><span>目标URL</span><input type="url" name="target_url" placeholder="https://" required></label>
-							<label class="form-wide"><span>调度表达式</span><input type="text" name="schedule" placeholder="Cron 表达式，如 0 2 * * *，留空为手动"></label>
-						</div>
-					</section>
-				</div>
-				<div class="modal-footer"><button type="button" class="adm-btn adm-btn-ghost" data-bs-dismiss="modal">取消</button><button type="submit" class="adm-btn adm-btn-primary">确认保存</button></div>
-			</form>
-		</div>
-	</div>
+
+<!-- Filter tabs -->
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+  <a href="/admin/deep" class="adm-btn adm-btn-ghost {% if not filter_status %}adm-btn-active{% end %}">全部</a>
+  <a href="/admin/deep?status=pending" class="adm-btn adm-btn-ghost {% if filter_status == 'pending' %}adm-btn-active{% end %}">待采集</a>
+  <a href="/admin/deep?status=collected" class="adm-btn adm-btn-ghost {% if filter_status == 'collected' %}adm-btn-active{% end %}">已采集</a>
+  <form class="admin-search" method="get" action="/admin/deep" style="margin-left:auto">
+    {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}">{% end %}
+    <input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索标题或URL">
+    <button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
+    <a href="/admin/deep">重置</a>
+  </form>
 </div>
+
+<!-- Items Table -->
+<section class="admin-table-card">
+  <div class="table-title">
+    <strong>数据条目</strong>
+    <span>共 {{ total }} 条，每页 {{ per_page }} 条</span>
+  </div>
+  <form method="post" action="/admin/deep" id="batchForm">
+    {% module xsrf_form_html() %}
+    <input type="hidden" name="action" value="collect">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width:40px"><input type="checkbox" onclick="toggleAll(this)" title="全选"></th>
+          <th>ID</th>
+          <th>标题</th>
+          <th>来源</th>
+          <th>深度采集</th>
+          <th>采集时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><input type="checkbox" name="item_ids" value="{{ item['id'] }}" class="item-cb"></td>
+          <td>{{ item['id'] }}</td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ item['title'] }}">{{ item['title'] }}</td>
+          <td>{{ item['source_name'] or '-' }}</td>
+          <td>
+            {% if item['is_deep_collected'] %}
+            <span style="color:#22bb80;font-weight:600">✓ 已采集</span>
+            <span style="font-size:11px;color:var(--c-text-muted);display:block">{{ item['deep_collected_at'] or '' }}</span>
+            {% else %}
+            <span style="color:var(--c-text-muted)">○ 待采集</span>
+            {% end %}
+          </td>
+          <td>{{ item['collected_at'] or item['created_at'] }}</td>
+          <td class="table-actions">
+            {% if item['is_deep_collected'] %}
+            <a href="/admin/deep?view={{ item['id'] }}">查看详情</a>
+            {% end %}
+            <form method="post" action="/admin/deep" style="display:inline">
+              {% module xsrf_form_html() %}
+              <input type="hidden" name="action" value="collect_single">
+              <input type="hidden" name="item_id" value="{{ item['id'] }}">
+              <button type="submit">{% if item['is_deep_collected'] %}重新采集{% else %}深度采集{% end %}</button>
+            </form>
+          </td>
+        </tr>
+        {% end %}
+        {% if not items %}
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--c-text-muted)">暂无数据。请先在「瞭望采集」中采集数据。</td></tr>
+        {% end %}
+      </tbody>
+    </table>
+    {% if items %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">
+      <button type="submit" class="adm-btn adm-btn-primary" onclick="return confirm('确认对选中的条目进行深度采集？')">⚡ 深度采集选中</button>
+      <div class="admin-pagination">
+        {% if page > 1 %}<a href="/admin/deep?page={{ page - 1 }}&keyword={{ keyword }}{% if filter_status %}&status={{ filter_status }}{% end %}">上一页</a>{% end %}
+        <span>第 {{ page }} 页</span>
+        {% if page * per_page < total %}<a href="/admin/deep?page={{ page + 1 }}&keyword={{ keyword }}{% if filter_status %}&status={{ filter_status }}{% end %}">下一页</a>{% end %}
+      </div>
+    </div>
+    {% end %}
+  </form>
+</section>
+
+<!-- View Deep Content -->
+{% if view_item %}
+<section class="admin-table-card">
+  <div class="table-title">
+    <strong>深度采集详情</strong>
+    <span>条目 #{{ view_item['id'] }}: {{ view_item['title'] }}</span>
+    <a href="/admin/deep" style="margin-left:auto;font-size:13px;color:#818cf8;text-decoration:none">✕ 关闭</a>
+  </div>
+  {% if deep_contents %}
+  {% for dc in deep_contents %}
+  <div style="padding:16px;background:var(--c-surface, rgba(255,255,255,.03));border-radius:10px;margin-bottom:12px">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--c-text-muted)">
+      <span>情感: <strong>{{ dc['sentiment'] or '未分析' }}</strong></span>
+      <span>风险评分: <strong>{{ dc['risk'] }}/10</strong></span>
+      <span>采集于: {{ dc['created_at'] }}</span>
+    </div>
+    {% if dc['keywords'] %}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      {% for kw in dc['keywords'] %}
+      <span style="padding:2px 10px;border-radius:999px;background:rgba(99,102,241,.1);color:#818cf8;font-size:11px">{{ kw }}</span>
+      {% end %}
+    </div>
+    {% end %}
+    {% if dc['summary'] %}
+    <div style="margin-bottom:12px;padding:12px;border-left:3px solid #818cf8;background:rgba(99,102,241,.05);border-radius:0 8px 8px 0">
+      <strong style="font-size:13px;color:#818cf8">📝 摘要</strong>
+      <p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--c-text)">{{ dc['summary'] }}</p>
+    </div>
+    {% end %}
+    {% if dc['markdown'] %}
+    <details>
+      <summary style="cursor:pointer;font-size:13px;color:#818cf8;padding:4px 0">📄 整理后内容 (Markdown)</summary>
+      <div style="margin-top:8px;padding:12px;background:rgba(0,0,0,.1);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:400px;overflow:auto;color:var(--c-text)">{{ dc['markdown'] }}</div>
+    </details>
+    {% end %}
+    {% if dc['plain_text'] %}
+    <details>
+      <summary style="cursor:pointer;font-size:13px;color:var(--c-text-muted);padding:4px 0">📃 原始纯文本</summary>
+      <div style="margin-top:8px;padding:12px;background:rgba(0,0,0,.1);border-radius:8px;white-space:pre-wrap;font-size:12px;line-height:1.5;max-height:300px;overflow:auto;color:var(--c-text-muted)">{{ dc['plain_text'] }}</div>
+    </details>
+    {% end %}
+  </div>
+  {% end %}
+  {% else %}
+  <div style="text-align:center;padding:32px;color:var(--c-text-muted)">该条目暂无深度采集结果</div>
+  {% end %}
+</section>
+{% end %}
+
+<!-- Recent Tasks -->
+{% if tasks %}
+<section class="admin-table-card">
+  <div class="table-title"><strong>最近任务</strong><span>最近 10 个深度采集任务</span></div>
+  <table class="admin-table">
+    <thead><tr><th>ID</th><th>任务名</th><th>状态</th><th>进度</th><th>成功/失败</th><th>开始时间</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for task in tasks %}
+      <tr>
+        <td>{{ task['id'] }}</td>
+        <td>{{ task['name'] }}</td>
+        <td>
+          {% if task['status'] == 'completed' %}<span style="color:#22bb80">✓ 完成</span>
+          {% elif task['status'] == 'running' %}<span style="color:#f0a020">⏳ 运行中</span>
+          {% elif task['status'] == 'failed' %}<span style="color:#ef4444">✗ 失败</span>
+          {% else %}{{ task['status'] }}{% end %}
+        </td>
+        <td>{{ task['progress'] or 0 }}%</td>
+        <td>{{ task['completed_items'] or 0 }} / {{ task['failed_items'] or 0 }}</td>
+        <td>{{ task['started_at'] or task['created_at'] }}</td>
+        <td class="table-actions">
+          <form method="post" action="/admin/deep" data-confirm="确认删除该任务？">
+            {% module xsrf_form_html() %}
+            <input type="hidden" name="action" value="delete_task">
+            <input type="hidden" name="task_id" value="{{ task['id'] }}">
+            <button type="submit">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% end %}
+    </tbody>
+  </table>
+</section>
+{% end %}
+
+<script>
+function toggleAll(el) {
+  document.querySelectorAll('.item-cb').forEach(function(cb){ cb.checked = el.checked; });
+}
+</script>
+<a href="/admin/watchtower" class="adm-btn adm-btn-ghost" style="margin:12px 0">← 返回瞭望管理</a>
 {% end %}

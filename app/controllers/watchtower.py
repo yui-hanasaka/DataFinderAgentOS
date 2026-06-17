@@ -41,14 +41,32 @@ class AdminWatchtowerHandler(AdminBaseHandler):
         url = self.get_body_argument("url", "").strip()
         fetch_interval = int(self.get_body_argument("fetch_interval", "60") or 60)
         status = self.get_body_argument("status", "enabled")
+        url_template = self.get_body_argument("url_template", "").strip()
+        request_headers = self.get_body_argument("request_headers", "").strip()
+        config_json = self.get_body_argument("config_json", "{}").strip()
         if src_id.isdigit():
             ok, msg = SourceRepository.update_source(
-                int(src_id), name, source_type, url, fetch_interval, status
+                int(src_id),
+                name,
+                source_type,
+                url,
+                fetch_interval,
+                status,
+                url_template,
+                request_headers,
+                config_json,
             )
             return self._redirect_with_message(
                 "/admin/watchtower", msg or "已更新" if ok else msg
             )
         ok, msg = SourceRepository.create_source(
-            name, source_type, url, fetch_interval, status
+            name,
+            source_type,
+            url,
+            fetch_interval,
+            status,
+            url_template,
+            request_headers,
+            config_json,
         )
         self._redirect_with_message("/admin/watchtower", msg or "已新增" if ok else msg)

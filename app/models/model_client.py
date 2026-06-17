@@ -23,16 +23,30 @@ async def chat_complete(
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
-        "Accept": "text/event-stream" if stream else "application/json",
     }
-    # Use a shared client or create per request — per request is safer for now
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=10)) as client:
-        if stream:
-            return await client.send(
-                client.build_request("POST", url, headers=headers, json=body),
-                stream=True,
-            )
-        return await client.post(url, headers=headers, json=body)
+    # Don't use context manager for streaming — the client must stay alive
+    # while the caller iterates the response body. httpx.AsyncClient.__aexit__
+    # closes all connections, which would kill the SSE stream mid-flight.
+    client = httpx.AsyncClient(timeout=httpx.Timeout(120, connect=10))
+    resp = await client.send(
+        client.build_request("POST", url, headers=headers, json=body),
+        stream=stream,
+    )
+    if resp.status_code >= 400:
+        # Read the error body and surface it as an exception
+        try:
+            error_body = await resp.aread()
+            error_json = json.loads(error_body.decode("utf-8"))
+            err_msg = error_json.get("error", {}).get("message", "") or str(error_json)
+        except Exception:
+            err_msg = f"HTTP {resp.status_code}"
+        await client.aclose()
+        raise RuntimeError(f"API error {resp.status_code}: {err_msg}")
+    if not stream:
+        # Read the full response before closing the client
+        await resp.aread()
+        await client.aclose()
+    return resp
 
 
 def parse_chat_response(raw_bytes: bytes):

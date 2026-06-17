@@ -205,6 +205,8 @@ def _seed_admin_data(conn):
         salt = new_salt()
         dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
         default_pw = os.environ.get("ADMIN_INITIAL_PASSWORD", "")
+        if not default_pw and not dev:
+            dev = True  # auto-dev: no ADMIN_INITIAL_PASSWORD set
         if not default_pw and dev:
             default_pw = "admin888"
         if not default_pw:

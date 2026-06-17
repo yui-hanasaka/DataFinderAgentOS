@@ -129,9 +129,9 @@ class AdminModelChatHandler(AdminBaseHandler):
             if stream and model["support_stream"]:
                 return await self._stream_response(model, messages)
             return await self._sync_response(model, messages)
-        except Exception as ex:
+        except Exception:
             self.set_status(502)
-            self.write({"error": f"模型调用失败：{ex}"})
+            self.write({"error": "模型调用失败，请稍后重试"})
 
     async def _sync_response(self, model, messages):
         resp = await chat_complete(
@@ -166,22 +166,33 @@ class AdminModelChatHandler(AdminBaseHandler):
         )
         prompt_tokens = 0
         completion_tokens = 0
-        async for chunk in iter_sse_chunks(resp):
-            usage = chunk.get("usage") or {}
-            if usage:
-                prompt_tokens = max(prompt_tokens, int(usage.get("prompt_tokens") or 0))
-                completion_tokens = max(
-                    completion_tokens, int(usage.get("completion_tokens") or 0)
-                )
-            delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
-            text = delta.get("content") or ""
-            reasoning = delta.get("reasoning_content") or ""
-            self.write(
-                "data: "
-                + json.dumps({"content": text, "reasoning": reasoning})
-                + "\n\n"
-            )
-            await self.flush()
+        try:
+            async for chunk in iter_sse_chunks(resp):
+                usage = chunk.get("usage") or {}
+                if usage:
+                    prompt_tokens = max(
+                        prompt_tokens, int(usage.get("prompt_tokens") or 0)
+                    )
+                    completion_tokens = max(
+                        completion_tokens, int(usage.get("completion_tokens") or 0)
+                    )
+                delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
+                text = delta.get("content") or ""
+                reasoning = delta.get("reasoning_content") or ""
+                try:
+                    self.write(
+                        "data: "
+                        + json.dumps({"content": text, "reasoning": reasoning})
+                        + "\n\n"
+                    )
+                    await self.flush()
+                except Exception:
+                    break
+        except Exception:
+            pass
         ModelRepository.record_usage(model["id"], prompt_tokens, completion_tokens)
-        self.write("data: [DONE]\n\n")
-        await self.flush()
+        try:
+            self.write("data: [DONE]\n\n")
+            await self.flush()
+        except Exception:
+            pass

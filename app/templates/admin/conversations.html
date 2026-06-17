@@ -20,14 +20,19 @@
 </section>
 <style>
 .admin-conversation-timeline { display:flex; flex-direction:column; gap:12px; padding:16px 0; }
-.conv-message { padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.25); backdrop-filter:blur(6px); border-left:3px solid rgba(120,140,180,0.35); }
+.conv-message { padding:12px 16px; border-radius:10px; background:var(--c-card-bg, rgba(255,255,255,0.25)); backdrop-filter:blur(6px); border-left:3px solid rgba(120,140,180,0.35); }
 .conv-user { border-left-color:rgba(64,128,255,0.55); }
 .conv-assistant { border-left-color:rgba(34,187,128,0.55); }
 .conv-meta { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
 .conv-role-badge { font-size:11px; padding:2px 8px; border-radius:3px; font-weight:600; }
 .badge-user { background:rgba(64,128,255,0.12); color:#4080ff; }
 .badge-assistant { background:rgba(34,187,128,0.12); color:#22bb80; }
-.conv-time { font-size:12px; color:rgba(80,90,110,0.65); }
-.conv-content { white-space:pre-wrap; word-break:break-word; font-size:14px; line-height:1.6; }
+.conv-time { font-size:12px; color:var(--c-text-muted, rgba(80,90,110,0.65)); }
+.conv-content { white-space:pre-wrap; word-break:break-word; font-size:14px; line-height:1.6; color:var(--c-text, inherit); }
+[data-theme="dark"] .conv-message { background:rgba(255,255,255,0.05); }
+[data-theme="dark"] .badge-user { background:rgba(64,128,255,0.2); color:#6db3ff; }
+[data-theme="dark"] .badge-assistant { background:rgba(34,187,128,0.2); color:#4fe0a8; }
+[data-theme="dark"] .conv-time { color:rgba(180,190,210,0.55); }
+[data-theme="dark"] .conv-content { color:rgba(220,225,240,0.9); }
 </style>
 {% end %}

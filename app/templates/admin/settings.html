@@ -52,8 +52,10 @@
 	</form>
 </section>
 <style>
-.stab-btn{padding:8px 18px;border:none;border-radius:10px;background:transparent;color:#6b778c;cursor:pointer;font-size:14px}
-.stab-btn.active{background:#edf4ff;color:#247ff0;font-weight:600}
+.stab-btn{padding:8px 18px;border:none;border-radius:10px;background:transparent;color:var(--c-text-soft,#6b778c);cursor:pointer;font-size:14px;transition:all var(--spring,.2s)}
+.stab-btn.active{background:var(--c-bg-active,#edf4ff);color:var(--c-accent,#247ff0);font-weight:600}
+[data-theme="dark"] .stab-btn{color:rgba(200,210,230,0.7)}
+[data-theme="dark"] .stab-btn.active{background:rgba(36,127,240,0.15);color:#6db3ff}
 </style>
 <script>
 function showTab(id, btn) {

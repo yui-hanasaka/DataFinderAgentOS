@@ -12,7 +12,7 @@
 	<div class="table-title"><strong>采集源列表</strong><span>共 {{ src_total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
 		<thead><tr><th>ID</th><th>名称</th><th>类型</th><th>URL</th><th>采集间隔</th><th>状态</th><th>最后采集</th><th>条目数</th><th>操作</th></tr></thead>
-		<tbody>{% for src in sources %}<tr><td>{{ src['id'] }}</td><td>{{ src['name'] }}</td><td>{{ src['source_type'] }}</td><td class="text-truncate" style="max-width:160px" title="{{ src['url'] }}">{{ src['url'] }}</td><td>{{ src['fetch_interval'] }}s</td><td>{{ src['status'] }}</td><td>{{ src['last_fetched'] or '-' }}</td><td>{{ src['item_count'] }}</td><td class="table-actions"><a href="/admin/watchtower?edit={{ src['id'] }}">修改</a><form method="post" action="/admin/watchtower" data-confirm="确认删除该采集源？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ src['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<tbody>{% for src in sources %}<tr><td>{{ src['id'] }}</td><td>{{ src['name'] }}</td><td>{{ src['source_type'] }}</td><td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="{{ src['url'] }}">{{ src['url'] }}</td><td>{{ src['fetch_interval'] }}s</td><td>{{ src['status'] }}</td><td>{{ src['last_fetched'] or '-' }}</td><td>{{ src['item_count'] }}</td><td class="table-actions"><a href="/admin/watchtower?edit={{ src['id'] }}">修改</a><form method="post" action="/admin/watchtower" data-confirm="确认删除该采集源？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ src['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
 	</table>
 	<div class="admin-pagination">{% if src_page > 1 %}<a href="/admin/watchtower?page={{ src_page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ src_page }} 页</span>{% if src_page * per_page < src_total %}<a href="/admin/watchtower?page={{ src_page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
 </section>
@@ -44,10 +44,12 @@
 							<label class="required form-wide"><span>URL</span><input type="url" name="url" value="{{ edit_source['url'] if edit_source else '' }}" placeholder="https://" required></label>
 							<label class="required"><span>采集间隔(秒)</span><input type="number" name="fetch_interval" value="{{ edit_source['fetch_interval'] if edit_source else '3600' }}" min="60" required></label>
 							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_source or edit_source['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_source and edit_source['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+							<label class="form-wide"><span>URL模板</span><input type="text" name="url_template" value="{{ edit_source['url_template'] if edit_source else '' }}" placeholder="支持 {关键词} 和 {分页步进} 占位符"><small class="field-hint">如 https://www.baidu.com/s?word={关键词}&pn={分页步进}</small></label>
+							<label class="form-wide"><span>Request Headers</span><textarea name="request_headers" rows="4" placeholder="粘贴 raw 格式请求头...">{{ edit_source['request_headers'] if edit_source else '' }}</textarea></label>
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="adm-btn adm-btn-ghost" data-bs-dismiss="modal">取消</button><button type="submit" class="adm-btn adm-btn-primary">确认保存</button></div>
 			</form>
 		</div>
 	</div>
