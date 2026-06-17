@@ -1,3 +1,5 @@
+import re
+
 from app.controllers.base import BaseHandler
 from app.models.admin import PER_PAGE, AdminRepository
 from app.models.rate_limit import check_rate_limit
@@ -26,6 +28,12 @@ class AdminLoginHandler(BaseHandler):
             )
 
         self.set_auth_cookie("admin_username", username)
+
+        # H1: redirect to change-password if required
+        admin_row = AdminRepository.get_admin_by_username(username)
+        if admin_row and admin_row["must_change_password"]:
+            return self.redirect("/admin/change-password")
+
         self.redirect("/admin/home")
 
 
@@ -43,7 +51,7 @@ class AdminBaseHandler(BaseHandler):
         # RBAC: check route permission unless super admin
         path = self.request.path
         # Always-allowed routes for authenticated admins
-        allowed_any = {"/admin/home", "/admin/logout"}
+        allowed_any = {"/admin/home", "/admin/logout", "/admin/change-password"}
         if path in allowed_any:
             return
 
@@ -57,7 +65,7 @@ class AdminBaseHandler(BaseHandler):
 
         # Check if this admin's role has a menu entry for this path
         allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
-        if path not in allowed_urls:
+        if not any(re.fullmatch(pattern, path) for pattern in allowed_urls):
             self.set_status(403)
             return self.finish(
                 "<h3>403 · 无权限访问</h3><p>请联系超级管理员分配功能权限。</p>"
@@ -215,7 +223,7 @@ class AdminUserHandler(AdminBaseHandler):
             ok, msg = AdminRepository.update_user(
                 int(user_id),
                 self.get_body_argument("display_name", "").strip(),
-                int(self.get_body_argument("role_id", "0")),
+                int(self.get_body_argument("role_id", "0") or 0),
                 self.get_body_argument("status", "enabled"),
                 self.get_body_argument("password", "").strip(),
             )
@@ -227,7 +235,7 @@ class AdminUserHandler(AdminBaseHandler):
             self.get_body_argument("username", "").strip(),
             self.get_body_argument("password", "").strip(),
             self.get_body_argument("display_name", "").strip(),
-            int(self.get_body_argument("role_id", "0")),
+            int(self.get_body_argument("role_id", "0") or 0),
             self.get_body_argument("status", "enabled"),
         )
         self._redirect_with_message("/admin/users", msg or "用户已新增" if ok else msg)

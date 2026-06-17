@@ -1,6 +1,7 @@
 import json
 
 from app.controllers.admin import AdminBaseHandler
+from app.models.errors import log_error
 from app.models.model_client import chat_complete, iter_sse_chunks, parse_chat_response
 from app.models.model_engine import PER_PAGE, ModelRepository
 from app.models.rate_limit import check_rate_limit
@@ -133,7 +134,8 @@ class AdminModelChatHandler(AdminBaseHandler):
             if stream and model["support_stream"]:
                 return await self._stream_response(model, messages)
             return await self._sync_response(model, messages)
-        except Exception:
+        except Exception as e:
+            log_error("AdminModelChatHandler", e)
             self.set_status(502)
             self.write({"error": "模型调用失败，请稍后重试"})
 

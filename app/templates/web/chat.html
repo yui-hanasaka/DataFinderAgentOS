@@ -1238,6 +1238,12 @@
         headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
         body: JSON.stringify({ message: content })
       });
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        let errMsg = '服务器错误（' + resp.status + '）';
+        try { const j = JSON.parse(errBody); if (j.error) errMsg = j.error; } catch { /* not json */ }
+        throw new Error(errMsg);
+      }
       const typing = document.getElementById('typingMsg');
       if (typing) typing.remove();
       const msgDiv = appendAssistantMsg('');
@@ -1290,7 +1296,12 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
       body: JSON.stringify({ employee_id: id })
-    }).then(() => window.location.reload());
+    }).then(function (resp) {
+      if (!resp.ok) { throw new Error('切换失败，状态码：' + resp.status); }
+      window.location.reload();
+    }).catch(function (err) {
+      alert('切换角色失败：' + err.message);
+    });
   }
 
   /* ── Batch delete ── */

@@ -27,7 +27,7 @@ def check_file(filepath: Path) -> list[str]:
 
         # { {word — space between two opening braces before a Tornado expression
         # Matches: { { stats, { { model[   but NOT: { { }  or CSS selectors
-        m = re.search(r"\{\s+\{(?![\s\}])", stripped)
+        m = re.search(r"\{\s+\{[a-zA-Z_]", stripped)
         if m:
             issues.append(
                 f"{filepath}:{i}:  '{{{{' has space between braces — "

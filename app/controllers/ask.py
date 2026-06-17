@@ -170,8 +170,8 @@ class AskQueryHandler(AskBaseHandler):
                        VALUES((SELECT id FROM users WHERE username=?), ?, ?, ?, 'ok', ?)""",
                     (self.current_user, nl_query, sql, len(dict_rows), model_row["id"]),
                 )
-        except Exception:
-            pass  # non-critical
+        except Exception as e:
+            log_error("AskQueryHandler ask_history", e)
 
         self.set_header("Content-Type", "application/json")
         self.write({"ok": True, "columns": cols, "rows": dict_rows})

@@ -43,8 +43,7 @@
 			页</span>{% if page * per_page < total %}<a
 			href="/admin/employees?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
 </section>
-<div class="modal fade admin-edit-modal" id="employeeModal" tabindex="-1" {% if edit_employee %}data-auto-open="true" {%
-	end %}>
+<div class="modal fade admin-edit-modal" id="employeeModal" tabindex="-1" {% if edit_employee %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">

@@ -38,8 +38,7 @@
 				<td>{{ user['created_at'] }}</td>
 				<td class="table-actions"><a href="/admin/users?edit={{ user['id'] }}">查看/修改</a>
 					<form method="post" action="/admin/users" data-confirm="确认删除该用户？删除后不可恢复。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
-							value="{{ user['id'] }}"><button type="submit" {% if user['username']=='admin' %}disabled{%
-							end %}>删除</button></form>
+							value="{{ user['id'] }}"><button type="submit" {% if user['username']=='admin' %}disabled{% end %}>删除</button></form>
 				</td>
 			</tr>{% end %}</tbody>
 	</table>
@@ -84,8 +83,7 @@
 						<div class="admin-grid-form">
 							<label {% if not edit_user %}class="required" {% end %}><span>登录密码</span><input
 									type="password" name="password"
-									placeholder="{% if edit_user %}留空不修改{% else %}建议8位以上，包含字母数字{% end %}" {% if not
-									edit_user %}required{% end %}></label>
+									placeholder="{% if edit_user %}留空不修改{% else %}建议8位以上，包含字母数字{% end %}" {% if not edit_user %}required{% end %}></label>
 							<label class="form-wide"><span class="field-hint">提示：admin
 									超级管理员账号不允许删除或禁用，可在此修改密码。</span></label>
 						</div>

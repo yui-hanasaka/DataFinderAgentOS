@@ -67,8 +67,7 @@
 									required></label>
 							<label class="required"><span>类型</span><select name="api_type">
 									<option value="weather" {% if edit_api and edit_api['api_type']=='weather' %}selected{% end %}>天气</option>
-									<option value="music" {% if edit_api and edit_api['api_type']=='music' %}selected{%
-										end %}>音乐</option>
+									<option value="music" {% if edit_api and edit_api['api_type']=='music' %}selected{% end %}>音乐</option>
 									<option value="websearch" {% if edit_api and edit_api['api_type']=='websearch' %}selected{% end %}>网络搜索</option>
 									<option value="other" {% if not edit_api or edit_api['api_type']=='other' %}selected{% end %}>其他</option>
 								</select></label>

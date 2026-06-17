@@ -4,6 +4,7 @@ from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
 from app.models.employee import EmployeeRepository
+from app.models.errors import log_error
 from app.models.model_client import chat_complete, iter_sse_chunks
 from app.models.model_engine import ModelRepository
 from app.models.rate_limit import check_rate_limit
@@ -103,7 +104,11 @@ class ChatBatchDeleteHandler(ChatBaseHandler):
         if not isinstance(ids, list) or not ids:
             self.set_status(400)
             return self.write({"error": "请选择要删除的对话"})
-        count = ChatRepository.delete_sessions([int(i) for i in ids], user_id)
+        numeric_ids = [int(i) for i in ids if str(i).isdigit()]
+        if not numeric_ids:
+            self.set_status(400)
+            return self.write({"error": "请选择要删除的对话"})
+        count = ChatRepository.delete_sessions(numeric_ids, user_id)
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"ok": True, "count": count})
 
@@ -239,7 +244,8 @@ class ChatSendHandler(ChatBaseHandler):
             ModelRepository.record_usage(
                 model_row["id"], prompt_tokens, completion_tokens
             )
-        except Exception:
+        except Exception as e:
+            log_error("ChatSendHandler", e)
             err_msg = "模型调用失败，请稍后重试"
             full_reply.append(err_msg)
             self.write(f"data: {json.dumps({'content': err_msg})}\n\n")
@@ -296,8 +302,8 @@ class ChatExportHandler(ChatBaseHandler):
                 try:
                     pdfmetrics.registerFont(TTFont("CJK", fp))
                     font_name = "CJK"
-                except Exception:
-                    pass
+                except Exception as e:
+                    log_error("ChatExportHandler font registration", e)
                 break
 
         from reportlab.lib.colors import HexColor

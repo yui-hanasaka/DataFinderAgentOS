@@ -52,7 +52,7 @@ After completing any code change, run ALL checks in order and ensure 100% pass:
 
 **Key model files:**
 - `db.py` — `get_connection()` returns `sqlite3.Connection` with `row_factory = sqlite3.Row`; `init_db()` creates all 17 tables and seeds default admin/roles/skills
-- `model_client.py` — thin wrapper around `urllib.request` for OpenAI-compatible API calls; `chat_complete()` returns a raw `HTTPResponse`, `iter_sse_chunks()` yields parsed SSE dicts
+- `model_client.py` — thin wrapper around `httpx.AsyncClient` for OpenAI-compatible API calls; `chat_complete()` returns a raw `HTTPResponse`, `iter_sse_chunks()` yields parsed SSE dicts
 - `skill_dispatcher.py` — parses `@weather`, `@music`, `@西师妹`, `\search` prefixes; returns `DispatchResult = dict[str, Any]` with keys `type`, `skill_code`, `processed_content`, `skill_meta`
 
 **Streaming chat:** `ChatSendHandler.post()` and `AdminModelChatHandler.post()` both write `text/event-stream` responses manually with `self.write("data: ...\n\n")` + `await self.flush()`. XSRF is disabled on these endpoints via `check_xsrf_cookie = pass`.

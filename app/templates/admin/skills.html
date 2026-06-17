@@ -61,8 +61,7 @@
 						<div class="admin-form-section-title">基础信息</div>
 						<div class="admin-grid-form">
 							<label class="required"><span>编码</span><input type="text" name="code"
-									value="{{ edit_skill['code'] if edit_skill else '' }}" {% if edit_skill %}readonly{%
-									end %} placeholder="唯一标识，字母数字下划线" required></label>
+									value="{{ edit_skill['code'] if edit_skill else '' }}" {% if edit_skill %}readonly{% end %} placeholder="唯一标识，字母数字下划线" required></label>
 							<label class="required"><span>名称</span><input type="text" name="name"
 									value="{{ edit_skill['name'] if edit_skill else '' }}" placeholder="技能显示名称"
 									required></label>

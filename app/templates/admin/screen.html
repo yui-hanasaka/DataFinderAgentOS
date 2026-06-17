@@ -201,7 +201,7 @@
 		setInterval(updateClock, 1000);
 
 		function refreshData() {
-			fetch('/api/screen/data').then(function (r) { return r.json(); }).then(function (d) {
+			fetch('/api/screen/data', { headers: { 'X-XSRFToken': (document.cookie.match(/_xsrf=([^;]+)/) || [])[1] || '' } }).then(function (r) { return r.json(); }).then(function (d) {
 				document.getElementById('s-users').textContent = d.user_count || 0;
 				document.getElementById('s-sessions').textContent = d.session_count || 0;
 				document.getElementById('s-msgs').textContent = d.msg_count || 0;

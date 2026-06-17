@@ -653,21 +653,20 @@
     var loading = document.getElementById('hitokotoLoading');
     var textEl = document.getElementById('hitokotoText');
     var fromEl = document.getElementById('hitokotoFrom');
-    try {
-      fetch('https://v1.hitokoto.cn/?c=a&c=b&c=c&c=d&c=e&c=f&c=g&c=h&c=i&c=k&c=l&encode=json&max_length=50')
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function (data) {
-          textEl.textContent = '「' + data.hitokoto + '」';
-          textEl.style.display = '';
-          if (data.from || data.from_who) {
-            fromEl.textContent = '—— ' + [data.from_who, data.from].filter(Boolean).join(' · ');
-            fromEl.style.display = '';
-          }
-          loading.style.display = 'none';
-        });
-    } catch {
-      loading.textContent = '✨ 今日一言加载失败，但每一天都值得期待';
-    }
+    fetch('https://v1.hitokoto.cn/?c=a&c=b&c=c&c=d&c=e&c=f&c=g&c=h&c=i&c=k&c=l&encode=json&max_length=50')
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        textEl.textContent = '「' + data.hitokoto + '」';
+        textEl.style.display = '';
+        if (data.from || data.from_who) {
+          fromEl.textContent = '—— ' + [data.from_who, data.from].filter(Boolean).join(' · ');
+          fromEl.style.display = '';
+        }
+        loading.style.display = 'none';
+      })
+      .catch(function () {
+        loading.textContent = '✨ 今日一言加载失败，但每一天都值得期待';
+      });
   })();
 </script>
 {% end %}

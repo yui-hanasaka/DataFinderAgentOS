@@ -26,8 +26,7 @@
 		<div class="tech-stat-card"><span>TOTAL CALLS</span><strong>{{ totals['calls'] }}</strong><em>调用次数</em></div>
 		<div class="tech-stat-card"><span>TOTAL TOKENS</span><strong>{{ totals['total'] }}</strong><em>累计 Token</em>
 		</div>
-		<div class="tech-stat-card"><span>PROMPT / COMPLETION</span><strong>{{ totals['prompt'] }} / {{
-				totals['completion'] }}</strong><em>输入 / 输出</em></div>
+		<div class="tech-stat-card"><span>PROMPT / COMPLETION</span><strong>{{ totals['prompt'] }} / {{ totals['completion'] }}</strong><em>输入 / 输出</em></div>
 	</section>
 	<div class="tech-toolbar"><span>· model showcase</span><span>共 {{ total }} 条 · 每页 {{ per_page }} 条 · 三列橱窗</span>
 	</div>
@@ -44,10 +43,7 @@
 					<div class="card-meta">{{ model['model_id'] }}</div>
 				</div>
 				<div>
-					{% if model['is_default'] %}<span class="tech-tag is-default">默认模型</span>{% else %}<span
-						class="tech-tag">{{
-						{'text':'文字','multimodal':'多模态','vision':'视觉','embedding':'向量'}.get(model['model_type'],
-						model['model_type']) }}</span>{% end %}
+					{% if model['is_default'] %}<span class="tech-tag is-default">默认模型</span>{% else %}<span class="tech-tag">{{ {'text':'文字','multimodal':'多模态','vision':'视觉','embedding':'向量'}.get(model['model_type'], model['model_type']) }}</span>{% end %}
 					{% if model['status'] != 'enabled' %}<span class="tech-tag is-disabled">已禁用</span>{% end %}
 				</div>
 			</div>

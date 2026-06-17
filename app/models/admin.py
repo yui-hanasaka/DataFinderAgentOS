@@ -37,46 +37,64 @@ class AdminRepository:
             ).fetchone()
 
     @staticmethod
+    def record_failed_login(admin_id: int) -> None:
+        """Increment failed_login_count; lock account when threshold reached."""
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT failed_login_count FROM admin_users WHERE id=?",
+                (admin_id,),
+            ).fetchone()
+            if not row:
+                return
+            failed = (row["failed_login_count"] or 0) + 1
+            if failed >= AdminRepository.MAX_FAILED_ATTEMPTS:
+                conn.execute(
+                    """UPDATE admin_users
+                       SET failed_login_count=?,
+                           locked_until=datetime('now','+'||?||' minutes')
+                       WHERE id=?""",
+                    (failed, AdminRepository.LOCK_DURATION_MINUTES, admin_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE admin_users SET failed_login_count=? WHERE id=?",
+                    (failed, admin_id),
+                )
+
+    @staticmethod
+    def record_successful_login(admin_id: int) -> None:
+        """Reset lockout counters and stamp last_login_at."""
+        with get_connection() as conn:
+            conn.execute(
+                """UPDATE admin_users
+                   SET failed_login_count=0, locked_until=NULL,
+                       last_login_at=datetime('now')
+                   WHERE id=?""",
+                (admin_id,),
+            )
+
+    @staticmethod
     def verify_admin(username: str, password: str) -> bool:
         row = AdminRepository.get_admin_by_username(username)
         if not row or row["status"] != "enabled":
             return False
 
-        # Check lockout
+        # H2: check lockout before verifying password
+        # Use UTC — SQLite datetime('now') returns UTC
         if row["locked_until"]:
             locked = datetime.fromisoformat(row["locked_until"])
-            if locked > datetime.now():
+            from datetime import timezone
+
+            if locked > datetime.now(timezone.utc).replace(tzinfo=None):
                 return False  # still locked
 
         salt = bytes.fromhex(row["salt"])
         pwd_ok = hash_password(password, salt) == row["password_hash"]
 
-        with get_connection() as conn:
-            if pwd_ok:
-                conn.execute(
-                    """UPDATE admin_users
-                       SET failed_login_count=0, locked_until=NULL,
-                           last_login_at=datetime('now')
-                       WHERE id=?""",
-                    (row["id"],),
-                )
-            else:
-                failed = (row["failed_login_count"] or 0) + 1
-                if failed >= AdminRepository.MAX_FAILED_ATTEMPTS:
-                    conn.execute(
-                        """UPDATE admin_users
-                           SET failed_login_count=?,
-                               locked_until=datetime('now','+'||?||' minutes')
-                           WHERE id=?""",
-                        (failed, AdminRepository.LOCK_DURATION_MINUTES, row["id"]),
-                    )
-                else:
-                    conn.execute(
-                        """UPDATE admin_users
-                           SET failed_login_count=?
-                           WHERE id=?""",
-                        (failed, row["id"]),
-                    )
+        if pwd_ok:
+            AdminRepository.record_successful_login(row["id"])
+        else:
+            AdminRepository.record_failed_login(row["id"])
 
         return pwd_ok
 
@@ -127,7 +145,8 @@ class AdminRepository:
                     (role_code, role_name, role_type, description),
                 )
                 new_id = cur.lastrowid
-                assert new_id is not None
+                if new_id is None:
+                    return False, "角色创建失败"
                 AdminRepository._replace_role_menus(conn, new_id, menu_ids)
             return True, None
         except sqlite3.IntegrityError:

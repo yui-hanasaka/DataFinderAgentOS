@@ -1,1 +1,0 @@
-console.log("加载JS文件");
