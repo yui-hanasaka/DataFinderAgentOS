@@ -156,7 +156,8 @@ function switchSession(id) {
 }
 
 function newSession() {
-  window.location.href = '/chat/new';
+  const empId = document.getElementById('empSelect').value || 0;
+  window.location.href = '/chat/new?employee_id=' + empId;
 }
 
 function switchEmployee(id) {
