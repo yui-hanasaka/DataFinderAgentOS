@@ -201,6 +201,7 @@
 </div>
 
 <script>
+/* global showAdmToast */  /* defined in admin/base.html — ESLint can't see template inheritance */
 var collectedItems = [];
 var selectedIds = new Set();
 var xsrf = (document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||'';
@@ -264,7 +265,7 @@ async function doSearch() {
     } else {
       document.getElementById('statusText').textContent = '✗ ' + (data.error || '采集失败');
     }
-  } catch(e) {
+  } catch {
     document.getElementById('statusText').textContent = '✗ 网络请求失败';
   } finally {
     btn.disabled = false; btn.textContent = '开始采集';
@@ -376,7 +377,7 @@ async function saveSelected() {
     } else {
       showAdmToast('✗ ' + (data.error || '保存失败'));
     }
-  } catch(e) {
+  } catch {
     showAdmToast('保存失败，请重试');
   }
 }

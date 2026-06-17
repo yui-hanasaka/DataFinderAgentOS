@@ -27,6 +27,7 @@ from app.controllers.chat import (
     ChatEmployeeHandler,
     ChatExportHandler,
     ChatHomeHandler,
+    ChatModelHandler,
     ChatNewHandler,
     ChatSendHandler,
     ChatSessionHandler,
@@ -55,6 +56,7 @@ from app.controllers.warehouse import AdminWarehouseHandler
 from app.controllers.watchtower import AdminWatchtowerHandler
 from app.controllers.watchtower_collect import WatchtowerCollectHandler
 from app.models.db import init_db
+from app.models.errors import setup_logging
 
 
 def _resolve_cookie_secret() -> str:
@@ -99,6 +101,7 @@ def app() -> tornado.web.Application:
         (r"/chat/batch-delete", ChatBatchDeleteHandler),
         (r"/chat/send/(\d+)", ChatSendHandler),
         (r"/chat/employee", ChatEmployeeHandler),
+        (r"/chat/model", ChatModelHandler),
         (r"/chat/export/(\d+)", ChatExportHandler),
         # user ask
         (r"/ask", AskHomeHandler),
@@ -149,6 +152,7 @@ def app() -> tornado.web.Application:
 
 if __name__ == "__main__":
     init_db()
+    setup_logging()
     application = app()
     server = HTTPServer(
         application,

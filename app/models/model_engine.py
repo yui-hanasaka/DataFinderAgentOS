@@ -76,6 +76,13 @@ class ModelRepository:
         return None
 
     @staticmethod
+    def list_all_enabled() -> list[sqlite3.Row]:
+        with get_connection() as conn:
+            return conn.execute(
+                "SELECT id, name, model_type FROM ai_models WHERE status='enabled' ORDER BY is_default DESC, id ASC"
+            ).fetchall()
+
+    @staticmethod
     def create_model(data: dict):
         try:
             with get_connection() as conn:

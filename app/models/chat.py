@@ -7,13 +7,13 @@ from app.models.errors import log_error
 class ChatRepository:
     @staticmethod
     def create_session(
-        user_id: int, employee_id: int, title: str
+        user_id: int, employee_id: int, title: str, model_id: int = 0
     ) -> tuple[int | None, str | None]:
         try:
             with get_connection() as conn:
                 cur = conn.execute(
-                    "INSERT INTO chat_sessions(user_id, employee_id, title) VALUES(?,?,?)",
-                    (user_id, employee_id, title),
+                    "INSERT INTO chat_sessions(user_id, employee_id, title, model_id) VALUES(?,?,?,?)",
+                    (user_id, employee_id, title, model_id),
                 )
                 return cur.lastrowid, None
         except Exception as e:
@@ -51,8 +51,16 @@ class ChatRepository:
     def update_session_employee(session_id: int, employee_id: int) -> None:
         with get_connection() as conn:
             conn.execute(
-                "UPDATE chat_sessions SET employee_id=?, updated_at=datetime('now') WHERE id=?",
+                "UPDATE chat_sessions SET employee_id=?, model_id=0, updated_at=datetime('now') WHERE id=?",
                 (employee_id, session_id),
+            )
+
+    @staticmethod
+    def update_session_model(session_id: int, model_id: int) -> None:
+        with get_connection() as conn:
+            conn.execute(
+                "UPDATE chat_sessions SET model_id=?, updated_at=datetime('now') WHERE id=?",
+                (model_id, session_id),
             )
 
     @staticmethod

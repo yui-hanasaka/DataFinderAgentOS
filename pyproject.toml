@@ -13,6 +13,7 @@ dependencies = [
     "cryptography>=49.0.0",
     "requests>=2.34.2",
     "beautifulsoup4>=4.15.0",
+    "loguru>=0.7.3",
 ]
 
 [dependency-groups]

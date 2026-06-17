@@ -620,6 +620,11 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         "v1_api_keys_updated_at",
         "ALTER TABLE api_keys ADD COLUMN updated_at TEXT;",
     )
+    _migrate(
+        conn,
+        "v2_chat_session_model_id",
+        "ALTER TABLE chat_sessions ADD COLUMN model_id INTEGER DEFAULT 0;",
+    )
 
     # Indexes (idempotent)
     indexes = [

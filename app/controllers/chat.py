@@ -1,5 +1,7 @@
 import json
 
+from loguru import logger
+
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
@@ -34,6 +36,8 @@ class ChatHomeHandler(ChatBaseHandler):
         user_id = self._user_id()
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         employees = EmployeeRepository.list_all_active()
+        models = ModelRepository.list_all_enabled()
+        default_model = ModelRepository.get_default_model()
         self.render(
             "web/chat.html",
             title="对话",
@@ -43,6 +47,10 @@ class ChatHomeHandler(ChatBaseHandler):
             messages=[],
             employees=employees,
             current_employee_id=0,
+            models=models,
+            current_model_id=default_model["id"] if default_model else 0,
+            current_model_name=default_model["name"] if default_model else "未配置模型",
+            is_model_custom=False,
         )
 
 
@@ -55,6 +63,22 @@ class ChatSessionHandler(ChatBaseHandler):
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         messages = ChatRepository.list_messages(int(session_id))
         employees = EmployeeRepository.list_all_active()
+        models = ModelRepository.list_all_enabled()
+
+        # Resolve current model
+        model_row = None
+        is_model_custom = False
+        if session["model_id"]:
+            model_row = ModelRepository.get_model(session["model_id"])
+            if model_row:
+                is_model_custom = True
+        if not model_row and session["employee_id"]:
+            employee = EmployeeRepository.get_employee(session["employee_id"])
+            if employee and employee["model_id"]:
+                model_row = ModelRepository.get_model(employee["model_id"])
+        if not model_row:
+            model_row = ModelRepository.get_default_model()
+
         self.render(
             "web/chat.html",
             title=session["title"],
@@ -64,6 +88,10 @@ class ChatSessionHandler(ChatBaseHandler):
             messages=messages,
             employees=employees,
             current_employee_id=session["employee_id"],
+            models=models,
+            current_model_id=model_row["id"] if model_row else 0,
+            current_model_name=model_row["name"] if model_row else "未配置模型",
+            is_model_custom=is_model_custom,
         )
 
 
@@ -141,8 +169,51 @@ class ChatEmployeeHandler(ChatBaseHandler):
             self.set_status(403)
             return self.write({"error": "无权限"})
         ChatRepository.update_session_employee(session_id, employee_id)
+        logger.info(
+            "用户 {} 切换员工 — 会话#{} → employee_id={} (已重置模型覆盖)",
+            self.current_user,
+            session_id,
+            employee_id,
+        )
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"ok": True})
+
+
+class ChatModelHandler(ChatBaseHandler):
+    def post(self) -> None:
+        user_id = self._user_id()
+        try:
+            payload = json.loads(self.request.body or b"{}")
+        except json.JSONDecodeError:
+            self.set_status(400)
+            return self.write({"error": "请求体格式错误"})
+        session_id = parse_int(payload.get("session_id"), 0)
+        model_id = parse_int(payload.get("model_id"), 0)
+        if not session_id:
+            self.set_status(400)
+            return self.write({"error": "参数不完整"})
+        session = ChatRepository.get_session(session_id)
+        if not session or session["user_id"] != user_id:
+            self.set_status(403)
+            return self.write({"error": "无权限"})
+        # Verify model exists if not resetting to 0
+        model_name = "跟随员工"
+        if model_id > 0:
+            model_row = ModelRepository.get_model(model_id)
+            if not model_row or model_row.get("status") != "enabled":
+                self.set_status(404)
+                return self.write({"error": "模型不可用"})
+            model_name = model_row["name"]
+        ChatRepository.update_session_model(session_id, model_id)
+        logger.info(
+            "用户 {} 切换模型 — 会话#{} → model_id={} ({})",
+            self.current_user,
+            session_id,
+            model_id,
+            model_name,
+        )
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write({"ok": True, "model_id": model_id, "model_name": model_name})
 
 
 class ChatSendHandler(ChatBaseHandler):
@@ -159,6 +230,7 @@ class ChatSendHandler(ChatBaseHandler):
         user_id = self._user_id()
         key = f"chat_send:user:{user_id}"
         if not check_rate_limit(key, 30, 60):
+            logger.warning("用户 {} 发送消息频率超限", self.current_user)
             self.set_status(429)
             return self.write({"error": "请求过于频繁，请稍后再试"})
 
@@ -211,14 +283,26 @@ class ChatSendHandler(ChatBaseHandler):
             return await self.flush()
 
         # AI-routed: build messages list
+        # Always query employee (for persona/system_prompt)
         employee = None
         if session["employee_id"]:
             employee = EmployeeRepository.get_employee(session["employee_id"])
+
+        # Model 3-tier fallback: session override > employee binding > default
         model_row = None
-        if employee and employee["model_id"]:
+        if session["model_id"]:
+            model_row = ModelRepository.get_model(session["model_id"])
+        if not model_row and employee and employee["model_id"]:
             model_row = ModelRepository.get_model(employee["model_id"])
         if not model_row:
             model_row = ModelRepository.get_default_model()
+        logger.info(
+            "用户 {} 发送消息 — 会话#{} 模型: {} (覆盖={})",
+            self.current_user,
+            session_id,
+            model_row["name"] if model_row else "无",
+            bool(session["model_id"]),
+        )
         if not model_row:
             ChatRepository.add_message(
                 int(session_id), "assistant", "未配置可用模型，请联系管理员。"
