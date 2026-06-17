@@ -50,6 +50,22 @@ class ChatRepository:
             conn.execute("DELETE FROM chat_sessions WHERE id=?", (session_id,))
 
     @staticmethod
+    def delete_sessions(session_ids, user_id):
+        with get_connection() as conn:
+            placeholders = ",".join("?" for _ in session_ids)
+            params = list(session_ids) + [user_id]
+            conn.execute(
+                f"DELETE FROM chat_messages WHERE session_id IN "
+                f"(SELECT id FROM chat_sessions WHERE id IN ({placeholders}) AND user_id=?)",
+                params,
+            )
+            cur = conn.execute(
+                f"DELETE FROM chat_sessions WHERE id IN ({placeholders}) AND user_id=?",
+                params,
+            )
+            return cur.rowcount
+
+    @staticmethod
     def add_message(session_id, role, content, skill_meta=None):
         with get_connection() as conn:
             cur = conn.execute(

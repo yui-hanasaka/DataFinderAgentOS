@@ -16,6 +16,7 @@ from app.controllers.api_key import AdminApiKeyHandler
 from app.controllers.ask import AskHomeHandler, AskQueryHandler
 from app.controllers.auth import LandingHandler, LoginHandler, LogoutHandler
 from app.controllers.chat import (
+    ChatBatchDeleteHandler,
     ChatDeleteHandler,
     ChatExportHandler,
     ChatHomeHandler,
@@ -59,6 +60,7 @@ def app():
         (r"/chat/new", ChatNewHandler),
         (r"/chat/session/(\d+)", ChatSessionHandler),
         (r"/chat/delete/(\d+)", ChatDeleteHandler),
+        (r"/chat/batch-delete", ChatBatchDeleteHandler),
         (r"/chat/send/(\d+)", ChatSendHandler),
         (r"/chat/export/(\d+)", ChatExportHandler),
         # user ask

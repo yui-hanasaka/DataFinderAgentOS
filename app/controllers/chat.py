@@ -87,6 +87,23 @@ class ChatDeleteHandler(ChatBaseHandler):
         self.redirect("/chat")
 
 
+class ChatBatchDeleteHandler(ChatBaseHandler):
+    def post(self):
+        user_id = self._user_id()
+        try:
+            payload = json.loads(self.request.body or b"{}")
+        except json.JSONDecodeError:
+            self.set_status(400)
+            return self.write({"error": "请求体格式错误"})
+        ids = payload.get("ids") or []
+        if not isinstance(ids, list) or not ids:
+            self.set_status(400)
+            return self.write({"error": "请选择要删除的对话"})
+        count = ChatRepository.delete_sessions([int(i) for i in ids], user_id)
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write({"ok": True, "count": count})
+
+
 class ChatSendHandler(ChatBaseHandler):
     def check_xsrf_cookie(self):
         pass

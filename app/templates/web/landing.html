@@ -1,251 +1,221 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-
+<html lang="zh-CN" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DataFinder AgentOS · 智能数据瞭望与智能问数系统</title>
-  <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
-  <style>
-    .landing {
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0c1638 0%, #0f2255 55%, #0c1638 100%);
-      color: #e8f0ff;
-      display: flex;
-      flex-direction: column
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataFinder AgentOS · 智能数据瞭望与智能问数系统</title>
+<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+<script>
+(function(){
+  var t = localStorage.getItem('theme');
+  if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<script src="{{ static_url('js/base.js') }}"></script>
+<style>
+/* ═══════════════ Landing — Glassmorphism ═══════════════ */
+@keyframes landingFadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+@keyframes landingFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes landingGlow { 0%,100%{box-shadow:0 0 24px rgba(99,102,241,.12)} 50%{box-shadow:0 0 48px rgba(99,102,241,.28)} }
 
-    .landing-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 48px;
-      border-bottom: 1px solid rgba(120, 180, 255, .12)
-    }
+.landing-shell {
+  min-height:100vh; display:flex; flex-direction:column;
+  background:radial-gradient(ellipse at 20% 50%, #1e1b4b 0%, #0f0d22 40%, #09071a 100%);
+  font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif; color:#e0e0f8;
+  transition:background .5s ease;
+}
+.landing-shell::before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(circle at 70% 30%, rgba(99,102,241,.06) 0, transparent 50%),
+             radial-gradient(circle at 30% 80%, rgba(139,92,246,.04) 0, transparent 50%);
+  transition:background .5s ease;
+}
 
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: .04em
-    }
+/* ── Nav ── */
+.landing-nav {
+  position:relative; z-index:10; display:flex; align-items:center; justify-content:space-between;
+  padding:16px 32px;
+  background:rgba(15,13,34,.65); backdrop-filter:blur(24px) saturate(140%);
+  border-bottom:1px solid rgba(139,130,255,.1);
+  box-shadow:0 2px 24px rgba(0,0,0,.25);
+  transition:background .4s ease, border-color .4s ease, box-shadow .4s ease;
+}
+.landing-brand { display:flex; align-items:center; gap:10px; }
+.landing-brand .brand-dot {
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,#818cf8,#6366f1);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px;
+  box-shadow:0 6px 20px rgba(99,102,241,.5);
+  animation:landingFloat 3s ease-in-out infinite;
+}
+.landing-brand span { font-weight:700; font-size:16px; letter-spacing:.04em; color:#e0e0f8; transition:color .4s; }
+.landing-nav-actions { display:flex; align-items:center; gap:12px; }
 
-    .nav-logo {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #4d8df8, #2363da);
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 20px
-    }
+/* ── Hero ── */
+.landing-hero {
+  position:relative; z-index:1; flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+  padding:80px 24px 60px; max-width:880px; margin:0 auto; width:100%;
+  animation:landingFadeUp .6s cubic-bezier(.22,.61,.36,1);
+}
+.landing-hero-tag {
+  display:inline-block; padding:6px 18px; margin-bottom:28px;
+  border-radius:999px; border:1px solid rgba(139,130,255,.25);
+  background:rgba(139,130,255,.08); color:#a0a0e0;
+  font-size:12px; letter-spacing:.18em; backdrop-filter:blur(8px);
+  transition:all .4s;
+}
+.landing-hero h1 {
+  margin:0 0 20px; font-size:clamp(36px, 5.5vw, 60px); font-weight:700; line-height:1.15;
+  background:linear-gradient(90deg,#fff 20%,#c4b5fd 70%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  transition:background .4s;
+}
+.landing-hero p {
+  margin:0 0 40px; font-size:17px; color:#7c7ca8; max-width:520px; line-height:1.7;
+  transition:color .4s;
+}
+.landing-hero-cta { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
 
-    .nav-actions {
-      display: flex;
-      gap: 12px
-    }
+/* ── Features ── */
+.landing-features {
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px;
+  max-width:960px; width:100%; margin:0 auto 80px; padding:0 24px;
+}
+.landing-feat {
+  padding:26px 24px; border-radius:20px;
+  background:rgba(20,18,48,.55); backdrop-filter:blur(16px) saturate(120%);
+  border:1px solid rgba(139,130,255,.1);
+  box-shadow:0 8px 28px rgba(0,0,0,.18);
+  transition:all .3s ease, transform .35s cubic-bezier(.22,.61,.36,1);
+}
+.landing-feat:nth-child(1){animation:landingFadeUp .5s .1s both}
+.landing-feat:nth-child(2){animation:landingFadeUp .5s .2s both}
+.landing-feat:nth-child(3){animation:landingFadeUp .5s .3s both}
+.landing-feat:hover {
+  transform:translateY(-4px); border-color:rgba(139,130,255,.3);
+  box-shadow:0 16px 40px rgba(99,102,241,.15);
+}
+.landing-feat .feat-icon {
+  font-size:30px; margin-bottom:14px; display:block;
+}
+.landing-feat h3 { margin:0 0 10px; font-size:17px; font-weight:600; color:#e0e0f8; transition:color .4s; }
+.landing-feat p { margin:0; font-size:14px; color:#7c7ca8; line-height:1.7; transition:color .4s; }
 
-    .btn-ghost {
-      padding: 9px 20px;
-      border: 1px solid rgba(120, 180, 255, .35);
-      border-radius: 999px;
-      color: #9bc2ff;
-      text-decoration: none;
-      font-size: 14px;
-      transition: border-color .2s, color .2s
-    }
+/* ── Footer ── */
+.landing-footer {
+  position:relative; z-index:1; text-align:center; padding:24px;
+  font-size:12px; color:#5a5888; border-top:1px solid rgba(139,130,255,.08);
+  transition:all .4s;
+}
 
-    .btn-ghost:hover {
-      border-color: #6cd9ff;
-      color: #6cd9ff
-    }
+/* ── Buttons ── */
+.btn-landing-primary {
+  display:inline-flex; align-items:center; gap:8px; padding:14px 34px;
+  border-radius:999px; border:none; cursor:pointer; font-size:15px; font-weight:600;
+  letter-spacing:.02em; text-decoration:none;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  color:#fff; box-shadow:0 10px 28px rgba(99,102,241,.35);
+  transition:all .25s ease; animation:landingGlow 3s infinite;
+}
+.btn-landing-primary:hover { box-shadow:0 16px 36px rgba(99,102,241,.5); transform:translateY(-2px); color:#fff; }
+.btn-landing-ghost {
+  display:inline-flex; align-items:center; gap:8px; padding:14px 30px;
+  border-radius:999px; border:1px solid rgba(139,130,255,.3); cursor:pointer;
+  font-size:15px; font-weight:500; text-decoration:none;
+  background:rgba(139,130,255,.08); color:#c0c0e8; backdrop-filter:blur(12px);
+  transition:all .25s ease;
+}
+.btn-landing-ghost:hover { border-color:rgba(139,130,255,.55); background:rgba(139,130,255,.18); color:#fff; }
+.btn-landing-theme {
+  width:38px;height:38px;border-radius:50%;border:1px solid rgba(139,130,255,.25);
+  background:rgba(139,130,255,.08);color:#e0d060;cursor:pointer;font-size:18px;
+  display:grid;place-items:center;transition:all .25s;flex-shrink:0;
+}
+.btn-landing-theme:hover{border-color:rgba(139,130,255,.5);background:rgba(139,130,255,.18);transform:rotate(20deg)}
 
-    .btn-primary-nav {
-      padding: 9px 22px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #4d8df8, #2363da);
-      color: #fff;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      box-shadow: 0 6px 18px rgba(77, 141, 248, .35);
-      transition: box-shadow .2s
-    }
+/* ═══════════ Light Theme (default) ═══════════ */
+[data-theme="light"] .landing-shell {
+  background:radial-gradient(ellipse at 20% 50%, #f0edff 0%, #e8e4f8 40%, #ded8f0 100%);
+  color:#2d2a4a;
+}
+[data-theme="light"] .landing-shell::before {
+  background:radial-gradient(circle at 70% 30%, rgba(99,102,241,.03) 0, transparent 50%),
+             radial-gradient(circle at 30% 80%, rgba(139,92,246,.02) 0, transparent 50%);
+}
+[data-theme="light"] .landing-nav {
+  background:rgba(255,255,255,.7); border-bottom-color:rgba(99,102,241,.1);
+  box-shadow:0 2px 20px rgba(99,102,241,.08);
+}
+[data-theme="light"] .landing-brand span { color:#2d2a4a; }
+[data-theme="light"] .btn-landing-theme{border-color:rgba(99,102,241,.25);background:rgba(99,102,241,.06);color:#b08830}
+[data-theme="light"] .btn-landing-theme:hover{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.12)}
+[data-theme="light"] .landing-hero-tag{border-color:rgba(99,102,241,.2);background:rgba(99,102,241,.04);color:#5b5790}
+[data-theme="light"] .landing-hero h1{background:linear-gradient(90deg,#2d2a4a 20%,#6366f1 70%);-webkit-background-clip:text;background-clip:text}
+[data-theme="light"] .landing-hero p{color:#6b6798}
+[data-theme="light"] .btn-landing-ghost{border-color:rgba(99,102,241,.2);background:rgba(99,102,241,.04);color:#4d4a70}
+[data-theme="light"] .btn-landing-ghost:hover{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.1);color:#2d2a4a}
+[data-theme="light"] .landing-features{}
+[data-theme="light"] .landing-feat{background:rgba(255,255,255,.6);border-color:rgba(99,102,241,.08);box-shadow:0 8px 28px rgba(99,102,241,.04)}
+[data-theme="light"] .landing-feat:hover{border-color:rgba(99,102,241,.25);box-shadow:0 16px 40px rgba(99,102,241,.1)}
+[data-theme="light"] .landing-feat h3{color:#2d2a4a}
+[data-theme="light"] .landing-feat p{color:#6b6798}
+[data-theme="light"] .landing-footer{color:#8a86b8;border-top-color:rgba(99,102,241,.08)}
 
-    .btn-primary-nav:hover {
-      box-shadow: 0 8px 24px rgba(77, 141, 248, .55)
-    }
+@media(max-width:720px){
+  .landing-nav{padding:14px 18px}
+  .landing-features{grid-template-columns:1fr;padding:0 18px}
+  .landing-hero{padding:56px 18px 44px}
+  .landing-hero h1{font-size:32px}
+}
+</style>
 
-    .hero {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 24px 60px;
-      text-align: center
-    }
-
-    .hero-tag {
-      margin: 0 0 24px;
-      padding: 6px 18px;
-      border-radius: 999px;
-      border: 1px solid rgba(77, 217, 255, .3);
-      background: rgba(77, 217, 255, .06);
-      color: #6cd9ff;
-      font-size: 13px;
-      letter-spacing: .18em;
-      display: inline-block
-    }
-
-    .hero h1 {
-      margin: 0 0 20px;
-      font-size: clamp(36px, 5.5vw, 64px);
-      font-weight: 700;
-      line-height: 1.15;
-      background: linear-gradient(90deg, #fff 20%, #6cd9ff 70%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent
-    }
-
-    .hero p {
-      margin: 0 0 40px;
-      font-size: 18px;
-      color: #9ab4d8;
-      max-width: 560px;
-      line-height: 1.7
-    }
-
-    .hero-cta {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap
-    }
-
-    .cta-primary {
-      padding: 14px 36px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #4d8df8, #2363da);
-      color: #fff;
-      text-decoration: none;
-      font-size: 16px;
-      font-weight: 600;
-      box-shadow: 0 12px 30px rgba(77, 141, 248, .4)
-    }
-
-    .cta-ghost {
-      padding: 14px 32px;
-      border-radius: 999px;
-      border: 1px solid rgba(120, 180, 255, .4);
-      color: #9bc2ff;
-      text-decoration: none;
-      font-size: 15px
-    }
-
-    .features {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px;
-      max-width: 960px;
-      width: 100%;
-      margin: 72px auto 0;
-      padding: 0 24px
-    }
-
-    .feat {
-      padding: 26px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, .04);
-      border: 1px solid rgba(120, 180, 255, .1)
-    }
-
-    .feat-icon {
-      font-size: 26px;
-      margin-bottom: 14px
-    }
-
-    .feat h3 {
-      margin: 0 0 10px;
-      font-size: 16px;
-      color: #fff
-    }
-
-    .feat p {
-      margin: 0;
-      font-size: 14px;
-      color: #7d9cbf;
-      line-height: 1.7
-    }
-
-    .footer {
-      text-align: center;
-      padding: 28px;
-      font-size: 13px;
-      color: #4a6285;
-      border-top: 1px solid rgba(120, 180, 255, .08)
-    }
-
-    @media(max-width:680px) {
-      .landing-nav {
-        padding: 16px 20px
-      }
-
-      .features {
-        grid-template-columns: 1fr
-      }
-
-      .hero h1 {
-        font-size: 32px
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="landing">
-    <nav class="landing-nav">
-      <div class="nav-brand">
-        <div class="nav-logo">D</div>DataFinder AgentOS
-      </div>
-      <div class="nav-actions">
-        <a class="btn-ghost" href="/admin/login">管理后台</a>
-        <a class="btn-primary-nav" href="/login">用户登录</a>
-      </div>
-    </nav>
-    <div class="hero">
-      <p class="hero-tag">INTELLIGENT DATA · AI AGENT OS</p>
-      <h1>智能数据瞭望<br>与智能问数系统</h1>
-      <p>融合 AI 大模型与数据采集能力，让数据洞察更高效，让知识触手可及。</p>
-      <div class="hero-cta">
-        <a class="cta-primary" href="/login">开始使用</a>
-        <a class="cta-ghost" href="/admin/login">进入后台</a>
-      </div>
-      <div class="features">
-        <div class="feat">
-          <div class="feat-icon">💬</div>
-          <h3>智能对话</h3>
-          <p>SSE 流式输出，支持数字员工人设、多会话管理、技能增强（天气/搜索/校园助手）</p>
-        </div>
-        <div class="feat">
-          <div class="feat-icon">📊</div>
-          <h3>智能问数</h3>
-          <p>自然语言转 SQL 查询，结果可视化为 ECharts 图表，支持 CSV 导出与 PDF 存档</p>
-        </div>
-        <div class="feat">
-          <div class="feat-icon">📡</div>
-          <h3>数据瞭望</h3>
-          <p>RSS/URL 多源采集，AI 情感与风险分析，数智大屏实时展示全局态势</p>
-        </div>
-      </div>
+<div class="landing-shell">
+  <nav class="landing-nav">
+    <div class="landing-brand">
+      <div class="brand-dot">D</div>
+      <span>DataFinder AgentOS</span>
     </div>
-    <div class="footer">© 2026 DataFinder AgentOS · 智能数据瞭望与智能问数系统</div>
-  </div>
-</body>
+    <div class="landing-nav-actions">
+      <button class="btn-landing-theme" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
+      <a class="btn-landing-ghost" href="/admin/login">管理后台</a>
+      <a class="btn-landing-primary" href="/login">用户登录</a>
+    </div>
+  </nav>
 
+  <div class="landing-hero">
+    <span class="landing-hero-tag">INTELLIGENT DATA · AI AGENT OS</span>
+    <h1>智能数据瞭望<br>与智能问数系统</h1>
+    <p>融合 AI 大模型与数据采集能力，让数据洞察更高效，让知识触手可及。</p>
+    <div class="landing-hero-cta">
+      <a class="btn-landing-primary" href="/login">开始使用</a>
+      <a class="btn-landing-ghost" href="/admin/login">进入后台</a>
+    </div>
+  </div>
+
+  <div class="landing-features">
+    <div class="landing-feat">
+      <span class="feat-icon">💬</span>
+      <h3>智能对话</h3>
+      <p>SSE 流式输出，支持数字员工人设、多会话管理、技能增强（天气 / 搜索 / 校园助手）</p>
+    </div>
+    <div class="landing-feat">
+      <span class="feat-icon">📊</span>
+      <h3>智能问数</h3>
+      <p>自然语言转 SQL 查询，结果可视化为 ECharts 图表，支持 CSV 导出与 PDF 存档</p>
+    </div>
+    <div class="landing-feat">
+      <span class="feat-icon">📡</span>
+      <h3>数据瞭望</h3>
+      <p>RSS / URL 多源采集，AI 情感与风险分析，数智大屏实时展示全局态势</p>
+    </div>
+  </div>
+
+  <div class="landing-footer">© 2026 DataFinder AgentOS · 智能数据瞭望与智能问数系统</div>
+</div>
+
+<script>initThemeIcon('themeIcon');</script>
+</body>
 </html>
