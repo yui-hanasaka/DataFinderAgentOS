@@ -51,8 +51,7 @@
 				<div>BASE URL<strong>{{ model['base_url'] }}</strong></div>
 				<div>TEMPERATURE<strong>{{ '{:.2f}'.format(model['temperature']) }}</strong></div>
 				<div>MAX TOKENS<strong>{{ model['max_tokens'] }}</strong></div>
-				<div>STREAM / THINK<strong>{{ '开' if model['support_stream'] else '关' }} · {{ '开' if
-						model['support_think'] else '关' }}</strong></div>
+				<div>STREAM / THINK<strong>{{ '开' if model['support_stream'] else '关' }} · {{ '开' if model['support_think'] else '关' }}</strong></div>
 			</div>
 			<div class="card-foot">
 				<span class="tech-tag">{{ model['status'] }}</span>

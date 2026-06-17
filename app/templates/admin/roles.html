@@ -96,8 +96,7 @@
 						</div>
 						<div class="permission-grid">
 							{% for menu in menus %}
-							<label><input type="checkbox" name="menu_ids" value="{{ menu['id'] }}" {% if menu['id'] in checked_menu_ids %}checked{% end %}> <span>{{ menu['icon'] or '▦' }}</span>{{
-								menu['menu_name'] }}</label>
+							<label><input type="checkbox" name="menu_ids" value="{{ menu['id'] }}" {% if menu['id'] in checked_menu_ids %}checked{% end %}> <span>{{ menu['icon'] or '▦' }}</span>{{ menu['menu_name'] }}</label>
 							{% end %}
 						</div>
 					</section>

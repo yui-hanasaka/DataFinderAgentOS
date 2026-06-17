@@ -31,8 +31,7 @@
 				<td>{{ api['id'] }}</td>
 				<td>{{ api['name'] }}</td>
 				<td>{{ api['api_type'] }}</td>
-				<td class="text-truncate" style="max-width:140px" title="{{ api['endpoint'] }}">{{ api['endpoint'] or
-					'-' }}</td>
+				<td class="text-truncate" style="max-width:140px" title="{{ api['endpoint'] }}">{{ api['endpoint'] or '-' }}</td>
 				<td>{{ api['api_key'][:4] + '****' if api['api_key'] else '-' }}</td>
 				<td>{{ api['status'] }}</td>
 				<td class="table-actions"><a href="/admin/apis?edit={{ api['id'] }}">查看/修改</a>
