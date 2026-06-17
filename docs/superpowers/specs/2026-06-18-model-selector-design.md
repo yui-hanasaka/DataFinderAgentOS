@@ -69,9 +69,15 @@ ALTER TABLE chat_sessions ADD COLUMN model_id INTEGER DEFAULT 0;
 
 ### 4.2 迁移
 
-在 `db.py::init_db()` → `_init_business_tables()` 中新增迁移 SQL（使用 `ALTER TABLE ... ADD COLUMN` 的 IF NOT EXISTS 兜底——SQLite 不支持该语法，改用 try/except）。
+沿用项目现有的版本化迁移系统（`_migrate(conn, version, sql)` in [db.py](app/models/db.py#L515)），新增 `v2_chat_session_model_id` 迁移：
 
-实现方式：新增 `_migrate_chat_sessions_model_id()` 函数，用 `PRAGMA table_info(chat_sessions)` 检测列是否存在，不存在则执行 ALTER。
+```python
+_migrate(conn, "v2_chat_session_model_id", """
+    ALTER TABLE chat_sessions ADD COLUMN model_id INTEGER DEFAULT 0;
+""")
+```
+
+`_migrate` 会自动检测 `schema_migrations` 表中是否已执行过该版本，并通过 `PRAGMA table_info` 检测列是否已存在，避免重复添加。
 
 ---
 
@@ -108,22 +114,33 @@ ALTER TABLE chat_sessions ADD COLUMN model_id INTEGER DEFAULT 0;
 新增 `ChatModelHandler(ChatBaseHandler)`，在 `chat.py` 中：
 - `post()` 校验参数 → 校验会话归属 → 校验模型存在（或 model_id=0） → `ChatRepository.update_session_model(session_id, model_id)` → 返回 JSON
 
-### 5.3 ChatRepository 新增方法
+### 5.3 ChatRepository 修改
 
+`create_session` 签名改为 `(user_id, employee_id, title, model_id=0)`：
+- INSERT 语句新增 `model_id` 字段
+- `ChatNewHandler` 现有调用使用位置参数，`model_id` 默认 0，无需改动
+
+`update_session_model` 新增：
 ```python
 @staticmethod
 def update_session_model(session_id: int, model_id: int):
     """Update the model override for a chat session."""
     with get_connection() as conn:
         conn.execute(
-            "UPDATE chat_sessions SET model_id=? WHERE id=?",
+            "UPDATE chat_sessions SET model_id=?, updated_at=datetime('now') WHERE id=?",
             (model_id, session_id),
         )
+```
 
+`update_session_employee` 改为同时重置 model_id：
+```python
 @staticmethod
-def create_session(user_id: int, employee_id: int, title: str, model_id: int = 0):
-    """Create a new chat session with optional model override."""
-    # 现有逻辑 + model_id 字段
+def update_session_employee(session_id, employee_id):
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE chat_sessions SET employee_id=?, model_id=0, updated_at=datetime('now') WHERE id=?",
+            (employee_id, session_id),
+        )
 ```
 
 ---
@@ -300,6 +317,6 @@ from app.controllers.chat import ChatModelHandler
 - [x] 无会话时显示默认模型不可点击 —— 见 §3.2, §8.1
 - [x] 数据库迁移（PRAGMA table_info 检测）—— 见 §4.2
 - [x] 弹出层使用自定义实现（非原生 select）—— 见 §8
-- [x] `ChatEmployeeHandler` 切换员工后重置 `model_id=0` —— 在 `update_session_employee()` 调用后追加 `ChatRepository.update_session_model(session_id, 0)` —— 见 §6
+- [x] `update_session_employee` 同步重置 `model_id=0` — 在 SQL 中直接 `SET model_id=0`，无需调用侧额外处理 —— 见 §5.3
 - [x] 暗/亮主题适配 —— 见 §3.3, §8.3
 - [x] 质量门禁要求（ruff 0 / pyright 0 / pytest 35）—— 实现阶段执行
