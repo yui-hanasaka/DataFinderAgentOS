@@ -2,6 +2,8 @@ import os
 import re
 import sqlite3
 from pathlib import Path
+from types import TracebackType
+from typing import Any
 
 from app.models.crypto import hash_password, new_salt
 
@@ -24,6 +26,96 @@ def get_connection() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+# ── DatabaseConnection wrapper ────────────────────────────────────
+
+
+class DatabaseConnection:
+    """Thin wrapper unifying sqlite3 and pymysql connections.
+
+    Callers use ``conn.execute(sql, params).fetchall()`` and
+    ``row["col"]`` — this wrapper ensures both backends behave the
+    same way.
+    """
+
+    def __init__(
+        self,
+        conn: sqlite3.Connection | Any,  # pymysql.Connection
+        dialect: str,  # "sqlite" | "mysql"
+    ) -> None:
+        self._conn = conn
+        self._dialect = dialect
+
+    # -- context manager -------------------------------------------
+
+    def __enter__(self) -> "DatabaseConnection":
+        self._conn.__enter__()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self._conn.__exit__(exc_type, exc_val, exc_tb)
+
+    # -- execute ---------------------------------------------------
+
+    def execute(self, sql: str, parameters: tuple | None = None) -> "CursorProxy":
+        if self._dialect == "mysql":
+            sql = sql.replace("?", "%s")
+        cur = self._conn.execute(sql, parameters or ())
+        return CursorProxy(cur)
+
+    # -- executemany -----------------------------------------------
+
+    def executemany(self, sql: str, seq: list) -> "CursorProxy":
+        if self._dialect == "mysql":
+            sql = sql.replace("?", "%s")
+        cur = self._conn.executemany(sql, seq)
+        return CursorProxy(cur)
+
+    # -- executescript (SQLite only) -------------------------------
+
+    def executescript(self, sql: str) -> "CursorProxy":
+        if self._dialect == "mysql":
+            raise RuntimeError("executescript not supported on MySQL")
+        cur = self._conn.executescript(sql)
+        return CursorProxy(cur)
+
+    # -- commit / rollback ------------------------------------------
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+class CursorProxy:
+    """Minimal proxy so ``cur.lastrowid`` works transparently."""
+
+    def __init__(self, cursor: Any) -> None:
+        self._cur = cursor
+
+    def fetchone(self) -> Any:
+        return self._cur.fetchone()
+
+    def fetchall(self) -> list:
+        return self._cur.fetchall()
+
+    @property
+    def lastrowid(self) -> int | None:
+        return getattr(self._cur, "lastrowid", None)
+
+    @property
+    def rowcount(self) -> int | None:
+        return getattr(self._cur, "rowcount", None)
 
 
 # ── Table initialisers ──────────────────────────────────────────
@@ -173,14 +265,13 @@ def _seed_admin_data(conn: sqlite3.Connection) -> None:
         ("watch_collect", "瞭望采集", "⌁", "/admin/watchtower", 80),
         ("data_warehouse", "数据仓库", "▣", "/admin/warehouse", 90),
         ("deep_collect", "深度采集", "⌬", "/admin/deep", 100),
-        ("smart_qa", "智能问数", "⌕", "", 110),
+        ("smart_qa", "智能问数", "⌕", "/ask", 110),
         ("smart_screen", "数智大屏", "◈", "/admin/screen", 120),
         ("sys_settings", "系统设置", "⚙", "/admin/settings", 140),
         ("api_keys", "接口管理", "🔌", "/admin/apis", 150),
         ("session_mgr", "会话管理", "💬", "/admin/sessions", 160),
         ("permissions", "权限管理", "🔐", "/admin/permissions", 170),
         ("digital_twin", "数字孪生", "🌐", "/admin/digital-twin", 180),
-        ("screen_config", "大屏配置", "📊", "/admin/screen/config", 190),
     ]
     conn.executemany(
         """
@@ -499,6 +590,148 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
             ("demo", hash_password("demo123", salt), salt.hex()),
         )
 
+    # seed default watchtower sources so collection works out of the box
+    # Fields: (name, source_type, url, url_template, fetch_interval, request_headers, config_json)
+    default_sources: list[tuple[str, str, str, str, int, str, str]] = [
+        (
+            "百度新闻搜索",
+            "baidu_news",
+            "https://news.baidu.com/ns",
+            "https://news.baidu.com/ns?word={关键词}&pn={分页步进}&tn=news",
+            120,
+            "",
+            "{}",
+        ),
+        (
+            "Bing 新闻搜索",
+            "bing_news",
+            "https://www.bing.com/news/search",
+            "https://www.bing.com/news/search?q={关键词}&first={分页步进}&FORM=YFNR",
+            60,
+            "",
+            "{}",
+        ),
+        (
+            "Bing 网页搜索",
+            "bing_web",
+            "https://www.bing.com/search",
+            "https://www.bing.com/search?q={关键词}&first={分页步进}&setlang=zh-cn",
+            60,
+            "",
+            "{}",
+        ),
+        (
+            "DuckDuckGo 搜索",
+            "duckduckgo",
+            "https://html.duckduckgo.com/html/",
+            "https://html.duckduckgo.com/html/?q={关键词}&s={分页步进}",
+            60,
+            "",
+            "{}",
+        ),
+        (
+            "中国教育在线新闻",
+            "generic",
+            "https://news.eol.cn/",
+            "",
+            120,
+            "",
+            (
+                '{"container_selector":"div.news-list li, .article-list .item, .news-item",'
+                '"title_selector":"a, h3 a, .title a",'
+                '"snippet_selector":"p, .desc, .summary",'
+                '"date_selector":"span.date, .time, time"}'
+            ),
+        ),
+        (
+            "新浪教育新闻",
+            "generic",
+            "https://edu.sina.com.cn/",
+            "",
+            180,
+            "",
+            (
+                '{"container_selector":".feed-card-item, .news-item, .article-item",'
+                '"title_selector":"h2 a, .title a, a.title",'
+                '"snippet_selector":"p, .desc, .abstract",'
+                '"date_selector":"time, .date, .time"}'
+            ),
+        ),
+        (
+            "搜狗微信搜索",
+            "generic",
+            "https://weixin.sogou.com/weixin",
+            "https://weixin.sogou.com/weixin?type=2&query={关键词}&page={分页步进}",
+            120,
+            (
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
+                "Accept: text/html,application/xhtml+xml\n"
+                "Accept-Language: zh-CN,zh;q=0.9"
+            ),
+            (
+                '{"container_selector":".news-box .news-list li, .img-box + .txt-box",'
+                '"title_selector":"h3 a, .tit a, a[href]",'
+                '"snippet_selector":"p, .txt-info, .desc",'
+                '"date_selector":".time, .date, .s2",'
+                '"source_selector":".account, .nickname, .s1"}'
+            ),
+        ),
+        (
+            "百度搜索(综合)",
+            "generic",
+            "https://www.baidu.com/s",
+            "https://www.baidu.com/s?wd={关键词}&pn={分页步进}&tn=baiduwb",
+            120,
+            (
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
+                "Accept: text/html,application/xhtml+xml\n"
+                "Accept-Language: zh-CN,zh;q=0.9"
+            ),
+            (
+                '{"container_selector":".result, .c-container, div.result-op",'
+                '"title_selector":"h3 a, .t a, a.t",'
+                '"snippet_selector":".c-abstract, .c-span-last p, .content-right_2s-H4",'
+                '"source_selector":".c-showurl, .source_1Vdff",'
+                '"date_selector":".c-color-gray2, .c-time"}'
+            ),
+        ),
+        (
+            "搜狗新闻搜索",
+            "generic",
+            "https://news.sogou.com/news",
+            "https://news.sogou.com/news?query={关键词}&page={分页步进}",
+            120,
+            (
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
+                "Accept: text/html,application/xhtml+xml\n"
+                "Accept-Language: zh-CN,zh;q=0.9"
+            ),
+            (
+                '{"container_selector":".results .result, .news-item, .vrwrap",'
+                '"title_selector":"h3 a, .news-title a, .vr-title a",'
+                '"snippet_selector":".news-desc, .star-wiki, .summary, p",'
+                '"source_selector":".news-from, .site, .source",'
+                '"date_selector":".news-date, .date, time"}'
+            ),
+        ),
+    ]
+    for name, src_type, url, url_tpl, interval, req_hdrs, cfg_json in default_sources:
+        exists = conn.execute(
+            "SELECT id FROM watchtower_sources WHERE name=? AND source_type=?",
+            (name, src_type),
+        ).fetchone()
+        if not exists:
+            conn.execute(
+                """INSERT INTO watchtower_sources
+                   (name, source_type, url, url_template, fetch_interval,
+                    request_headers, config_json, status)
+                   VALUES(?,?,?,?,?,?,?,'enabled')""",
+                (name, src_type, url, url_tpl, interval, req_hdrs, cfg_json),
+            )
+
 
 # ── Migration runner ────────────────────────────────────────────
 
@@ -624,6 +857,16 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         conn,
         "v2_chat_session_model_id",
         "ALTER TABLE chat_sessions ADD COLUMN model_id INTEGER DEFAULT 0;",
+    )
+    _migrate(
+        conn,
+        "v3_watchtower_items_url_unique",
+        """
+        DELETE FROM watchtower_items WHERE id NOT IN (
+            SELECT MIN(id) FROM watchtower_items WHERE url IS NOT NULL GROUP BY url
+        ) AND url IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watchtower_items_url_unique ON watchtower_items(url);
+        """,
     )
 
     # Indexes (idempotent)

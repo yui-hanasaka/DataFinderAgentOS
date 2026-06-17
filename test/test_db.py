@@ -106,3 +106,56 @@ def test_indexes_exist(tmp_db: None) -> None:
         ]
     for expected in ("idx_chat_sessions_user", "idx_chat_messages_session"):
         assert expected in indexes, f"Index '{expected}' not found"
+
+
+def test_database_connection_wrapper_sqlite(tmp_db: None) -> None:
+    """Wrapper should behave identically to raw sqlite3.Connection."""
+    from app.models.db import DatabaseConnection
+    import sqlite3
+
+    raw = sqlite3.connect(db_module.DB_PATH)
+    raw.row_factory = sqlite3.Row
+    raw.execute("PRAGMA foreign_keys = ON")
+    wrapped = DatabaseConnection(raw, "sqlite")
+
+    with wrapped as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _test_wrap(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+        )
+        conn.execute("INSERT INTO _test_wrap(name) VALUES(?)", ("hello",))
+        cur = conn.execute("SELECT * FROM _test_wrap WHERE name=?", ("hello",))
+        row = cur.fetchone()
+    # tear down
+    with wrapped as conn:
+        conn.execute("DROP TABLE IF EXISTS _test_wrap")
+
+    assert row is not None
+    assert row["name"] == "hello"
+    assert row["id"] == 1
+
+
+def test_cursor_proxy_lastrowid(tmp_db: None) -> None:
+    """lastrowid should be accessible through the wrapper."""
+    from app.models.db import DatabaseConnection
+    import sqlite3
+
+    raw = sqlite3.connect(db_module.DB_PATH)
+    raw.row_factory = sqlite3.Row
+    raw.execute("PRAGMA foreign_keys = ON")
+    wrapped = DatabaseConnection(raw, "sqlite")
+
+    with wrapped as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _test_lrid(id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT)"
+        )
+        cur = conn.execute("INSERT INTO _test_lrid(v) VALUES(?)", ("x",))
+        new_id = cur.lastrowid
+        cur2 = conn.execute("SELECT id FROM _test_lrid WHERE id=?", (new_id,))
+        row = cur2.fetchone()
+    with wrapped as conn:
+        conn.execute("DROP TABLE IF EXISTS _test_lrid")
+
+    assert new_id == 1
+    assert row is not None
+    assert row["id"] == 1
