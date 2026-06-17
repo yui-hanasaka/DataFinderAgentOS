@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DataFinder AgentOS · 智能数据瞭望与智能问数系统</title>
+  <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+  <style>
+    .landing {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0c1638 0%, #0f2255 55%, #0c1638 100%);
+      color: #e8f0ff;
+      display: flex;
+      flex-direction: column
+    }
+
+    .landing-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid rgba(120, 180, 255, .12)
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .04em
+    }
+
+    .nav-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #4d8df8, #2363da);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 20px
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 12px
+    }
+
+    .btn-ghost {
+      padding: 9px 20px;
+      border: 1px solid rgba(120, 180, 255, .35);
+      border-radius: 999px;
+      color: #9bc2ff;
+      text-decoration: none;
+      font-size: 14px;
+      transition: border-color .2s, color .2s
+    }
+
+    .btn-ghost:hover {
+      border-color: #6cd9ff;
+      color: #6cd9ff
+    }
+
+    .btn-primary-nav {
+      padding: 9px 22px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4d8df8, #2363da);
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(77, 141, 248, .35);
+      transition: box-shadow .2s
+    }
+
+    .btn-primary-nav:hover {
+      box-shadow: 0 8px 24px rgba(77, 141, 248, .55)
+    }
+
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px 60px;
+      text-align: center
+    }
+
+    .hero-tag {
+      margin: 0 0 24px;
+      padding: 6px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(77, 217, 255, .3);
+      background: rgba(77, 217, 255, .06);
+      color: #6cd9ff;
+      font-size: 13px;
+      letter-spacing: .18em;
+      display: inline-block
+    }
+
+    .hero h1 {
+      margin: 0 0 20px;
+      font-size: clamp(36px, 5.5vw, 64px);
+      font-weight: 700;
+      line-height: 1.15;
+      background: linear-gradient(90deg, #fff 20%, #6cd9ff 70%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent
+    }
+
+    .hero p {
+      margin: 0 0 40px;
+      font-size: 18px;
+      color: #9ab4d8;
+      max-width: 560px;
+      line-height: 1.7
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    .cta-primary {
+      padding: 14px 36px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4d8df8, #2363da);
+      color: #fff;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(77, 141, 248, .4)
+    }
+
+    .cta-ghost {
+      padding: 14px 32px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 180, 255, .4);
+      color: #9bc2ff;
+      text-decoration: none;
+      font-size: 15px
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      width: 100%;
+      margin: 72px auto 0;
+      padding: 0 24px
+    }
+
+    .feat {
+      padding: 26px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(120, 180, 255, .1)
+    }
+
+    .feat-icon {
+      font-size: 26px;
+      margin-bottom: 14px
+    }
+
+    .feat h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: #fff
+    }
+
+    .feat p {
+      margin: 0;
+      font-size: 14px;
+      color: #7d9cbf;
+      line-height: 1.7
+    }
+
+    .footer {
+      text-align: center;
+      padding: 28px;
+      font-size: 13px;
+      color: #4a6285;
+      border-top: 1px solid rgba(120, 180, 255, .08)
+    }
+
+    @media(max-width:680px) {
+      .landing-nav {
+        padding: 16px 20px
+      }
+
+      .features {
+        grid-template-columns: 1fr
+      }
+
+      .hero h1 {
+        font-size: 32px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="landing">
+    <nav class="landing-nav">
+      <div class="nav-brand">
+        <div class="nav-logo">D</div>DataFinder AgentOS
+      </div>
+      <div class="nav-actions">
+        <a class="btn-ghost" href="/admin/login">管理后台</a>
+        <a class="btn-primary-nav" href="/login">用户登录</a>
+      </div>
+    </nav>
+    <div class="hero">
+      <p class="hero-tag">INTELLIGENT DATA · AI AGENT OS</p>
+      <h1>智能数据瞭望<br>与智能问数系统</h1>
+      <p>融合 AI 大模型与数据采集能力，让数据洞察更高效，让知识触手可及。</p>
+      <div class="hero-cta">
+        <a class="cta-primary" href="/login">开始使用</a>
+        <a class="cta-ghost" href="/admin/login">进入后台</a>
+      </div>
+      <div class="features">
+        <div class="feat">
+          <div class="feat-icon">💬</div>
+          <h3>智能对话</h3>
+          <p>SSE 流式输出，支持数字员工人设、多会话管理、技能增强（天气/搜索/校园助手）</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">📊</div>
+          <h3>智能问数</h3>
+          <p>自然语言转 SQL 查询，结果可视化为 ECharts 图表，支持 CSV 导出与 PDF 存档</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">📡</div>
+          <h3>数据瞭望</h3>
+          <p>RSS/URL 多源采集，AI 情感与风险分析，数智大屏实时展示全局态势</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer">© 2026 DataFinder AgentOS · 智能数据瞭望与智能问数系统</div>
+  </div>
+</body>
+
+</html>

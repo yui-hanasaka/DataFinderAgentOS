@@ -5,72 +5,85 @@
 </section>
 {% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
 <section class="admin-table-card">
-	<ul class="nav nav-tabs mb-3" id="settingsTabs">
-		<li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-basic">基本设置</a></li>
-		<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-db">数据库设置</a></li>
-	</ul>
+	<div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid #e8f0fc;padding-bottom:12px">
+		<button type="button" class="stab-btn active" onclick="showTab('tab-basic',this)">基本设置</button>
+		<button type="button" class="stab-btn" onclick="showTab('tab-db',this)">数据库设置</button>
+	</div>
 	<form method="post" action="/admin/settings">
 		{% module xsrf_form_html() %}
-		<div class="tab-content">
-			<div class="tab-pane fade show active" id="tab-basic">
-				<section class="admin-form-section">
-					<div class="admin-form-section-title">基本设置</div>
-					<div class="admin-grid-form">
-						<label class="required"><span>站点名称</span><input type="text" name="site_name" value="{{ settings.get('site_name', '') }}" placeholder="站点显示名称" required></label>
-					</div>
-				</section>
-			</div>
-			<div class="tab-pane fade" id="tab-db">
-				<section class="admin-form-section">
-					<div class="admin-form-section-title">数据库类型</div>
-					<div class="admin-grid-form">
-						<label class="form-wide"><span>类型</span>
-							<div class="d-flex gap-4 mt-1">
-								<label class="d-flex align-items-center gap-2"><input type="radio" name="db_type" value="sqlite" {% if settings.get('db_type','sqlite') == 'sqlite' %}checked{% end %} onchange="toggleDbFields()"> SQLite</label>
-								<label class="d-flex align-items-center gap-2"><input type="radio" name="db_type" value="mysql" {% if settings.get('db_type') == 'mysql' %}checked{% end %} onchange="toggleDbFields()"> MySQL</label>
-							</div>
-						</label>
-					</div>
-				</section>
-				<section class="admin-form-section" id="mysqlFields" style="{% if settings.get('db_type') != 'mysql' %}display:none{% end %}">
-					<div class="admin-form-section-title">MySQL 连接参数</div>
-					<div class="admin-grid-form">
-						<label><span>主机</span><input type="text" name="db_host" value="{{ settings.get('db_host','127.0.0.1') }}" placeholder="127.0.0.1"></label>
-						<label><span>端口</span><input type="number" name="db_port" value="{{ settings.get('db_port','3306') }}" placeholder="3306"></label>
-						<label><span>用户名</span><input type="text" name="db_user" value="{{ settings.get('db_user','') }}" placeholder="root"></label>
-						<label><span>密码</span><input type="password" name="db_password" value="{{ settings.get('db_password','') }}" placeholder="数据库密码"></label>
-						<label><span>数据库名</span><input type="text" name="db_name" value="{{ settings.get('db_name','') }}" placeholder="datafinder"></label>
-						<label class="form-wide"><span></span><button type="button" class="btn btn-light" onclick="testDbConn()">测试连接</button> <span id="testResult" style="font-size:13px;margin-left:8px"></span></label>
-					</div>
-				</section>
-			</div>
+		<div id="tab-basic">
+			<section class="admin-form-section">
+				<div class="admin-form-section-title">基本设置</div>
+				<div class="admin-grid-form">
+					<label class="required"><span>站点名称</span><input type="text" name="site_name" value="{{ settings.get('site_name', '') }}" placeholder="站点显示名称" required></label>
+				</div>
+			</section>
 		</div>
-		<div style="padding:0 0 16px"><button type="submit" class="btn btn-primary">保存设置</button></div>
+		<div id="tab-db" style="display:none">
+			<section class="admin-form-section">
+				<div class="admin-form-section-title">数据库类型</div>
+				<div class="admin-grid-form">
+					<label class="form-wide"><span>类型</span>
+						<div style="display:flex;gap:24px;margin-top:6px">
+							<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="db_type" value="sqlite" {% if settings.get('db_type','sqlite') == 'sqlite' %}checked{% end %} onchange="toggleDbFields()"> SQLite（默认）</label>
+							<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="db_type" value="mysql" {% if settings.get('db_type') == 'mysql' %}checked{% end %} onchange="toggleDbFields()"> MySQL</label>
+						</div>
+					</label>
+				</div>
+			</section>
+			<section class="admin-form-section" id="mysqlFields" style="{% if settings.get('db_type') != 'mysql' %}display:none{% end %}">
+				<div class="admin-form-section-title">MySQL 连接参数</div>
+				<div class="admin-grid-form">
+					<label><span>主机</span><input type="text" name="mysql_host" value="{{ settings.get('mysql_host','127.0.0.1') }}" placeholder="127.0.0.1"></label>
+					<label><span>端口</span><input type="number" name="mysql_port" value="{{ settings.get('mysql_port','3306') }}" placeholder="3306"></label>
+					<label><span>用户名</span><input type="text" name="mysql_user" value="{{ settings.get('mysql_user','') }}" placeholder="root"></label>
+					<label><span>密码</span><input type="password" name="mysql_password" value="{{ settings.get('mysql_password','') }}" placeholder="数据库密码"></label>
+					<label><span>数据库名</span><input type="text" name="mysql_database" value="{{ settings.get('mysql_database','') }}" placeholder="datafinder"></label>
+					<label class="form-wide"><span></span>
+						<div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+							<button type="button" class="btn btn-light" onclick="testDbConn()">测试连接</button>
+							<span id="testResult" style="font-size:13px"></span>
+						</div>
+					</label>
+				</div>
+			</section>
+		</div>
+		<div style="padding:8px 0 4px"><button type="submit" class="btn btn-primary">保存设置</button></div>
 	</form>
 </section>
+<style>
+.stab-btn{padding:8px 18px;border:none;border-radius:10px;background:transparent;color:#6b778c;cursor:pointer;font-size:14px}
+.stab-btn.active{background:#edf4ff;color:#247ff0;font-weight:600}
+</style>
 <script>
+function showTab(id, btn) {
+	['tab-basic','tab-db'].forEach(t => document.getElementById(t).style.display = t === id ? '' : 'none');
+	document.querySelectorAll('.stab-btn').forEach(b => b.classList.remove('active'));
+	btn.classList.add('active');
+}
 function toggleDbFields() {
 	var val = document.querySelector('input[name="db_type"]:checked').value;
 	document.getElementById('mysqlFields').style.display = val === 'mysql' ? '' : 'none';
 }
 function testDbConn() {
 	var result = document.getElementById('testResult');
-	result.textContent = '测试中...';
-	var data = {
-		db_host: document.querySelector('[name=db_host]').value,
-		db_port: document.querySelector('[name=db_port]').value,
-		db_user: document.querySelector('[name=db_user]').value,
-		db_password: document.querySelector('[name=db_password]').value,
-		db_name: document.querySelector('[name=db_name]').value
-	};
-	fetch('/admin/settings/test', {
+	result.textContent = '测试中…';
+	fetch('/admin/settings', {
 		method: 'POST',
-		headers: {'Content-Type': 'application/json', 'X-XSRFToken': document.cookie.match(/_xsrf=([^;]+)/)?.[1] || ''},
-		body: JSON.stringify(data)
-	}).then(r => r.json()).then(d => {
-		result.textContent = d.ok ? '连接成功' : ('失败: ' + d.msg);
+		headers: {'Content-Type':'application/x-www-form-urlencoded','X-XSRFToken':(document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||''},
+		body: new URLSearchParams({
+			action: 'test_db', db_type: 'mysql',
+			mysql_host: document.querySelector('[name=mysql_host]').value,
+			mysql_port: document.querySelector('[name=mysql_port]').value,
+			mysql_user: document.querySelector('[name=mysql_user]').value,
+			mysql_password: document.querySelector('[name=mysql_password]').value,
+			mysql_database: document.querySelector('[name=mysql_database]').value,
+			_xsrf: (document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||''
+		})
+	}).then(r=>r.json()).then(d=>{
+		result.textContent = d.ok ? '✓ 连接成功' : '✗ ' + d.msg;
 		result.style.color = d.ok ? '#198754' : '#dc3545';
-	}).catch(() => { result.textContent = '请求失败'; result.style.color = '#dc3545'; });
+	}).catch(()=>{result.textContent='请求失败';result.style.color='#dc3545'});
 }
 </script>
 {% end %}

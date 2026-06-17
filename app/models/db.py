@@ -328,6 +328,14 @@ def _seed_business_data(conn):
 		)
 	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('db_type', 'sqlite')")
 	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('site_name', 'DataFinder AgentOS')")
+	# seed a demo front-end user (demo / demo123) for quick testing
+	demo_exists = conn.execute("SELECT id FROM users WHERE username='demo'").fetchone()
+	if not demo_exists:
+		salt = secrets.token_bytes(16)
+		conn.execute(
+			"INSERT INTO users(username, password_hash, salt) VALUES(?,?,?)",
+			("demo", _hash_password("demo123", salt), salt.hex())
+		)
 
 
 def init_db():

@@ -1,6 +1,5 @@
 import json
 
-import tornado.web
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.model_client import chat_complete, iter_sse_chunks, parse_chat_response

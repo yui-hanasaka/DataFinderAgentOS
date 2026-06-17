@@ -1,49 +1,67 @@
 import os
-import tornado.web
+
 import tornado.ioloop
+import tornado.web
 from tornado.httpserver import HTTPServer
 
 from app.controllers.admin import (
-    AdminHomeHandler, AdminLoginHandler, AdminLogoutHandler,
-    AdminMenuHandler, AdminRoleHandler, AdminUserHandler,
+    AdminHomeHandler,
+    AdminLoginHandler,
+    AdminLogoutHandler,
+    AdminMenuHandler,
+    AdminRoleHandler,
+    AdminUserHandler,
 )
-from app.controllers.auth import LoginHandler, LogoutHandler
-from app.controllers.home import HomeHandler
-from app.controllers.model_engine import AdminModelChatHandler, AdminModelEngineHandler, AdminModelTestHandler
-from app.controllers.employee import AdminEmployeeHandler
-from app.controllers.skill import AdminSkillHandler
-from app.controllers.watchtower import AdminWatchtowerHandler
-from app.controllers.warehouse import AdminWarehouseHandler
-from app.controllers.deep import AdminDeepHandler
 from app.controllers.api_key import AdminApiKeyHandler
-from app.controllers.session_mgr import AdminSessionMgrHandler, AdminConversationDetailHandler
-from app.controllers.permissions import AdminPermissionHandler
-from app.controllers.settings import AdminSettingsHandler
-from app.controllers.screen import AdminScreenHandler, ScreenDataApiHandler
-from app.controllers.chat import (
-    ChatHomeHandler, ChatSessionHandler, ChatNewHandler,
-    ChatDeleteHandler, ChatSendHandler, ChatExportHandler,
-)
 from app.controllers.ask import AskHomeHandler, AskQueryHandler
+from app.controllers.auth import LandingHandler, LoginHandler, LogoutHandler
+from app.controllers.chat import (
+    ChatDeleteHandler,
+    ChatExportHandler,
+    ChatHomeHandler,
+    ChatNewHandler,
+    ChatSendHandler,
+    ChatSessionHandler,
+)
+from app.controllers.deep import AdminDeepHandler
+from app.controllers.employee import AdminEmployeeHandler
+from app.controllers.home import HomeHandler
+from app.controllers.model_engine import (
+    AdminModelChatHandler,
+    AdminModelEngineHandler,
+    AdminModelTestHandler,
+)
+from app.controllers.permissions import AdminPermissionHandler
+from app.controllers.screen import AdminScreenHandler, ScreenDataApiHandler
+from app.controllers.session_mgr import (
+    AdminConversationDetailHandler,
+    AdminSessionMgrHandler,
+)
+from app.controllers.settings import AdminSettingsHandler
+from app.controllers.skill import AdminSkillHandler
+from app.controllers.warehouse import AdminWarehouseHandler
+from app.controllers.watchtower import AdminWatchtowerHandler
 from app.models.db import init_db
 
 
 def app():
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
     settings = dict(
         template_path=os.path.join(base_dir, "app", "templates"),
         static_path=os.path.join(base_dir, "app", "static"),
         cookie_secret="demo-cookie-secret-change-me",
         login_url="/",
         xsrf_cookies=True,
-        debug=True,
-        autoreload=True,
+        debug=dev,
+        autoreload=dev,
     )
 
     return tornado.web.Application(
         [
             # user auth
-            (r"/", LoginHandler),
+            (r"/", LandingHandler),
+            (r"/login", LoginHandler),
             (r"/user/login", LoginHandler),
             (r"/user/logout", LogoutHandler),
             (r"/home", HomeHandler),

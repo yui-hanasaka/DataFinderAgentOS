@@ -24,7 +24,7 @@ class UserRepository:
 				)
 
 			return True
-		except sqlite3.IntegrityError as e:
+		except sqlite3.IntegrityError:
 			return False
 
 	@staticmethod

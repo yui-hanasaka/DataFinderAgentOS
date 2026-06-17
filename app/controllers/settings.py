@@ -1,4 +1,3 @@
-import json
 from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
 

@@ -2,7 +2,6 @@ import json
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.chat import ChatRepository
-from app.models.watchtower import ItemRepository
 from app.models.db import get_connection
 
 

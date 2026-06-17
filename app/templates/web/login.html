@@ -1,16 +1,57 @@
-{% extends "base.html" %}
-{% block body %}
-	{% if error %}
-<div style="base">{{ error }}</div>
-	{% end %}
-
-<form method="post" action="/user/login">
-	{% module xsrf_form_html() %}
-	<input type="text" name="username">
-	<input type="password" name="password">
-	<button type="submit">登录</button>
-</form>
-
-<p><a href="/admin/login">进入后台管理登录</a></p>
-
-{% end %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · DataFinder AgentOS</title>
+<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+</head>
+<body>
+<div class="admin-login-page">
+  <div class="admin-login-shell">
+    <div class="admin-login-card">
+      <div class="admin-login-visual">
+        <div class="visual-window">
+          <div class="window-bar"></div>
+          <div class="window-line line-one"></div>
+          <div class="window-line line-two"></div>
+          <div class="window-grid"><span></span><span></span><span></span></div>
+        </div>
+        <div class="visual-person">
+          <div class="person-head"></div>
+          <div class="person-body"></div>
+          <div class="person-chair"></div>
+        </div>
+        <div class="visual-desk"></div>
+        <div class="visual-plant"></div>
+      </div>
+      <div class="admin-login-panel">
+        <div class="admin-login-title">
+          <p>DataFinder AgentOS</p>
+          <h1>用户登录</h1>
+          <span>智能数据瞭望与智能问数系统</span>
+        </div>
+        {% if error %}
+        <div class="admin-login-error">{{ error }}</div>
+        {% end %}
+        <form class="admin-login-form" method="post" action="/login">
+          {% module xsrf_form_html() %}
+          <label>
+            用户名
+            <input type="text" name="username" placeholder="请输入用户名" autocomplete="username">
+          </label>
+          <label>
+            密码
+            <input type="password" name="password" placeholder="请输入密码" autocomplete="current-password">
+          </label>
+          <button type="submit">登 录</button>
+        </form>
+        <p class="admin-login-tip">
+          <a href="/admin/login" style="color:#9aa5b8;font-size:13px">后台管理员入口 →</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

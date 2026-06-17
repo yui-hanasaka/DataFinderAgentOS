@@ -1,4 +1,3 @@
-import sqlite3
 from app.models.db import get_connection
 
 class ChatRepository:

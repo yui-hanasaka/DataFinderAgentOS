@@ -1,12 +1,11 @@
 import json
 
-import tornado.web
 
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
 from app.models.employee import EmployeeRepository
-from app.models.model_client import chat_complete, iter_sse_chunks, parse_chat_response
+from app.models.model_client import chat_complete, iter_sse_chunks
 from app.models.model_engine import ModelRepository
 from app.models.skill_dispatcher import dispatch
 
@@ -216,7 +215,7 @@ class ChatExportHandler(ChatBaseHandler):
 
         from io import BytesIO
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.units import cm
         from reportlab.pdfbase import pdfmetrics

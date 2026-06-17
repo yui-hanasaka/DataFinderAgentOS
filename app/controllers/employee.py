@@ -20,7 +20,6 @@ class AdminEmployeeHandler(AdminBaseHandler):
                     all_skills=all_skills, msg=self._message())
 
     def post(self):
-        import json
         action = self.get_body_argument("action", "")
         emp_id = self.get_body_argument("id", "")
         if action == "delete" and emp_id.isdigit():
