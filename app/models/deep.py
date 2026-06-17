@@ -3,6 +3,7 @@ from datetime import datetime
 
 from app.models.db import get_connection
 from app.models.model_client import chat_complete, parse_chat_response
+from app.models.model_engine import ModelRepository
 
 
 PER_PAGE = 20
@@ -61,10 +62,7 @@ class DeepRepository:
     @staticmethod
     def get_default_model():
         """Get the default model from model engine."""
-        with get_connection() as conn:
-            return conn.execute(
-                "SELECT * FROM ai_models WHERE is_default=1 AND status='enabled' LIMIT 1"
-            ).fetchone()
+        return ModelRepository.get_default_model()
 
     @staticmethod
     async def collect_single_item(item_id: int, model: dict | None) -> dict:
@@ -237,13 +235,12 @@ class DeepRepository:
             )
 
     @staticmethod
-    def complete_task(task_id: int, logs: list[str] | None = None) -> None:
+    def complete_task(task_id: int) -> None:
         """Mark a task as completed."""
         with get_connection() as conn:
             conn.execute(
-                """UPDATE deep_tasks SET status='completed', finished_at=datetime('now'),
-                   logs=? WHERE id=?""",
-                (json.dumps(logs or [], ensure_ascii=False), task_id),
+                "UPDATE deep_tasks SET status='completed', finished_at=datetime('now') WHERE id=?",
+                (task_id,),
             )
 
     @staticmethod

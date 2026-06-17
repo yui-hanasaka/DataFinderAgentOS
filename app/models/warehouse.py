@@ -87,6 +87,10 @@ class WarehouseRepository:
             ok, err = validate_select_sql(sql_query)
             if not ok:
                 return None, None, err
+        else:
+            ok, err = WarehouseRepository._basic_sql_guard(sql_query)
+            if not ok:
+                return None, None, err
         try:
             with get_connection() as conn:
                 cur = conn.execute(sql_query, params or [])
@@ -95,3 +99,25 @@ class WarehouseRepository:
             return rows, columns, None
         except Exception:
             return None, None, "查询执行失败"
+
+    _FORBIDDEN_KEYWORDS: tuple[str, ...] = (
+        "DROP",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "ALTER",
+        "CREATE",
+        "PRAGMA",
+        "ATTACH",
+    )
+
+    @staticmethod
+    def _basic_sql_guard(sql: str) -> tuple[bool, str | None]:
+        stripped = sql.strip()
+        if not stripped.upper().startswith("SELECT"):
+            return False, "仅允许执行 SELECT 查询"
+        upper_sql = stripped.upper()
+        for kw in WarehouseRepository._FORBIDDEN_KEYWORDS:
+            if kw in upper_sql:
+                return False, f"查询中包含禁止的关键字: {kw}"
+        return True, None

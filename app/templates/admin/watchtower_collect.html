@@ -205,6 +205,14 @@ var collectedItems = [];
 var selectedIds = new Set();
 var xsrf = (document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||'';
 
+function showAdmToast(msg) {
+  var d = document.createElement('div');
+  d.className = 'adm-toast-auto';
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(function(){ d.remove(); }, 3000);
+}
+
 /* ── Source Toggle ── */
 document.querySelectorAll('#sourceToggles .wtc-src-toggle').forEach(function(el){
   el.addEventListener('click', function(){

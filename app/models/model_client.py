@@ -50,6 +50,9 @@ async def chat_complete(
         # Read the full response before closing the client
         await resp.aread()
         await client.aclose()
+    else:
+        # Keep client alive for streaming — caller must close it via resp._client.aclose()
+        setattr(resp, "_client", client)
     return resp
 
 
@@ -68,7 +71,7 @@ def parse_chat_response(raw_bytes: bytes) -> dict[str, str | int]:
 
 
 async def parse_chat_response_async(resp: httpx.Response) -> dict[str, str | int]:
-    raw = await resp.aread() if hasattr(resp, "aread") else resp.read()
+    raw = await resp.aread()
     return parse_chat_response(raw)
 
 

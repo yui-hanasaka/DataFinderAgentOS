@@ -270,6 +270,10 @@ class ChatSendHandler(ChatBaseHandler):
                             break
             except Exception:
                 pass
+            finally:
+                _client = getattr(resp, "_client", None)
+                if _client is not None:
+                    await _client.aclose()
             ModelRepository.record_usage(
                 model_row["id"], prompt_tokens, completion_tokens
             )

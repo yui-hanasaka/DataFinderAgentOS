@@ -2,7 +2,7 @@ import secrets
 import sqlite3
 from datetime import datetime, timezone
 
-from app.models.crypto import hash_password
+from app.models.crypto import hash_password, verify_password
 from app.models.db import get_connection
 
 PER_PAGE = 20
@@ -43,6 +43,12 @@ class AdminRepository:
         """Returns (ok, error_message, admin_row_or_None)."""
         row = AdminRepository.get_admin_by_username(username)
         if not row:
+            # Prevent timing-based username enumeration:
+            # always perform a hash comparison even when the account
+            # does not exist, so response time is indistinguishable
+            # from a real (failed) password check.
+            dummy_salt = secrets.token_bytes(16)
+            hash_password(password, dummy_salt)
             return False, "用户名或密码错误", None
 
         if row["status"] != "enabled":
@@ -60,8 +66,7 @@ class AdminRepository:
             except ValueError:
                 pass
 
-        salt = bytes.fromhex(row["salt"])
-        if hash_password(password, salt) != row["password_hash"]:
+        if not verify_password(password, row["salt"], row["password_hash"]):
             # Record failed attempt
             AdminRepository._record_failed_login(username)
             # Check if account just became locked

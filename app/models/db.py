@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from pathlib import Path
 
@@ -521,24 +522,29 @@ def _migrate(conn: sqlite3.Connection, version: str, sql: str) -> None:
         stmt = stmt.strip()
         if not stmt:
             continue
-        # ALTER TABLE <t> ADD COLUMN <c> ... — check column exists first
-        parts = stmt.split()
-        if (
-            len(parts) >= 6
-            and parts[0].upper() == "ALTER"
-            and parts[1].upper() == "TABLE"
-        ):
-            table = parts[2]
-            # "ADD COLUMN" spans positions 3 and 4
-            col = parts[5]  # ALTER(0) TABLE(1) t(2) ADD(3) COLUMN(4) c(5) ...
-            existing = [
-                r["name"]
-                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
-            ]
-            if col not in existing:
+        try:
+            # Use regex to extract ALTER TABLE <t> ADD [COLUMN] <c> ...
+            m = re.match(
+                r"ALTER\s+TABLE\s+(\S+)\s+ADD\s+(?:COLUMN\s+)?(\S+)",
+                stmt,
+                re.IGNORECASE,
+            )
+            if m:
+                table = m.group(1)
+                col = m.group(2)
+                existing = [
+                    r["name"]
+                    for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+                ]
+                if col not in existing:
+                    conn.execute(stmt)
+            else:
                 conn.execute(stmt)
-        else:
-            conn.execute(stmt)
+        except Exception as e:
+            print(
+                f"[migration:{version}] skipped statement due to error: {e}\n"
+                f"  SQL: {stmt}"
+            )
     conn.execute(
         "INSERT OR IGNORE INTO schema_migrations(version) VALUES(?)", (version,)
     )

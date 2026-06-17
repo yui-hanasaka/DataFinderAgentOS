@@ -1,3 +1,9 @@
+"""Utility module for input validation and type conversion.
+
+Provides safe type-conversion helpers (parse_int, parse_float,
+parse_bool, parse_json_body) and URL validation utilities.
+"""
+
 from typing import Any
 
 

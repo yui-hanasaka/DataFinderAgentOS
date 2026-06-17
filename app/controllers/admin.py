@@ -24,16 +24,16 @@ class AdminLoginHandler(BaseHandler):
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
 
-        # Per-account rate limit
-        if username:
-            if not check_rate_limit(f"admin_login_account:{username}", 5, 60):
-                self.set_status(429)
-                self.render(
-                    "admin/login.html",
-                    title="后台登录",
-                    error="该账号登录尝试过于频繁，请稍后再试",
-                )
-                return
+        # Per-account rate limit — always applied regardless of
+        # whether the account exists, to prevent brute-force enumeration.
+        if not check_rate_limit(f"admin_login_account:{username}", 5, 60):
+            self.set_status(429)
+            self.render(
+                "admin/login.html",
+                title="后台登录",
+                error="该账号登录尝试过于频繁，请稍后再试",
+            )
+            return
 
         ok, err_msg, admin_row = AdminRepository.verify_admin(username, password)
         if not ok:
@@ -82,7 +82,7 @@ class AdminBaseHandler(BaseHandler):
         # Use regex fullmatch so dynamic routes like /admin/models/1/test
         # match the base URL /admin/models stored in menus
         allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
-        if not any(re.fullmatch(pattern, path) for pattern in allowed_urls):
+        if not any(re.fullmatch(re.escape(pattern), path) for pattern in allowed_urls):
             self.set_status(403)
             self.finish(
                 "<h3>403 · 无权限访问</h3><p>请联系超级管理员分配功能权限。</p>"
