@@ -179,11 +179,7 @@ class DeepRepository:
             )
             raw = await resp.aread()
             parsed = parse_chat_response(raw)
-            content_str = (
-                (parsed.get("choices") or [{}])[0]
-                .get("message", {})
-                .get("content", "{}")
-            )
+            content_str: str = str(parsed.get("content", "{}"))
             content_str = content_str.strip()
             if content_str.startswith("```"):
                 lines = content_str.split("\n")

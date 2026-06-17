@@ -37,7 +37,9 @@ class AdminRepository:
             ).fetchone()
 
     @staticmethod
-    def verify_admin(username: str, password: str) -> tuple[bool, str, sqlite3.Row | None]:
+    def verify_admin(
+        username: str, password: str
+    ) -> tuple[bool, str, sqlite3.Row | None]:
         """Returns (ok, error_message, admin_row_or_None)."""
         row = AdminRepository.get_admin_by_username(username)
         if not row:

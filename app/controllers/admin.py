@@ -28,16 +28,18 @@ class AdminLoginHandler(BaseHandler):
         if username:
             if not check_rate_limit(f"admin_login_account:{username}", 5, 60):
                 self.set_status(429)
-                return self.render(
+                self.render(
                     "admin/login.html",
                     title="后台登录",
                     error="该账号登录尝试过于频繁，请稍后再试",
                 )
+                return
 
         ok, err_msg, admin_row = AdminRepository.verify_admin(username, password)
         if not ok:
             self.set_status(401)
-            return self.render("admin/login.html", title="后台登录", error=err_msg)
+            self.render("admin/login.html", title="后台登录", error=err_msg)
+            return
 
         self.set_auth_cookie("admin_username", username)
 
