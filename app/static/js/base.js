@@ -6,7 +6,11 @@ function getTheme() {
 
 function setTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("theme", theme); } catch { /* storage unavailable */ }
+    try {
+        localStorage.setItem("theme", theme);
+    } catch {
+        /* storage unavailable */
+    }
 }
 
 function toggleTheme() {
@@ -62,3 +66,4 @@ function renderSafeMarkdown(text) {
 window.toggleTheme = toggleTheme;
 window.initThemeIcon = initThemeIcon;
 window.renderSafeMarkdown = renderSafeMarkdown;
+window.escapeHtml = escapeHtml;

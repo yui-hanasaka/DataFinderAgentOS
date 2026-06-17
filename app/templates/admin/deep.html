@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
 	<div>
@@ -34,8 +34,7 @@
 				<td>{{ task['status'] }}</td>
 				<td>{{ task['last_run'] or '-' }}</td>
 				<td class="table-actions">
-					<form method="post" action="/admin/deep"><input type="hidden" name="action" value="run">{% module
-						xsrf_form_html() %}<input type="hidden" name="id" value="{{ task['id'] }}"><button
+					<form method="post" action="/admin/deep"><input type="hidden" name="action" value="run">{% module xsrf_form_html() %}<input type="hidden" name="id" value="{{ task['id'] }}"><button
 							type="submit">立即运行</button></form>
 					<form method="post" action="/admin/deep" data-confirm="确认删除该任务？">{% module xsrf_form_html() %}<input
 							type="hidden" name="action" value="delete"><input type="hidden" name="id"

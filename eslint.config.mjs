@@ -38,6 +38,7 @@ export default [
                 toggleTheme: "readonly",
                 initThemeIcon: "readonly",
                 renderSafeMarkdown: "readonly",
+                escapeHtml: "readonly",
             },
         },
         rules: {

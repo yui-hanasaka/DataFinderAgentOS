@@ -33,7 +33,7 @@
 	</div>
 	{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 	{% if not models %}
-	<div class="tech-empty">尚未登记模型，点击右上角“接入新模型”开始登记 OpenAI 兼容服务。</div>
+	<div class="tech-empty">尚未登记模型，点击右上角"接入新模型"开始登记 OpenAI 兼容服务。</div>
 	{% else %}
 	<section class="tech-grid">
 		{% for model in models %}
@@ -68,8 +68,7 @@
 							value="{{ model['id'] }}"><button type="submit"><i class="fa-solid fa-star"></i>
 							设默认</button></form>
 					{% end %}
-					<form method="post" action="/admin/models" data-confirm="确认删除该模型？删除后调用记录会一并清除。">{% module
-						xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden"
+					<form method="post" action="/admin/models" data-confirm="确认删除该模型？删除后调用记录会一并清除。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden"
 							name="id" value="{{ model['id'] }}"><button type="submit" class="danger"><i
 								class="fa-solid fa-trash"></i> 删除</button></form>
 				</div>
