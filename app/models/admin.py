@@ -97,7 +97,9 @@ class AdminRepository:
 					""",
 					(role_code, role_name, role_type, description)
 				)
-				AdminRepository._replace_role_menus(conn, cur.lastrowid, menu_ids)
+				new_id = cur.lastrowid
+				assert new_id is not None
+				AdminRepository._replace_role_menus(conn, new_id, menu_ids)
 			return True, None
 		except sqlite3.IntegrityError:
 			return False, "角色编码已存在"

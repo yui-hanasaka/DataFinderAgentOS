@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Any, overload
 
 from app.models.db import get_connection
 
@@ -123,8 +124,14 @@ class ModelRepository:
 				(model_id, prompt_tokens, completion_tokens, total)
 			)
 
+	@overload
 	@staticmethod
-	def usage_summary(model_id: int = None):
+	def usage_summary() -> list[sqlite3.Row]: ...
+	@overload
+	@staticmethod
+	def usage_summary(model_id: int) -> dict[str, Any]: ...
+	@staticmethod
+	def usage_summary(model_id: int | None = None) -> list[sqlite3.Row] | dict[str, Any]:
 		with get_connection() as conn:
 			if model_id:
 				row = conn.execute(

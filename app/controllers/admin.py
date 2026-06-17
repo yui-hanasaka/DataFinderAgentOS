@@ -45,7 +45,24 @@ class AdminBaseHandler(BaseHandler):
 
 class AdminHomeHandler(AdminBaseHandler):
 	def get(self):
-		self.render("admin/home.html", title="后台管理", username=self.current_user)
+		from app.models.db import get_connection
+		from app.models.model_engine import ModelRepository
+		with get_connection() as conn:
+			user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+			admin_count = conn.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0]
+			session_count = conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
+			item_count = conn.execute("SELECT COUNT(*) FROM watchtower_items").fetchone()[0]
+			recent_sessions = conn.execute(
+				"SELECT cs.id, cs.title, cs.created_at, u.username "
+				"FROM chat_sessions cs LEFT JOIN users u ON u.id=cs.user_id "
+				"ORDER BY cs.id DESC LIMIT 8"
+			).fetchall()
+		usage = ModelRepository.usage_summary()
+		total_calls = sum(int(r["calls"]) for r in usage)
+		self.render("admin/home.html", title="后台管理", username=self.current_user,
+					user_count=user_count, admin_count=admin_count,
+					session_count=session_count, item_count=item_count,
+					total_calls=total_calls, recent_sessions=recent_sessions)
 
 
 class AdminLogoutHandler(BaseHandler):

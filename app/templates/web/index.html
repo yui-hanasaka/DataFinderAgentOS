@@ -1,10 +1,46 @@
 {% extends "base.html" %}
 {% block body %}
-
-<form method="post" action="/user/logout">
-	{% module xsrf_form_html() %}
-	<button type="submit">退出</button>
-</form>
-{{ username }}
-
+<style>
+.dashboard { max-width: 800px; margin: 40px auto; padding: 0 16px; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 24px; margin-bottom: 20px; }
+.card h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.quick-links { display: flex; gap: 16px; }
+.quick-links a { flex: 1; display: block; text-align: center; padding: 14px; border-radius: 6px; background: #4f6ef7; color: #fff; text-decoration: none; font-size: 1rem; }
+.quick-links a:hover { background: #3a57d4; }
+.session-list { list-style: none; margin: 0; padding: 0; }
+.session-list li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.session-list li:last-child { border-bottom: none; }
+.session-list a { text-decoration: none; color: #333; }
+.session-list a:hover { color: #4f6ef7; }
+.empty { color: #999; font-size: .9rem; }
+</style>
+<div class="dashboard">
+  <div class="card">
+    <h2>欢迎回来，{{ username }}</h2>
+    <p style="color:#666;margin:0">今天也要加油哦！</p>
+  </div>
+  <div class="card">
+    <h2>快速入口</h2>
+    <div class="quick-links">
+      <a href="/chat">💬 对话</a>
+      <a href="/ask">📊 问数</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>最近对话</h2>
+    {% if recent_sessions %}
+    <ul class="session-list">
+      {% for s in recent_sessions %}
+      <li><a href="/chat?session={{ s.id }}">{{ s.title or '无标题对话' }}</a></li>
+      {% end %}
+    </ul>
+    {% else %}
+    <p class="empty">暂无对话记录，去新建一个吧</p>
+    {% end %}
+  </div>
+  <form method="post" action="/user/logout" style="text-align:right">
+    {% module xsrf_form_html() %}
+    <button type="submit" style="background:none;border:none;color:#999;cursor:pointer;font-size:.9rem">退出登录</button>
+  </form>
+</div>
 {% end %}

@@ -3,12 +3,62 @@
 <section class="admin-welcome-card">
 	<p>后台主页</p>
 	<h1>欢迎进入后台管理中心</h1>
-	<span>当前版本已接入角色管理、用户管理和功能管理，后续业务模块可在统一后台工作区中继续扩展。</span>
 </section>
+<div class="row g-3 mb-4" style="margin-top:0">
+	<div class="col-6 col-md-3">
+		<div class="card text-center p-3">
+			<div class="fs-2 fw-bold text-primary">{{ user_count }}</div>
+			<div class="text-muted small">前台用户</div>
+		</div>
+	</div>
+	<div class="col-6 col-md-3">
+		<div class="card text-center p-3">
+			<div class="fs-2 fw-bold text-success">{{ session_count }}</div>
+			<div class="text-muted small">会话总数</div>
+		</div>
+	</div>
+	<div class="col-6 col-md-3">
+		<div class="card text-center p-3">
+			<div class="fs-2 fw-bold text-warning">{{ item_count }}</div>
+			<div class="text-muted small">瞭望条目</div>
+		</div>
+	</div>
+	<div class="col-6 col-md-3">
+		<div class="card text-center p-3">
+			<div class="fs-2 fw-bold text-info">{{ total_calls }}</div>
+			<div class="text-muted small">模型调用</div>
+		</div>
+	</div>
+</div>
 <section class="admin-module-grid">
 	<a href="/admin/users"><strong>用户管理</strong><span>新增、修改、删除、搜索后台管理用户</span></a>
 	<a href="/admin/roles"><strong>角色管理</strong><span>维护角色并通过功能授权设置菜单权限</span></a>
-	<a href="/admin/menus"><strong>功能管理</strong><span>维护后台菜单功能、图标、地址和排序</span></a>
-	<div><strong>智能业务</strong><span>模型引擎、技能仓库、数字员工等模块待接入</span></div>
+	<a href="/admin/permissions"><strong>权限管理</strong><span>角色-菜单权限矩阵批量配置</span></a>
+	<a href="/admin/employees"><strong>数字员工</strong><span>配置AI助理人设、绑定模型与技能</span></a>
+	<a href="/admin/skills"><strong>技能管理</strong><span>内置与外部API技能注册管理</span></a>
+	<a href="/admin/watchtower"><strong>瞭望管理</strong><span>配置RSS/URL采集源与监控条目</span></a>
+	<a href="/admin/warehouse"><strong>数据仓库</strong><span>预定义SQL查询，支持问数功能</span></a>
+	<a href="/admin/models"><strong>模型引擎</strong><span>多模型接入、测试与调用统计</span></a>
+	<a href="/admin/sessions"><strong>会话管理</strong><span>查看和管理用户对话会话</span></a>
+	<a href="/admin/screen"><strong>数智大屏</strong><span>数据可视化、3D舆情大屏</span></a>
+	<a href="/admin/settings"><strong>系统设置</strong><span>站点配置、数据库切换</span></a>
 </section>
+{% if recent_sessions %}
+<div class="card mt-3">
+	<div class="card-header">最近会话</div>
+	<table class="table table-sm mb-0">
+		<thead><tr><th>ID</th><th>用户</th><th>标题</th><th>时间</th></tr></thead>
+		<tbody>
+		{% for s in recent_sessions %}
+		<tr>
+			<td>{{ s['id'] }}</td>
+			<td>{{ s['username'] or '-' }}</td>
+			<td><a href="/admin/conversations/{{ s['id'] }}">{{ s['title'] }}</a></td>
+			<td>{{ s['created_at'] }}</td>
+		</tr>
+		{% end %}
+		</tbody>
+	</table>
+</div>
+{% end %}
 {% end %}

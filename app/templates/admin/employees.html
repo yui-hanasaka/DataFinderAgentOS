@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-page-head">
+	<div><p>智能业务</p><h1>数字员工管理</h1><span>维护数字员工信息，绑定模型与技能，设置系统提示词。</span></div>
+	<form class="admin-search" method="get" action="/admin/employees">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索员工名称">
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/employees">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#employeeModal"><i class="fa-solid fa-plus"></i> 新增员工</button>
+	</form>
+</section>
+{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>员工列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
+	<table class="admin-table">
+		<thead><tr><th>ID</th><th>名称</th><th>头像</th><th>绑定模型</th><th>状态</th><th>操作</th></tr></thead>
+		<tbody>{% for emp in employees %}<tr><td>{{ emp['id'] }}</td><td>{{ emp['name'] }}</td><td>{{ emp['avatar'] }}</td><td>{{ emp['model_name'] or '-' }}</td><td>{{ emp['status'] }}</td><td class="table-actions"><a href="/admin/employees?edit={{ emp['id'] }}">查看/修改</a><form method="post" action="/admin/employees" data-confirm="确认删除该数字员工？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ emp['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+	</table>
+	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/employees?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/employees?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+</section>
+<div class="modal fade admin-edit-modal" id="employeeModal" tabindex="-1" {% if edit_employee %}data-auto-open="true"{% end %}>
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div>
+					<h5 class="modal-title">{% if edit_employee %}修改数字员工{% else %}新增数字员工{% end %}</h5>
+					<small class="field-hint">设置员工基础信息、绑定模型与技能。<span class="required-tip">* 为必填项</span></small>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+			<form method="post" action="/admin/employees" data-confirm="确认保存员工信息？">
+				<div class="modal-body">
+					{% module xsrf_form_html() %}
+					{% if edit_employee %}<input type="hidden" name="id" value="{{ edit_employee['id'] }}">{% end %}
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">基础信息</div>
+						<div class="admin-grid-form">
+							<label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_employee['name'] if edit_employee else '' }}" placeholder="员工名称" required></label>
+							<label><span>头像</span><input type="text" name="avatar" value="{{ edit_employee['avatar'] if edit_employee else '' }}" placeholder="输入 emoji，如 🤖"></label>
+							<label class="required"><span>绑定模型</span><select name="model_id">{% for m in all_models %}<option value="{{ m['id'] }}" {% if edit_employee and edit_employee['model_id'] == m['id'] %}selected{% end %}>{{ m['name'] }}</option>{% end %}</select></label>
+							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_employee or edit_employee['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_employee and edit_employee['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+						</div>
+					</section>
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">系统提示词</div>
+						<div class="admin-grid-form">
+							<label class="form-wide"><span>System Prompt</span><textarea name="system_prompt" rows="5" placeholder="输入系统提示词">{{ edit_employee['system_prompt'] if edit_employee else '' }}</textarea></label>
+						</div>
+					</section>
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">绑定技能</div>
+						<div class="admin-grid-form">
+							{% for skill in all_skills %}
+							<label><span></span><label class="d-flex align-items-center gap-2"><input type="checkbox" name="skills" value="{{ skill['id'] }}" {% if edit_employee and skill['id'] in edit_employee.get('skill_ids', []) %}checked{% end %}> {{ skill['name'] }}</label></label>
+							{% end %}
+						</div>
+					</section>
+				</div>
+				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+			</form>
+		</div>
+	</div>
+</div>
+{% end %}

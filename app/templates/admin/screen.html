@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>数智大屏</title>
+	<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2/dist/echarts-wordcloud.min.js"></script>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body { background: #0d1117; color: #c9d1d9; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+		.screen-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; background: #161b22; border-bottom: 1px solid #21262d; flex-shrink: 0; }
+		.screen-header h1 { font-size: 16px; font-weight: 600; color: #e6edf3; letter-spacing: .5px; }
+		.screen-header .clock { font-size: 14px; color: #8b949e; }
+		.screen-stats { display: flex; gap: 12px; padding: 12px 16px; flex-shrink: 0; }
+		.stat-card { flex: 1; background: #161b22; border: 1px solid #21262d; border-radius: 6px; padding: 12px 16px; }
+		.stat-card .label { font-size: 12px; color: #8b949e; margin-bottom: 4px; }
+		.stat-card .value { font-size: 28px; font-weight: 700; color: #e6edf3; }
+		.screen-charts { display: flex; gap: 12px; padding: 0 16px; flex: 1; min-height: 0; }
+		.chart-box { background: #161b22; border: 1px solid #21262d; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+		.chart-box .chart-title { font-size: 13px; color: #8b949e; padding: 10px 14px 0; flex-shrink: 0; }
+		.chart-box .chart-area { flex: 1; min-height: 0; }
+		.chart-left { flex: 6; }
+		.chart-right { flex: 4; }
+		.screen-wordcloud { padding: 12px 16px; flex-shrink: 0; height: 180px; }
+		.screen-wordcloud .chart-box { height: 100%; }
+	</style>
+</head>
+<body>
+<header class="screen-header">
+	<h1 id="siteName">数智大屏</h1>
+	<span class="clock" id="clock"></span>
+</header>
+<div class="screen-stats">
+	<div class="stat-card"><div class="label">用户总数</div><div class="value" id="s-users">{{ stats.get('user_count', 0) }}</div></div>
+	<div class="stat-card"><div class="label">会话总数</div><div class="value" id="s-sessions">{{ stats.get('session_count', 0) }}</div></div>
+	<div class="stat-card"><div class="label">消息总数</div><div class="value" id="s-msgs">{{ stats.get('msg_count', 0) }}</div></div>
+	<div class="stat-card"><div class="label">瞭望条目数</div><div class="value" id="s-items">{{ stats.get('item_count', 0) }}</div></div>
+</div>
+<div class="screen-charts">
+	<div class="chart-box chart-left"><div class="chart-title">最近7天消息趋势</div><div class="chart-area" id="msgChart"></div></div>
+	<div class="chart-box chart-right"><div class="chart-title">舆情情感分布</div><div class="chart-area" id="sentimentChart"></div></div>
+</div>
+<div class="screen-wordcloud">
+	<div class="chart-box"><div class="chart-title">热词云</div><div class="chart-area" id="wordCloud"></div></div>
+</div>
+<script>
+var msgChart = echarts.init(document.getElementById('msgChart'), 'dark');
+var sentimentChart = echarts.init(document.getElementById('sentimentChart'), 'dark');
+var wordCloudChart = echarts.init(document.getElementById('wordCloud'), 'dark');
+
+var initData = {
+	msg_trend: {{ stats.get('msg_trend', []) }},
+	sentiment_dist: {{ stats.get('sentiment_dist', []) }},
+	hot_words: {{ stats.get('hot_words', []) }}
+};
+
+function renderCharts(data) {
+	msgChart.setOption({
+		backgroundColor: 'transparent',
+		tooltip: { trigger: 'axis' },
+		grid: { top: 20, right: 20, bottom: 30, left: 40 },
+		xAxis: { type: 'category', data: data.msg_trend.map(function(d) { return d.date; }), axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' } },
+		yAxis: { type: 'value', splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e' } },
+		series: [{ type: 'line', data: data.msg_trend.map(function(d) { return d.count; }), smooth: true, areaStyle: { opacity: 0.15 }, lineStyle: { color: '#58a6ff' }, itemStyle: { color: '#58a6ff' } }]
+	});
+	sentimentChart.setOption({
+		backgroundColor: 'transparent',
+		tooltip: { trigger: 'item' },
+		legend: { bottom: 8, textStyle: { color: '#8b949e' } },
+		series: [{ type: 'pie', radius: ['40%', '65%'], center: ['50%', '45%'], data: data.sentiment_dist, label: { color: '#c9d1d9' } }]
+	});
+	wordCloudChart.setOption({
+		backgroundColor: 'transparent',
+		series: [{ type: 'wordCloud', gridSize: 6, sizeRange: [12, 36], rotationRange: [-45, 45], shape: 'circle', width: '100%', height: '100%', data: data.hot_words, textStyle: { color: function() { return 'rgb(' + [Math.round(Math.random()*100+100), Math.round(Math.random()*100+100), Math.round(Math.random()*100+100)].join(',') + ')'; } } }]
+	});
+}
+
+renderCharts(initData);
+
+function updateClock() {
+	var now = new Date();
+	document.getElementById('clock').textContent = now.toLocaleString('zh-CN');
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+function refreshData() {
+	fetch('/api/screen/data').then(function(r) { return r.json(); }).then(function(d) {
+		document.getElementById('s-users').textContent = d.user_count || 0;
+		document.getElementById('s-sessions').textContent = d.session_count || 0;
+		document.getElementById('s-msgs').textContent = d.msg_count || 0;
+		document.getElementById('s-items').textContent = d.item_count || 0;
+		renderCharts(d);
+	}).catch(function() {});
+}
+setInterval(refreshData, 30000);
+
+window.addEventListener('resize', function() {
+	msgChart.resize(); sentimentChart.resize(); wordCloudChart.resize();
+});
+</script>
+</body>
+</html>

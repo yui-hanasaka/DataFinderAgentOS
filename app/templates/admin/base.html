@@ -34,14 +34,17 @@
 				<a class="{% if request.path == '/admin/users' %}active{% end %}" href="/admin/users"><span><i class="fa-solid fa-users"></i></span>用户管理</a>
 				<a class="{% if request.path == '/admin/roles' %}active{% end %}" href="/admin/roles"><span><i class="fa-solid fa-user-shield"></i></span>角色管理</a>
 				<a class="{% if request.path == '/admin/menus' %}active{% end %}" href="/admin/menus"><span><i class="fa-solid fa-table-cells-large"></i></span>功能管理</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-microchip"></i></span>模型引擎</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-toolbox"></i></span>技能仓库</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-robot"></i></span>数字员工</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-satellite-dish"></i></span>瞭望采集</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-database"></i></span>数据仓库</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-magnifying-glass-chart"></i></span>深度采集</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-comments"></i></span>智能问数</a>
-				<a href="javascript:void(0)"><span><i class="fa-solid fa-chart-line"></i></span>智能大屏</a>
+				<a class="{% if request.path == '/admin/models' %}active{% end %}" href="/admin/models"><span><i class="fa-solid fa-microchip"></i></span>模型引擎</a>
+				<a class="{% if request.path == '/admin/skills' %}active{% end %}" href="/admin/skills"><span><i class="fa-solid fa-toolbox"></i></span>技能管理</a>
+				<a class="{% if request.path == '/admin/employees' %}active{% end %}" href="/admin/employees"><span><i class="fa-solid fa-robot"></i></span>数字员工</a>
+				<a class="{% if request.path == '/admin/watchtower' %}active{% end %}" href="/admin/watchtower"><span><i class="fa-solid fa-satellite-dish"></i></span>瞭望管理</a>
+				<a class="{% if request.path == '/admin/warehouse' %}active{% end %}" href="/admin/warehouse"><span><i class="fa-solid fa-database"></i></span>数据仓库</a>
+				<a class="{% if request.path == '/admin/deep' %}active{% end %}" href="/admin/deep"><span><i class="fa-solid fa-magnifying-glass-chart"></i></span>深度采集</a>
+				<a class="{% if request.path == '/admin/apis' %}active{% end %}" href="/admin/apis"><span><i class="fa-solid fa-plug"></i></span>接口管理</a>
+				<a class="{% if request.path == '/admin/sessions' %}active{% end %}" href="/admin/sessions"><span><i class="fa-solid fa-comments"></i></span>会话管理</a>
+				<a class="{% if request.path == '/admin/permissions' %}active{% end %}" href="/admin/permissions"><span><i class="fa-solid fa-lock"></i></span>权限管理</a>
+				<a class="{% if request.path == '/admin/screen' %}active{% end %}" href="/admin/screen"><span><i class="fa-solid fa-chart-line"></i></span>数智大屏</a>
+				<a class="{% if request.path == '/admin/settings' %}active{% end %}" href="/admin/settings"><span><i class="fa-solid fa-gear"></i></span>系统设置</a>
 			</nav>
 		</aside>
 		<main class="admin-workspace">

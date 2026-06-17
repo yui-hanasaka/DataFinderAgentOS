@@ -16,10 +16,10 @@ class AdminModelEngineHandler(AdminBaseHandler):
 		edit_model = ModelRepository.get_model(int(edit_id)) if edit_id.isdigit() else None
 		usage_rows = ModelRepository.usage_summary()
 		totals = {
-			"calls": sum(row["calls"] for row in usage_rows),
-			"total": sum(row["total"] for row in usage_rows),
-			"prompt": sum(row["prompt"] for row in usage_rows),
-			"completion": sum(row["completion"] for row in usage_rows),
+			"calls": sum(int(row["calls"]) for row in usage_rows),
+			"total": sum(int(row["total"]) for row in usage_rows),
+			"prompt": sum(int(row["prompt"]) for row in usage_rows),
+			"completion": sum(int(row["completion"]) for row in usage_rows),
 		}
 		self.render(
 			"admin/models.html",

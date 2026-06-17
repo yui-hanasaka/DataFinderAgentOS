@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-page-head">
+	<div><p>组织权限</p><h1>权限管理</h1><span>配置各角色可访问的后台菜单功能，保存后立即生效。</span></div>
+</section>
+{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>角色-菜单权限矩阵</strong><span>勾选后点击行末"保存"按钮</span></div>
+	<div style="overflow-x:auto;">
+		<table class="admin-table">
+			<thead>
+				<tr>
+					<th>角色</th>
+					{% for menu in menus %}<th style="white-space:nowrap;font-size:12px">{{ menu['menu_name'] }}</th>{% end %}
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for role in roles %}
+				<tr>
+					<td><strong>{{ role['role_name'] }}</strong></td>
+					{% for menu in menus %}
+					<td style="text-align:center">
+						<form id="perm-form-{{ role['id'] }}-{{ menu['id'] }}" method="post" action="/admin/permissions" style="display:none">
+							{% module xsrf_form_html() %}
+							<input type="hidden" name="role_id" value="{{ role['id'] }}">
+						</form>
+						<input type="checkbox" class="perm-check" data-role="{{ role['id'] }}" data-menu="{{ menu['id'] }}" {% if menu['id'] in role_menu_map.get(role['id'], set()) %}checked{% end %}>
+					</td>
+					{% end %}
+					<td class="table-actions">
+						<button type="button" class="btn btn-sm btn-primary" onclick="savePerms({{ role['id'] }})">保存</button>
+					</td>
+				</tr>
+				{% end %}
+			</tbody>
+		</table>
+	</div>
+</section>
+<form id="permSaveForm" method="post" action="/admin/permissions">
+	{% module xsrf_form_html() %}
+	<input type="hidden" name="role_id" id="permRoleId">
+	<div id="permMenuInputs"></div>
+</form>
+<script>
+function savePerms(roleId) {
+	var form = document.getElementById('permSaveForm');
+	document.getElementById('permRoleId').value = roleId;
+	var container = document.getElementById('permMenuInputs');
+	container.innerHTML = '';
+	document.querySelectorAll('.perm-check[data-role="' + roleId + '"]:checked').forEach(function(cb) {
+		var input = document.createElement('input');
+		input.type = 'hidden';
+		input.name = 'menu_ids';
+		input.value = cb.dataset.menu;
+		container.appendChild(input);
+	});
+	form.submit();
+}
+</script>
+{% end %}
