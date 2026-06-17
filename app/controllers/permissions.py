@@ -3,7 +3,7 @@ from app.models.admin import AdminRepository
 
 
 class AdminPermissionHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         roles = AdminRepository.list_all_roles()
         menus = AdminRepository.list_all_menus()
         role_menu_map = {
@@ -19,7 +19,7 @@ class AdminPermissionHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         role_id = self.get_body_argument("role_id", "")
         menu_ids = self.get_body_arguments("menu_ids")
         if role_id.isdigit():

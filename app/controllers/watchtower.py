@@ -5,7 +5,7 @@ PER_PAGE = 20
 
 
 class AdminWatchtowerHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         sources, src_total = SourceRepository.list_sources(keyword, page)
@@ -28,7 +28,7 @@ class AdminWatchtowerHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         src_id = self.get_body_argument("id", "")
         if action == "delete" and src_id.isdigit():
@@ -41,14 +41,17 @@ class AdminWatchtowerHandler(AdminBaseHandler):
         url = self.get_body_argument("url", "").strip()
         fetch_interval = int(self.get_body_argument("fetch_interval", "60") or 60)
         status = self.get_body_argument("status", "enabled")
+        data = {
+            "name": name,
+            "source_type": source_type,
+            "url": url,
+            "fetch_interval": fetch_interval,
+            "status": status,
+        }
         if src_id.isdigit():
-            ok, msg = SourceRepository.update_source(
-                int(src_id), name, source_type, url, fetch_interval, status
-            )
+            ok, msg = SourceRepository.update_source(int(src_id), data)
             return self._redirect_with_message(
                 "/admin/watchtower", msg or "已更新" if ok else msg
             )
-        ok, msg = SourceRepository.create_source(
-            name, source_type, url, fetch_interval, status
-        )
+        ok, msg = SourceRepository.create_source(data)
         self._redirect_with_message("/admin/watchtower", msg or "已新增" if ok else msg)

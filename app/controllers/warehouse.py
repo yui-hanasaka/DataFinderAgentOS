@@ -5,7 +5,7 @@ PER_PAGE = 20
 
 
 class AdminWarehouseHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         queries, total = WarehouseRepository.list_queries(keyword, page)
@@ -26,7 +26,7 @@ class AdminWarehouseHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         q_id = self.get_body_argument("id", "")
         if action == "delete" and q_id.isdigit():
@@ -53,12 +53,23 @@ class AdminWarehouseHandler(AdminBaseHandler):
         category = self.get_body_argument("category", "默认").strip()
         if q_id.isdigit():
             ok, msg = WarehouseRepository.update_query(
-                int(q_id), name, sql_query, description, category
+                int(q_id),
+                {
+                    "name": name,
+                    "sql_query": sql_query,
+                    "description": description,
+                    "category": category,
+                },
             )
             return self._redirect_with_message(
                 "/admin/warehouse", msg or "已更新" if ok else msg
             )
         ok, msg = WarehouseRepository.create_query(
-            name, sql_query, description, category
+            {
+                "name": name,
+                "sql_query": sql_query,
+                "description": description,
+                "category": category,
+            },
         )
         self._redirect_with_message("/admin/warehouse", msg or "已新增" if ok else msg)

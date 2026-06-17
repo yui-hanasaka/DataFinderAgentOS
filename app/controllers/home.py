@@ -7,7 +7,7 @@ from app.models.db import get_connection
 
 class HomeHandler(BaseHandler):
     @tornado.web.authenticated
-    def get(self):
+    def get(self) -> None:
         with get_connection() as conn:
             row = conn.execute(
                 "SELECT id FROM users WHERE username=?", (self.current_user,)

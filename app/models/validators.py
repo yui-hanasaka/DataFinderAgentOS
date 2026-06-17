@@ -2,8 +2,8 @@ from typing import Any
 
 
 def parse_int(
-    value: str | None,
-    default: int,
+    value: Any,
+    default: int = 0,
     min_value: int | None = None,
     max_value: int | None = None,
 ) -> int:
@@ -21,8 +21,8 @@ def parse_int(
 
 
 def parse_float(
-    value: str | None,
-    default: float,
+    value: Any,
+    default: float = 0.0,
     min_value: float | None = None,
     max_value: float | None = None,
 ) -> float:
@@ -48,10 +48,11 @@ def parse_bool(value: Any) -> bool:
     return s in ("1", "true", "yes", "on")
 
 
-def parse_json_body(handler, max_bytes: int = 1024 * 1024) -> tuple[dict, str | None]:
+def parse_json_body(
+    body: bytes, max_bytes: int = 1048576
+) -> tuple[dict[str, object], str | None]:
     import json
 
-    body = handler.request.body or b"{}"
     if len(body) > max_bytes:
         return {}, "请求体过大"
     try:

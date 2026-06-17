@@ -1,9 +1,13 @@
+import sqlite3
+
 from app.models.db import get_connection
 
 
 class ChatRepository:
     @staticmethod
-    def create_session(user_id, employee_id, title):
+    def create_session(
+        user_id: int, employee_id: int, title: str
+    ) -> tuple[int | None, str | None]:
         try:
             with get_connection() as conn:
                 cur = conn.execute(
@@ -15,7 +19,7 @@ class ChatRepository:
             return None, str(e)
 
     @staticmethod
-    def get_session(session_id):
+    def get_session(session_id: int) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 """SELECT s.*, u.username,
@@ -28,7 +32,7 @@ class ChatRepository:
             ).fetchone()
 
     @staticmethod
-    def list_sessions(user_id, page=1):
+    def list_sessions(user_id: int, page: int = 1) -> tuple[list[sqlite3.Row], int]:
         per_page = 20
         offset = (page - 1) * per_page
         with get_connection() as conn:
@@ -42,7 +46,7 @@ class ChatRepository:
         return rows, total
 
     @staticmethod
-    def update_session_title(session_id, title):
+    def update_session_title(session_id: int, title: str) -> None:
         with get_connection() as conn:
             conn.execute(
                 "UPDATE chat_sessions SET title=?, updated_at=datetime('now') WHERE id=?",
@@ -50,16 +54,16 @@ class ChatRepository:
             )
 
     @staticmethod
-    def delete_session(session_id):
+    def delete_session(session_id: int) -> None:
         with get_connection() as conn:
             conn.execute("DELETE FROM chat_messages WHERE session_id=?", (session_id,))
             conn.execute("DELETE FROM chat_sessions WHERE id=?", (session_id,))
 
     @staticmethod
-    def delete_sessions(session_ids, user_id):
+    def delete_sessions(session_ids: list[int], user_id: int) -> int:
         with get_connection() as conn:
             placeholders = ",".join("?" for _ in session_ids)
-            params = list(session_ids) + [user_id]
+            params: list[int] = list(session_ids) + [user_id]
             conn.execute(
                 f"DELETE FROM chat_messages WHERE session_id IN "
                 f"(SELECT id FROM chat_sessions WHERE id IN ({placeholders}) AND user_id=?)",
@@ -72,7 +76,9 @@ class ChatRepository:
             return cur.rowcount
 
     @staticmethod
-    def add_message(session_id, role, content, skill_meta=None):
+    def add_message(
+        session_id: int, role: str, content: str, skill_meta: str | None = None
+    ) -> int | None:
         with get_connection() as conn:
             cur = conn.execute(
                 "INSERT INTO chat_messages(session_id, role, content, skill_meta) VALUES(?,?,?,?)",
@@ -85,7 +91,7 @@ class ChatRepository:
             return cur.lastrowid
 
     @staticmethod
-    def list_messages(session_id):
+    def list_messages(session_id: int) -> list[sqlite3.Row]:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM chat_messages WHERE session_id=? ORDER BY id ASC",
@@ -93,17 +99,19 @@ class ChatRepository:
             ).fetchall()
 
     @staticmethod
-    def count_all_sessions():
+    def count_all_sessions(keyword: str = "") -> int:
         with get_connection() as conn:
             return conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
 
     @staticmethod
-    def count_all_messages():
+    def count_all_messages() -> int:
         with get_connection() as conn:
             return conn.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
 
     @staticmethod
-    def list_all_sessions(page=1, per_page=20):
+    def list_all_sessions(
+        page: int = 1, per_page: int = 20, keyword: str = ""
+    ) -> tuple[list[sqlite3.Row], int]:
         offset = (page - 1) * per_page
         with get_connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]

@@ -4,7 +4,7 @@ from app.models.secrets_store import decrypt, encrypt, mask
 
 
 class AdminSettingsHandler(AdminBaseHandler):
-    def _load_settings(self):
+    def _load_settings(self) -> dict[str, str]:
         with get_connection() as conn:
             rows = conn.execute("SELECT key, value FROM sys_settings").fetchall()
         settings = {r["key"]: r["value"] for r in rows}
@@ -17,7 +17,7 @@ class AdminSettingsHandler(AdminBaseHandler):
             )
         return settings
 
-    def _save(self, key, value):
+    def _save(self, key: str, value: str) -> None:
         with get_connection() as conn:
             conn.execute(
                 "INSERT INTO sys_settings(key,value,updated_at) VALUES(?,?,datetime('now')) "
@@ -25,7 +25,7 @@ class AdminSettingsHandler(AdminBaseHandler):
                 (key, value),
             )
 
-    def get(self):
+    def get(self) -> None:
         settings = self._load_settings()
         self.render(
             "admin/settings.html",
@@ -35,7 +35,7 @@ class AdminSettingsHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         if action == "test_db":
             self.set_header("Content-Type", "application/json")

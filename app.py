@@ -77,7 +77,7 @@ def _resolve_cookie_secret() -> str:
     )
 
 
-def app():
+def app() -> tornado.web.Application:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
     cookie_secret = _resolve_cookie_secret()

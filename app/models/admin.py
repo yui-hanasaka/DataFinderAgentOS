@@ -17,11 +17,11 @@ def _like(keyword: str) -> str:
 
 
 class AdminRepository:
-    MAX_FAILED_ATTEMPTS = 5
-    LOCK_DURATION_MINUTES = 15
+    MAX_FAILED_ATTEMPTS: int = 5
+    LOCK_DURATION_MINUTES: int = 15
 
     @staticmethod
-    def get_admin_by_username(username: str):
+    def get_admin_by_username(username: str) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 """SELECT
@@ -99,7 +99,9 @@ class AdminRepository:
         return pwd_ok
 
     @staticmethod
-    def list_roles(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):
+    def list_roles(
+        keyword: str = "", page: int = 1, per_page: int = PER_PAGE
+    ) -> tuple[list[sqlite3.Row], int]:
         where = ""
         params = []
         if keyword.strip():
@@ -120,14 +122,14 @@ class AdminRepository:
         return rows, total
 
     @staticmethod
-    def list_all_roles():
+    def list_all_roles() -> list[sqlite3.Row]:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM admin_roles WHERE status='enabled' ORDER BY is_system DESC, id ASC"
             ).fetchall()
 
     @staticmethod
-    def get_role(role_id: int):
+    def get_role(role_id: int) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM admin_roles WHERE id=?", (role_id,)
@@ -135,8 +137,12 @@ class AdminRepository:
 
     @staticmethod
     def create_role(
-        role_code: str, role_name: str, role_type: str, description: str, menu_ids
-    ):
+        role_code: str,
+        role_name: str,
+        role_type: str,
+        description: str,
+        menu_ids: list[str],
+    ) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 cur = conn.execute(
@@ -159,8 +165,8 @@ class AdminRepository:
         role_type: str,
         description: str,
         status: str,
-        menu_ids,
-    ):
+        menu_ids: list[str],
+    ) -> tuple[bool, str | None]:
         with get_connection() as conn:
             role = conn.execute(
                 "SELECT is_system FROM admin_roles WHERE id=?", (role_id,)
@@ -180,7 +186,7 @@ class AdminRepository:
         return True, None
 
     @staticmethod
-    def delete_role(role_id: int):
+    def delete_role(role_id: int) -> tuple[bool, str | None]:
         with get_connection() as conn:
             role = conn.execute(
                 "SELECT is_system FROM admin_roles WHERE id=?", (role_id,)
@@ -199,7 +205,9 @@ class AdminRepository:
         return True, None
 
     @staticmethod
-    def list_menus(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):
+    def list_menus(
+        keyword: str = "", page: int = 1, per_page: int = PER_PAGE
+    ) -> tuple[list[sqlite3.Row], int]:
         where = ""
         params = []
         if keyword.strip():
@@ -222,14 +230,14 @@ class AdminRepository:
         return rows, total
 
     @staticmethod
-    def list_all_menus():
+    def list_all_menus() -> list[sqlite3.Row]:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM admin_menus WHERE status='enabled' ORDER BY sort_order ASC, id ASC"
             ).fetchall()
 
     @staticmethod
-    def get_menu(menu_id: int):
+    def get_menu(menu_id: int) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM admin_menus WHERE id=?", (menu_id,)
@@ -243,7 +251,7 @@ class AdminRepository:
         url: str,
         sort_order: int,
         parent_id: int = 0,
-    ):
+    ) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 conn.execute(
@@ -264,7 +272,7 @@ class AdminRepository:
         sort_order: int,
         status: str,
         parent_id: int = 0,
-    ):
+    ) -> tuple[bool, str | None]:
         with get_connection() as conn:
             conn.execute(
                 """UPDATE admin_menus
@@ -276,7 +284,7 @@ class AdminRepository:
         return True, None
 
     @staticmethod
-    def delete_menu(menu_id: int):
+    def delete_menu(menu_id: int) -> tuple[bool, str | None]:
         with get_connection() as conn:
             children = conn.execute(
                 "SELECT count(*) FROM admin_menus WHERE parent_id=?", (menu_id,)
@@ -288,7 +296,7 @@ class AdminRepository:
         return True, None
 
     @staticmethod
-    def get_role_menu_ids(role_id: int):
+    def get_role_menu_ids(role_id: int) -> list[int]:
         with get_connection() as conn:
             rows = conn.execute(
                 "SELECT menu_id FROM admin_role_menus WHERE role_id=?", (role_id,)
@@ -296,7 +304,9 @@ class AdminRepository:
         return [row["menu_id"] for row in rows]
 
     @staticmethod
-    def _replace_role_menus(conn, role_id: int, menu_ids):
+    def _replace_role_menus(
+        conn: sqlite3.Connection, role_id: int, menu_ids: list[str]
+    ) -> None:
         conn.execute("DELETE FROM admin_role_menus WHERE role_id=?", (role_id,))
         ids = [
             (role_id, int(menu_id)) for menu_id in menu_ids if str(menu_id).isdigit()
@@ -308,7 +318,9 @@ class AdminRepository:
             )
 
     @staticmethod
-    def list_users(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):
+    def list_users(
+        keyword: str = "", page: int = 1, per_page: int = PER_PAGE
+    ) -> tuple[list[sqlite3.Row], int]:
         where = ""
         params = []
         if keyword.strip():
@@ -333,7 +345,7 @@ class AdminRepository:
         return rows, total
 
     @staticmethod
-    def get_user(user_id: int):
+    def get_user(user_id: int) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT id, username, display_name, role_id, is_super, status FROM admin_users WHERE id=?",
@@ -343,7 +355,7 @@ class AdminRepository:
     @staticmethod
     def create_user(
         username: str, password: str, display_name: str, role_id: int, status: str
-    ):
+    ) -> tuple[bool, str | None]:
         if not password or len(password) < 8:
             return False, "密码长度不能少于8位"
         if username and username.lower() in password.lower():
@@ -370,7 +382,7 @@ class AdminRepository:
     @staticmethod
     def update_user(
         user_id: int, display_name: str, role_id: int, status: str, password: str = ""
-    ):
+    ) -> tuple[bool, str | None]:
         with get_connection() as conn:
             user = conn.execute(
                 "SELECT username, is_super FROM admin_users WHERE id=?", (user_id,)
@@ -421,7 +433,7 @@ class AdminRepository:
         return {row["url"] for row in rows}
 
     @staticmethod
-    def delete_user(user_id: int):
+    def delete_user(user_id: int) -> tuple[bool, str | None]:
         with get_connection() as conn:
             user = conn.execute(
                 "SELECT username FROM admin_users WHERE id=?", (user_id,)

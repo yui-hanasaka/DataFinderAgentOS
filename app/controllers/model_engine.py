@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.errors import log_error
@@ -8,7 +9,7 @@ from app.models.rate_limit import check_rate_limit
 
 
 class AdminModelEngineHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         models, total = ModelRepository.list_models(keyword, page)
@@ -40,7 +41,7 @@ class AdminModelEngineHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         model_id = self.get_body_argument("id", "")
         if action == "delete" and model_id.isdigit():
@@ -82,7 +83,7 @@ class AdminModelEngineHandler(AdminBaseHandler):
 
 
 class AdminModelTestHandler(AdminBaseHandler):
-    def get(self, model_id):
+    def get(self, model_id: str) -> None:
         model = ModelRepository.get_model(int(model_id)) if model_id.isdigit() else None
         if not model:
             return self.redirect("/admin/models")
@@ -97,7 +98,7 @@ class AdminModelTestHandler(AdminBaseHandler):
 
 
 class AdminModelChatHandler(AdminBaseHandler):
-    async def post(self, model_id):
+    async def post(self, model_id: str) -> None:
         if not check_rate_limit(f"admin_model_chat:{self.current_user}", 30, 60):
             self.set_status(429)
             return self.write({"error": "请求过于频繁，请稍后再试"})
@@ -139,35 +140,53 @@ class AdminModelChatHandler(AdminBaseHandler):
             self.set_status(502)
             self.write({"error": "模型调用失败，请稍后重试"})
 
-    async def _sync_response(self, model, messages):
+    async def _sync_response(
+        self, model: dict[str, Any], messages: list[dict[str, str]]
+    ) -> None:
+        model_id: int = int(model["id"])
+        base_url: str = str(model["base_url"])
+        api_key: str = str(model["api_key"])
+        model_name: str = str(model["model_id"])
+        temperature: float = float(model["temperature"])
+        max_tokens: int = int(model["max_tokens"])
         resp = await chat_complete(
-            model["base_url"],
-            model["api_key"],
-            model["model_id"],
+            base_url,
+            api_key,
+            model_name,
             messages,
-            temperature=model["temperature"],
-            max_tokens=model["max_tokens"],
+            temperature=temperature,
+            max_tokens=max_tokens,
             stream=False,
         )
         raw = await resp.aread()
         parsed = parse_chat_response(raw)
         ModelRepository.record_usage(
-            model["id"], parsed["prompt_tokens"], parsed["completion_tokens"]
+            model_id,
+            int(parsed["prompt_tokens"]),
+            int(parsed["completion_tokens"]),
         )
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write(parsed)
 
-    async def _stream_response(self, model, messages):
+    async def _stream_response(
+        self, model: dict[str, Any], messages: list[dict[str, str]]
+    ) -> None:
+        model_id: int = int(model["id"])
+        base_url: str = str(model["base_url"])
+        api_key: str = str(model["api_key"])
+        model_name: str = str(model["model_id"])
+        temperature: float = float(model["temperature"])
+        max_tokens: int = int(model["max_tokens"])
         self.set_header("Content-Type", "text/event-stream; charset=utf-8")
         self.set_header("Cache-Control", "no-cache")
         self.set_header("X-Accel-Buffering", "no")
         resp = await chat_complete(
-            model["base_url"],
-            model["api_key"],
-            model["model_id"],
+            base_url,
+            api_key,
+            model_name,
             messages,
-            temperature=model["temperature"],
-            max_tokens=model["max_tokens"],
+            temperature=temperature,
+            max_tokens=max_tokens,
             stream=True,
         )
         prompt_tokens = 0
@@ -188,6 +207,6 @@ class AdminModelChatHandler(AdminBaseHandler):
                 + "\n\n"
             )
             await self.flush()
-        ModelRepository.record_usage(model["id"], prompt_tokens, completion_tokens)
+        ModelRepository.record_usage(model_id, prompt_tokens, completion_tokens)
         self.write("data: [DONE]\n\n")
         await self.flush()

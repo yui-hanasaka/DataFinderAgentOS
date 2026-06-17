@@ -5,7 +5,7 @@ PER_PAGE = 20
 
 
 class AdminSessionMgrHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         sessions, total = ChatRepository.list_all_sessions(page, PER_PAGE)
@@ -21,7 +21,7 @@ class AdminSessionMgrHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         sess_id = self.get_body_argument("id", "")
         if action == "delete" and sess_id.isdigit():
@@ -31,7 +31,7 @@ class AdminSessionMgrHandler(AdminBaseHandler):
 
 
 class AdminConversationDetailHandler(AdminBaseHandler):
-    def get(self, session_id):
+    def get(self, session_id: str) -> None:
         session = ChatRepository.get_session(int(session_id))
         if not session:
             return self.redirect("/admin/sessions")

@@ -12,15 +12,15 @@ from app.models.skill_dispatcher import dispatch
 
 
 class ChatBaseHandler(BaseHandler):
-    def get_current_user(self):
+    def get_current_user(self) -> str | None:
         raw = self.get_secure_cookie("username")
         return raw.decode("utf-8") if raw else None
 
-    def prepare(self):
+    def prepare(self) -> None:
         if not self.current_user:
             return self.redirect("/user/login")
 
-    def _user_id(self):
+    def _user_id(self) -> int:
         with get_connection() as conn:
             row = conn.execute(
                 "SELECT id FROM users WHERE username=?", (self.current_user,)
@@ -29,7 +29,7 @@ class ChatBaseHandler(BaseHandler):
 
 
 class ChatHomeHandler(ChatBaseHandler):
-    def get(self):
+    def get(self) -> None:
         user_id = self._user_id()
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         employees = EmployeeRepository.list_all_active()
@@ -46,7 +46,7 @@ class ChatHomeHandler(ChatBaseHandler):
 
 
 class ChatSessionHandler(ChatBaseHandler):
-    def get(self, session_id):
+    def get(self, session_id: str) -> None:
         user_id = self._user_id()
         session = ChatRepository.get_session(int(session_id))
         if not session or session["user_id"] != user_id:
@@ -67,24 +67,25 @@ class ChatSessionHandler(ChatBaseHandler):
 
 
 class ChatNewHandler(ChatBaseHandler):
-    def get(self):
+    def get(self) -> None:
         user_id = self._user_id()
         employee_id = int(self.get_query_argument("employee_id", "0") or 0)
         sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
         self.redirect(f"/chat/session/{sess_id}")
 
-    def post(self):
+    def post(self) -> None:
         user_id = self._user_id()
         if not check_rate_limit(f"chat_new:user:{user_id}", 10, 60):
             self.set_status(429)
-            return self.finish("请求过于频繁，请稍后再试")
+            self.write("请求过于频繁，请稍后再试")
+            return
         employee_id = int(self.get_body_argument("employee_id", "0") or 0)
         sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
         self.redirect(f"/chat/session/{sess_id}")
 
 
 class ChatDeleteHandler(ChatBaseHandler):
-    def post(self, session_id):
+    def post(self, session_id: str) -> None:
         user_id = self._user_id()
         session = ChatRepository.get_session(int(session_id))
         if session and session["user_id"] == user_id:
@@ -93,7 +94,7 @@ class ChatDeleteHandler(ChatBaseHandler):
 
 
 class ChatBatchDeleteHandler(ChatBaseHandler):
-    def post(self):
+    def post(self) -> None:
         user_id = self._user_id()
         try:
             payload = json.loads(self.request.body or b"{}")
@@ -114,7 +115,7 @@ class ChatBatchDeleteHandler(ChatBaseHandler):
 
 
 class ChatSendHandler(ChatBaseHandler):
-    def _get_api_keys(self):
+    def _get_api_keys(self) -> dict[str, str]:
         from app.models.secrets_store import decrypt
 
         with get_connection() as conn:
@@ -123,7 +124,7 @@ class ChatSendHandler(ChatBaseHandler):
             ).fetchall()
         return {r["api_type"]: decrypt(r["api_key"]) for r in rows}
 
-    async def post(self, session_id):
+    async def post(self, session_id: str) -> None:
         user_id = self._user_id()
         key = f"chat_send:user:{user_id}"
         if not check_rate_limit(key, 30, 60):
@@ -263,7 +264,7 @@ class ChatSendHandler(ChatBaseHandler):
 
 
 class ChatExportHandler(ChatBaseHandler):
-    def get(self, session_id):
+    def get(self, session_id: str) -> None:
         user_id = self._user_id()
         session = ChatRepository.get_session(int(session_id))
         if not session or session["user_id"] != user_id:

@@ -6,7 +6,7 @@ from app.models.db import get_connection
 
 
 class AdminScreenHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         stats = _collect_stats()
         self.render(
             "admin/screen.html",
@@ -18,12 +18,12 @@ class AdminScreenHandler(AdminBaseHandler):
 
 
 class ScreenDataApiHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         self.set_header("Content-Type", "application/json")
         self.write(json.dumps(_collect_stats()))
 
 
-def _collect_stats():
+def _collect_stats() -> dict[str, object]:
     with get_connection() as conn:
         user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         msg_count = conn.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]

@@ -5,7 +5,7 @@ import tornado.web
 
 
 class BaseHandler(tornado.web.RequestHandler):
-    def get_current_user(self):
+    def get_current_user(self) -> str | None:
         username = self.get_secure_cookie("username")
         if not username:
             return None

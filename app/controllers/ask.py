@@ -9,17 +9,17 @@ from app.models.warehouse import WarehouseRepository
 
 
 class AskBaseHandler(BaseHandler):
-    def get_current_user(self):
+    def get_current_user(self) -> str | None:
         raw = self.get_secure_cookie("username")
         return raw.decode("utf-8") if raw else None
 
-    def prepare(self):
+    def prepare(self) -> None:
         if not self.current_user:
             return self.redirect("/user/login")
 
 
 class AskHomeHandler(AskBaseHandler):
-    def get(self):
+    def get(self) -> None:
         self.render(
             "web/ask.html",
             title="问数",
@@ -92,13 +92,13 @@ _PUBLIC_TABLES = {
 
 
 class AskQueryHandler(AskBaseHandler):
-    def _public_schema_hint(self):
+    def _public_schema_hint(self) -> str:
         hints = []
         for table, cols in _PUBLIC_TABLES.items():
             hints.append(f"{table}({', '.join(cols)})")
         return "; ".join(hints)
 
-    async def post(self):
+    async def post(self) -> None:
         key = f"ask_query:ip:{self.request.remote_ip}"
         if not check_rate_limit(key, 20, 60):
             self.set_status(429)
@@ -137,7 +137,7 @@ class AskQueryHandler(AskBaseHandler):
             )
             raw = await resp.aread()
             parsed = parse_chat_response(raw)
-            sql = parsed.get("content", "").strip()
+            sql = str(parsed.get("content", "")).strip()
             # Strip markdown code fences if present
             if sql.startswith("```"):
                 sql = sql.split("\n", 1)[-1].rsplit("```", 1)[0].strip()

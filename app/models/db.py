@@ -1,12 +1,13 @@
 import os
 import sqlite3
+from pathlib import Path
 
 from app.models.crypto import hash_password, new_salt
 
 
-def _project_root():
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+def _project_root() -> Path:
+    return Path(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
     )
 
 
@@ -16,7 +17,7 @@ DB_PATH = os.environ.get(
 )
 
 
-def get_connection():
+def get_connection() -> sqlite3.Connection:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -27,7 +28,7 @@ def get_connection():
 # ── Table initialisers ──────────────────────────────────────────
 
 
-def _init_users_table(conn):
+def _init_users_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS users(
@@ -41,7 +42,7 @@ def _init_users_table(conn):
     )
 
 
-def _init_admin_tables(conn):
+def _init_admin_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS admin_roles(
@@ -108,7 +109,7 @@ def _init_admin_tables(conn):
     )
 
 
-def _ensure_admin_role_columns(conn):
+def _ensure_admin_role_columns(conn: sqlite3.Connection) -> None:
     columns = [
         row["name"] for row in conn.execute("PRAGMA table_info(admin_roles)").fetchall()
     ]
@@ -118,7 +119,7 @@ def _ensure_admin_role_columns(conn):
         )
 
 
-def _ensure_admin_user_columns(conn):
+def _ensure_admin_user_columns(conn: sqlite3.Connection) -> None:
     columns = [
         row["name"] for row in conn.execute("PRAGMA table_info(admin_users)").fetchall()
     ]
@@ -132,7 +133,7 @@ def _ensure_admin_user_columns(conn):
             conn.execute(f"ALTER TABLE admin_users ADD COLUMN {col} {col_def}")
 
 
-def _seed_admin_data(conn):
+def _seed_admin_data(conn: sqlite3.Connection) -> None:
     _ensure_admin_role_columns(conn)
     _ensure_admin_user_columns(conn)
     conn.execute(
@@ -234,7 +235,7 @@ def _seed_admin_data(conn):
         )
 
 
-def _init_model_tables(conn):
+def _init_model_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS ai_models(
@@ -271,7 +272,7 @@ def _init_model_tables(conn):
     )
 
 
-def _init_business_tables(conn):
+def _init_business_tables(conn: sqlite3.Connection) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS digital_employees(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -460,7 +461,7 @@ def _init_business_tables(conn):
     """)
 
 
-def _seed_business_data(conn):
+def _seed_business_data(conn: sqlite3.Connection) -> None:
     builtin_skills = [
         ("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
         ("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
@@ -499,7 +500,7 @@ def _seed_business_data(conn):
 # ── Migration runner ────────────────────────────────────────────
 
 
-def _ensure_schema_migrations(conn):
+def _ensure_schema_migrations(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS schema_migrations(
@@ -510,7 +511,7 @@ def _ensure_schema_migrations(conn):
     )
 
 
-def _migrate(conn, version: str, sql: str) -> None:
+def _migrate(conn: sqlite3.Connection, version: str, sql: str) -> None:
     cur = conn.execute("SELECT 1 FROM schema_migrations WHERE version=?", (version,))
     if cur.fetchone():
         return
@@ -541,7 +542,7 @@ def _migrate(conn, version: str, sql: str) -> None:
     )
 
 
-def _run_migrations(conn):
+def _run_migrations(conn: sqlite3.Connection) -> None:
     _ensure_schema_migrations(conn)
 
     # v1 — ensure foreign-key columns on existing tables
@@ -635,7 +636,7 @@ def _run_migrations(conn):
         conn.execute(sql)
 
 
-def init_db():
+def init_db() -> None:
     with get_connection() as conn:
         _init_users_table(conn)
         _init_admin_tables(conn)

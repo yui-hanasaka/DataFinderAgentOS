@@ -5,7 +5,7 @@ PER_PAGE = 20
 
 
 class AdminSkillHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         skills, total = SkillRepository.list_skills(keyword, page)
@@ -26,7 +26,7 @@ class AdminSkillHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         skill_id = self.get_body_argument("id", "")
         if action == "delete" and skill_id.isdigit():
@@ -39,14 +39,17 @@ class AdminSkillHandler(AdminBaseHandler):
         skill_type = self.get_body_argument("skill_type", "builtin")
         config_json = self.get_body_argument("config_json", "{}").strip()
         status = self.get_body_argument("status", "enabled")
+        data: dict[str, object] = {
+            "code": code,
+            "name": name,
+            "skill_type": skill_type,
+            "config_json": config_json,
+            "status": status,
+        }
         if skill_id.isdigit():
-            ok, msg = SkillRepository.update_skill(
-                int(skill_id), name, skill_type, config_json, status
-            )
+            ok, msg = SkillRepository.update_skill(int(skill_id), data)
             return self._redirect_with_message(
                 "/admin/skills", msg or "已更新" if ok else msg
             )
-        ok, msg = SkillRepository.create_skill(
-            code, name, skill_type, config_json, status
-        )
+        ok, msg = SkillRepository.create_skill(data)
         self._redirect_with_message("/admin/skills", msg or "已新增" if ok else msg)

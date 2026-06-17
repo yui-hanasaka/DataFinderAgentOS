@@ -6,47 +6,50 @@ from app.models.rate_limit import check_rate_limit
 
 
 class AdminLoginHandler(BaseHandler):
-    def get(self):
+    def get(self) -> None:
         if self.get_secure_cookie("admin_username"):
-            return self.redirect("/admin/home")
+            self.redirect("/admin/home")
+            return
         self.render("admin/login.html", title="后台登录", error=None)
 
-    def post(self):
+    def post(self) -> None:
         ip = self.request.remote_ip
         if not check_rate_limit(f"admin_login:{ip}", 10, 600):
             self.set_status(429)
-            return self.render(
+            self.render(
                 "admin/login.html", title="后台登录", error="请求过于频繁，请稍后再试"
             )
+            return
 
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
         if not AdminRepository.verify_admin(username, password):
             self.set_status(401)
-            return self.render(
-                "admin/login.html", title="后台登录", error="用户名或密码错误"
-            )
+            self.render("admin/login.html", title="后台登录", error="用户名或密码错误")
+            return
 
         self.set_auth_cookie("admin_username", username)
 
         # H1: redirect to change-password if required
         admin_row = AdminRepository.get_admin_by_username(username)
         if admin_row and admin_row["must_change_password"]:
-            return self.redirect("/admin/change-password")
+            self.redirect("/admin/change-password")
+            return
 
         self.redirect("/admin/home")
 
 
 class AdminBaseHandler(BaseHandler):
-    def get_current_user(self):
+    def get_current_user(self) -> str | None:
         admin_username = self.get_secure_cookie("admin_username")
         if not admin_username:
             return None
         return admin_username.decode("utf-8")
 
-    def prepare(self):
+    def prepare(self) -> None:
         if not self.current_user:
-            return self.redirect("/admin/login")
+            self.redirect("/admin/login")
+            return
 
         # RBAC: check route permission unless super admin
         path = self.request.path
@@ -57,7 +60,8 @@ class AdminBaseHandler(BaseHandler):
 
         admin_row = AdminRepository.get_admin_by_username(self.current_user)
         if not admin_row:
-            return self.redirect("/admin/login")
+            self.redirect("/admin/login")
+            return
 
         # Super admin bypasses all checks
         if admin_row["is_super"]:
@@ -67,28 +71,29 @@ class AdminBaseHandler(BaseHandler):
         allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
         if not any(re.fullmatch(pattern, path) for pattern in allowed_urls):
             self.set_status(403)
-            return self.finish(
+            self.finish(
                 "<h3>403 · 无权限访问</h3><p>请联系超级管理员分配功能权限。</p>"
             )
+            return
 
-    def _page(self):
+    def _page(self) -> int:
         try:
             return max(int(self.get_query_argument("page", "1")), 1)
         except ValueError:
             return 1
 
-    def _message(self):
+    def _message(self) -> str:
         return self.get_query_argument("msg", "")
 
-    def _redirect_with_message(self, url, message):
+    def _redirect_with_message(self, url: str, message: str | None) -> None:
         import urllib.parse
 
-        encoded = urllib.parse.quote(message, safe="")
+        encoded = urllib.parse.quote(message or "", safe="")
         self.redirect(f"{url}?msg={encoded}")
 
 
 class AdminHomeHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         from app.models.db import get_connection
         from app.models.model_engine import ModelRepository
 
@@ -122,13 +127,13 @@ class AdminHomeHandler(AdminBaseHandler):
 
 
 class AdminLogoutHandler(BaseHandler):
-    def post(self):
+    def post(self) -> None:
         self.clear_auth_cookie("admin_username")
         self.redirect("/admin/login")
 
 
 class AdminRoleHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         roles, total = AdminRepository.list_roles(keyword, page)
@@ -154,7 +159,7 @@ class AdminRoleHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         role_id = self.get_body_argument("id", "")
         if action == "delete" and role_id.isdigit():
@@ -188,7 +193,7 @@ class AdminRoleHandler(AdminBaseHandler):
 
 
 class AdminUserHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         users, total = AdminRepository.list_users(keyword, page)
@@ -210,7 +215,7 @@ class AdminUserHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         user_id = self.get_body_argument("id", "")
         if action == "delete" and user_id.isdigit():
@@ -242,7 +247,7 @@ class AdminUserHandler(AdminBaseHandler):
 
 
 class AdminMenuHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         menus, total = AdminRepository.list_menus(keyword, page)
@@ -264,7 +269,7 @@ class AdminMenuHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         menu_id = self.get_body_argument("id", "")
         if action == "delete" and menu_id.isdigit():

@@ -6,7 +6,7 @@ PER_PAGE = 20
 
 
 class AdminApiKeyHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         where = "WHERE name LIKE ? OR api_type LIKE ?" if keyword else ""
@@ -43,7 +43,7 @@ class AdminApiKeyHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         api_id = self.get_body_argument("id", "")
         if action == "delete" and api_id.isdigit():

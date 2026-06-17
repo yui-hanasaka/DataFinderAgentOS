@@ -5,7 +5,7 @@ from app.models.db import get_connection
 
 class SkillRepository:
     @staticmethod
-    def list_skills(keyword="", page=1):
+    def list_skills(keyword: str = "", page: int = 1) -> tuple[list[sqlite3.Row], int]:
         per_page = 20
         offset = (page - 1) * per_page
         like = f"%{keyword}%"
@@ -21,50 +21,62 @@ class SkillRepository:
         return rows, total
 
     @staticmethod
-    def list_all_active():
+    def list_all_active() -> list[sqlite3.Row]:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM skills WHERE status='enabled' ORDER BY id ASC"
             ).fetchall()
 
     @staticmethod
-    def get_skill(skill_id):
+    def get_skill(skill_id: int) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute(
                 "SELECT * FROM skills WHERE id=?", (skill_id,)
             ).fetchone()
 
     @staticmethod
-    def get_skill_by_code(code):
+    def get_skill_by_code(code: str) -> sqlite3.Row | None:
         with get_connection() as conn:
             return conn.execute("SELECT * FROM skills WHERE code=?", (code,)).fetchone()
 
     @staticmethod
-    def create_skill(code, name, skill_type, config_json, status):
+    def create_skill(data: dict[str, object]) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 conn.execute(
                     "INSERT INTO skills(code, name, skill_type, config_json, status) VALUES(?,?,?,?,?)",
-                    (code, name, skill_type, config_json, status),
+                    (
+                        data["code"],
+                        data["name"],
+                        data["skill_type"],
+                        data["config_json"],
+                        data["status"],
+                    ),
                 )
             return True, None
         except sqlite3.IntegrityError as e:
             return False, str(e)
 
     @staticmethod
-    def update_skill(skill_id, name, skill_type, config_json, status):
+    def update_skill(skill_id: int, data: dict[str, object]) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 conn.execute(
                     "UPDATE skills SET name=?, skill_type=?, config_json=?, status=? WHERE id=?",
-                    (name, skill_type, config_json, status, skill_id),
+                    (
+                        data["name"],
+                        data["skill_type"],
+                        data["config_json"],
+                        data["status"],
+                        skill_id,
+                    ),
                 )
             return True, None
         except Exception as e:
             return False, str(e)
 
     @staticmethod
-    def delete_skill(skill_id):
+    def delete_skill(skill_id: int) -> tuple[bool, str | None]:
         try:
             with get_connection() as conn:
                 conn.execute("DELETE FROM skills WHERE id=?", (skill_id,))

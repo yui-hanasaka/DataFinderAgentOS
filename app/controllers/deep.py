@@ -5,7 +5,7 @@ PER_PAGE = 20
 
 
 class AdminDeepHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         page = self._page()
         with get_connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM deep_tasks").fetchone()[0]
@@ -25,7 +25,7 @@ class AdminDeepHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         task_id = self.get_body_argument("id", "")
         if action == "delete" and task_id.isdigit():

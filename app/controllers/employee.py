@@ -8,7 +8,7 @@ PER_PAGE = 20
 
 
 class AdminEmployeeHandler(AdminBaseHandler):
-    def get(self):
+    def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         employees, total = EmployeeRepository.list_employees(keyword, page)
@@ -43,7 +43,7 @@ class AdminEmployeeHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self):
+    def post(self) -> None:
         action = self.get_body_argument("action", "")
         emp_id = self.get_body_argument("id", "")
         if action == "delete" and emp_id.isdigit():
@@ -59,12 +59,27 @@ class AdminEmployeeHandler(AdminBaseHandler):
         status = self.get_body_argument("status", "enabled")
         if emp_id.isdigit():
             ok, msg = EmployeeRepository.update_employee(
-                int(emp_id), name, avatar, model_id, system_prompt, skills_list, status
+                int(emp_id),
+                {
+                    "name": name,
+                    "avatar": avatar,
+                    "model_id": model_id,
+                    "system_prompt": system_prompt,
+                    "skills_list": skills_list,
+                    "status": status,
+                },
             )
             return self._redirect_with_message(
                 "/admin/employees", msg or "已更新" if ok else msg
             )
         ok, msg = EmployeeRepository.create_employee(
-            name, avatar, model_id, system_prompt, skills_list, status
+            {
+                "name": name,
+                "avatar": avatar,
+                "model_id": model_id,
+                "system_prompt": system_prompt,
+                "skills_list": skills_list,
+                "status": status,
+            }
         )
         self._redirect_with_message("/admin/employees", msg or "已新增" if ok else msg)
