@@ -41,11 +41,22 @@
       <option value="{{ e["id"] }}" {% if e["id"] == current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
       {% end %}
     </select>
-    <h3>对话列表</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h3 style="margin:0">对话列表</h3>
+      <button id="btnBatch" style="background:none;border:1px solid #ccc;border-radius:4px;padding:2px 8px;font-size:.75rem;cursor:pointer;color:#666" onclick="toggleBatchMode()">批量管理</button>
+    </div>
+    <div id="batchBar" style="display:none;margin-bottom:6px;align-items:center;gap:6px">
+      <label style="font-size:.78rem;color:#666;cursor:pointer"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"> 全选</label>
+      <button style="background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;font-size:.75rem;cursor:pointer" onclick="batchDelete()">删除选中</button>
+      <button style="background:none;border:1px solid #ccc;border-radius:4px;padding:2px 8px;font-size:.75rem;cursor:pointer;color:#666" onclick="toggleBatchMode()">取消</button>
+    </div>
     <div class="session-list" id="sessionList">
       {% for s in sessions %}
       <div class="session-item {% if s["id"] == (current_session["id"] if current_session else -1) %}active{% end %}"
-           onclick="switchSession('{{ s["id"] }}')">{{ s["title"] or '无标题对话' }}</div>
+           onclick="sessionClick(event, '{{ s["id"] }}')">
+        <input type="checkbox" class="session-cb" value="{{ s['id'] }}" style="display:none;margin-right:6px" onclick="event.stopPropagation()">
+        <span>{{ s["title"] or '无标题对话' }}</span>
+      </div>
       {% end %}
     </div>
   </div>
@@ -152,6 +163,15 @@ async function send() {
   btn.disabled = false;
 }
 
+function sessionClick(e, id) {
+  if (batchMode) {
+    const cb = e.currentTarget.querySelector('.session-cb');
+    if (cb) { cb.checked = !cb.checked; }
+    return;
+  }
+  window.location.href = '/chat/session/' + id;
+}
+
 function switchSession(id) {
   window.location.href = '/chat/session/' + id;
 }
@@ -167,6 +187,35 @@ function switchEmployee(id) {
     headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
     body: JSON.stringify({employee_id: id})
   }).then(() => window.location.reload());
+}
+
+let batchMode = false;
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  document.querySelectorAll('.session-cb').forEach(cb => { cb.style.display = batchMode ? 'inline' : 'none'; cb.checked = false; });
+  document.getElementById('batchBar').style.display = batchMode ? 'flex' : 'none';
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('btnBatch').textContent = batchMode ? '完成' : '批量管理';
+}
+
+function toggleSelectAll() {
+  const checked = document.getElementById('selectAll').checked;
+  document.querySelectorAll('.session-cb').forEach(cb => { cb.checked = checked; });
+}
+
+function batchDelete() {
+  const ids = [];
+  document.querySelectorAll('.session-cb:checked').forEach(cb => { ids.push(parseInt(cb.value)); });
+  if (!ids.length) return alert('请至少选择一个对话');
+  if (!confirm('确认删除选中的 ' + ids.length + ' 个对话？此操作不可恢复。')) return;
+  fetch('/chat/batch-delete', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
+    body: JSON.stringify({ids: ids})
+  }).then(r => r.json()).then(data => {
+    if (data.ok) window.location.reload();
+    else alert(data.error);
+  }).catch(e => alert('删除失败：' + e.message));
 }
 </script>
 {% end %}
