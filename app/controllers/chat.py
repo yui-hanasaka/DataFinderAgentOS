@@ -1,6 +1,5 @@
 import json
 
-
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
@@ -119,11 +118,16 @@ class ChatSendHandler(ChatBaseHandler):
         dispatched = dispatch(user_text, self._get_api_keys())
 
         # Non-AI skill response (weather direct answer, music placeholder)
-        if dispatched["type"] == "skill" and dispatched["skill_code"] in ("weather", "music"):
+        if dispatched["type"] == "skill" and dispatched["skill_code"] in (
+            "weather",
+            "music",
+        ):
             reply = dispatched["processed_content"]
             ChatRepository.add_message(
-                int(session_id), "assistant", reply,
-                skill_meta=json.dumps(dispatched["skill_meta"])
+                int(session_id),
+                "assistant",
+                reply,
+                skill_meta=json.dumps(dispatched["skill_meta"]),
             )
             self.set_header("Content-Type", "text/event-stream; charset=utf-8")
             self.set_header("Cache-Control", "no-cache")
@@ -141,7 +145,9 @@ class ChatSendHandler(ChatBaseHandler):
         if not model_row:
             model_row = ModelRepository.get_default_model()
         if not model_row:
-            ChatRepository.add_message(int(session_id), "assistant", "未配置可用模型，请联系管理员。")
+            ChatRepository.add_message(
+                int(session_id), "assistant", "未配置可用模型，请联系管理员。"
+            )
             self.set_header("Content-Type", "text/event-stream; charset=utf-8")
             self.set_header("Cache-Control", "no-cache")
             self.write('data: {"content":"未配置可用模型，请联系管理员。"}\n\n')
@@ -175,31 +181,45 @@ class ChatSendHandler(ChatBaseHandler):
         full_reply = []
         try:
             resp = chat_complete(
-                model_row["base_url"], model_row["api_key"], model_row["model_id"],
-                messages, temperature=model_row["temperature"],
-                max_tokens=model_row["max_tokens"], stream=True
+                model_row["base_url"],
+                model_row["api_key"],
+                model_row["model_id"],
+                messages,
+                temperature=model_row["temperature"],
+                max_tokens=model_row["max_tokens"],
+                stream=True,
             )
             prompt_tokens = completion_tokens = 0
             for chunk in iter_sse_chunks(resp):
                 usage = chunk.get("usage") or {}
                 if usage:
-                    prompt_tokens = max(prompt_tokens, int(usage.get("prompt_tokens") or 0))
-                    completion_tokens = max(completion_tokens, int(usage.get("completion_tokens") or 0))
+                    prompt_tokens = max(
+                        prompt_tokens, int(usage.get("prompt_tokens") or 0)
+                    )
+                    completion_tokens = max(
+                        completion_tokens, int(usage.get("completion_tokens") or 0)
+                    )
                 delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
                 text = delta.get("content") or ""
                 if text:
                     full_reply.append(text)
                     self.write(f"data: {json.dumps({'content': text})}\n\n")
                     await self.flush()
-            ModelRepository.record_usage(model_row["id"], prompt_tokens, completion_tokens)
+            ModelRepository.record_usage(
+                model_row["id"], prompt_tokens, completion_tokens
+            )
         except Exception as ex:
             err_msg = f"模型调用失败：{ex}"
             full_reply.append(err_msg)
             self.write(f"data: {json.dumps({'content': err_msg})}\n\n")
 
         ChatRepository.add_message(
-            int(session_id), "assistant", "".join(full_reply),
-            skill_meta=json.dumps(dispatched["skill_meta"]) if dispatched["skill_meta"] else None
+            int(session_id),
+            "assistant",
+            "".join(full_reply),
+            skill_meta=json.dumps(dispatched["skill_meta"])
+            if dispatched["skill_meta"]
+            else None,
         )
         self.write("data: [DONE]\n\n")
         await self.flush()
@@ -213,19 +233,25 @@ class ChatExportHandler(ChatBaseHandler):
             return self.redirect("/chat")
         messages = ChatRepository.list_messages(int(session_id))
 
+        import os
         from io import BytesIO
+
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.units import cm
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
-        import os
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
         buf = BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4,
-                                leftMargin=2*cm, rightMargin=2*cm,
-                                topMargin=2*cm, bottomMargin=2*cm)
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            leftMargin=2 * cm,
+            rightMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+        )
 
         # Try to register Chinese font if available
         font_name = "Helvetica"
@@ -244,15 +270,35 @@ class ChatExportHandler(ChatBaseHandler):
                 break
 
         from reportlab.lib.colors import HexColor
-        title_style = ParagraphStyle("t", fontName=font_name, fontSize=16, spaceAfter=12)
-        user_style = ParagraphStyle("u", fontName=font_name, fontSize=10, textColor=HexColor("#1a73e8"), spaceAfter=4)
-        asst_style = ParagraphStyle("a", fontName=font_name, fontSize=10, textColor=HexColor("#333333"), spaceAfter=8)
 
-        story = [Paragraph(session["title"], title_style), Spacer(1, 0.3*cm)]
+        title_style = ParagraphStyle(
+            "t", fontName=font_name, fontSize=16, spaceAfter=12
+        )
+        user_style = ParagraphStyle(
+            "u",
+            fontName=font_name,
+            fontSize=10,
+            textColor=HexColor("#1a73e8"),
+            spaceAfter=4,
+        )
+        asst_style = ParagraphStyle(
+            "a",
+            fontName=font_name,
+            fontSize=10,
+            textColor=HexColor("#333333"),
+            spaceAfter=8,
+        )
+
+        story = [Paragraph(session["title"], title_style), Spacer(1, 0.3 * cm)]
         for m in messages:
             label = "用户：" if m["role"] == "user" else "助手："
             style = user_style if m["role"] == "user" else asst_style
-            text = (label + m["content"]).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            text = (
+                (label + m["content"])
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
             story.append(Paragraph(text, style))
         doc.build(story)
 

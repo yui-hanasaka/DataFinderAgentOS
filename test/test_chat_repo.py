@@ -4,6 +4,7 @@ import tempfile
 from collections.abc import Generator
 
 import pytest
+
 import app.models.db as db_module
 
 
@@ -13,8 +14,12 @@ def db_with_user() -> Generator[int, None, None]:
     db_module.DB_PATH = path
     db_module.init_db()
     with db_module.get_connection() as conn:
-        conn.execute("INSERT INTO users(username, password_hash, salt) VALUES('u1','h','s')")
-        uid: int = conn.execute("SELECT id FROM users WHERE username='u1'").fetchone()["id"]
+        conn.execute(
+            "INSERT INTO users(username, password_hash, salt) VALUES('u1','h','s')"
+        )
+        uid: int = conn.execute("SELECT id FROM users WHERE username='u1'").fetchone()[
+            "id"
+        ]
     yield uid
     gc.collect()
     try:
@@ -26,6 +31,7 @@ def db_with_user() -> Generator[int, None, None]:
 
 def test_create_and_get_session(db_with_user: int) -> None:
     from app.models.chat import ChatRepository
+
     sid, err = ChatRepository.create_session(db_with_user, 0, "测试对话")
     assert err is None and sid is not None
     sess = ChatRepository.get_session(sid)
@@ -35,6 +41,7 @@ def test_create_and_get_session(db_with_user: int) -> None:
 
 def test_add_and_list_messages(db_with_user: int) -> None:
     from app.models.chat import ChatRepository
+
     sid, _ = ChatRepository.create_session(db_with_user, 0, "t")
     assert sid is not None
     ChatRepository.add_message(sid, "user", "你好")
@@ -46,6 +53,7 @@ def test_add_and_list_messages(db_with_user: int) -> None:
 
 def test_delete_session_cascades(db_with_user: int) -> None:
     from app.models.chat import ChatRepository
+
     sid, _ = ChatRepository.create_session(db_with_user, 0, "del")
     assert sid is not None
     ChatRepository.add_message(sid, "user", "test")
@@ -56,6 +64,7 @@ def test_delete_session_cascades(db_with_user: int) -> None:
 
 def test_count_sessions(db_with_user: int) -> None:
     from app.models.chat import ChatRepository
+
     ChatRepository.create_session(db_with_user, 0, "s1")
     ChatRepository.create_session(db_with_user, 0, "s2")
     assert ChatRepository.count_all_sessions() >= 2

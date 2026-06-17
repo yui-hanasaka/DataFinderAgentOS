@@ -5,27 +5,29 @@ import sqlite3
 
 
 def _project_root():
-	return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+    )
 
 
 DB_PATH = os.path.join(_project_root(), "database", "app.db")
 
 
 def get_connection():
-	os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-	conn = sqlite3.connect(DB_PATH)
-	conn.row_factory = sqlite3.Row
-	return conn
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def _hash_password(password: str, salt: bytes) -> str:
-	dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
-	return dk.hex()
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
+    return dk.hex()
 
 
 def _init_users_table(conn):
-	conn.execute(
-		"""
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS users(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL UNIQUE,
@@ -34,12 +36,12 @@ def _init_users_table(conn):
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)
 		"""
-	)
+    )
 
 
 def _init_admin_tables(conn):
-	conn.execute(
-		"""
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS admin_roles(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			role_code TEXT NOT NULL UNIQUE,
@@ -52,9 +54,9 @@ def _init_admin_tables(conn):
 			updated_at TEXT
 		)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS admin_users(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL UNIQUE,
@@ -69,9 +71,9 @@ def _init_admin_tables(conn):
 			FOREIGN KEY(role_id) REFERENCES admin_roles(id)
 		)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS admin_menus(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			parent_id INTEGER NOT NULL DEFAULT 0,
@@ -85,9 +87,9 @@ def _init_admin_tables(conn):
 			updated_at TEXT
 		)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS admin_role_menus(
 			role_id INTEGER NOT NULL,
 			menu_id INTEGER NOT NULL,
@@ -97,86 +99,111 @@ def _init_admin_tables(conn):
 			FOREIGN KEY(menu_id) REFERENCES admin_menus(id)
 		)
 		"""
-	)
+    )
 
 
 def _ensure_admin_role_columns(conn):
-	columns = [row["name"] for row in conn.execute("PRAGMA table_info(admin_roles)").fetchall()]
-	if "role_type" not in columns:
-		conn.execute("ALTER TABLE admin_roles ADD COLUMN role_type TEXT NOT NULL DEFAULT 'manager'")
+    columns = [
+        row["name"] for row in conn.execute("PRAGMA table_info(admin_roles)").fetchall()
+    ]
+    if "role_type" not in columns:
+        conn.execute(
+            "ALTER TABLE admin_roles ADD COLUMN role_type TEXT NOT NULL DEFAULT 'manager'"
+        )
 
 
 def _seed_admin_data(conn):
-	_ensure_admin_role_columns(conn)
-	conn.execute(
-		"""
+    _ensure_admin_role_columns(conn)
+    conn.execute(
+        """
 		INSERT OR IGNORE INTO admin_roles(role_code, role_name, role_type, description, is_system)
 		VALUES('super_admin', '超级管理员', 'manager', '系统内置超级管理员角色，不允许删除和修改', 1)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		INSERT OR IGNORE INTO admin_roles(role_code, role_name, role_type, description, is_system)
 		VALUES('manager', '管理用户', 'manager', '后台管理侧普通管理角色，可按需分配菜单权限', 0)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		INSERT OR IGNORE INTO admin_roles(role_code, role_name, role_type, description, is_system)
 		VALUES('web_user', '普通用户', 'web_user', '前台用户侧访问角色', 1)
 		"""
-	)
-	conn.execute("update admin_roles set role_type='manager' where role_code in ('super_admin', 'manager')")
-	conn.execute("update admin_roles set role_type='web_user' where role_code='web_user'")
+    )
+    conn.execute(
+        "update admin_roles set role_type='manager' where role_code in ('super_admin', 'manager')"
+    )
+    conn.execute(
+        "update admin_roles set role_type='web_user' where role_code='web_user'"
+    )
 
-	menus = [
-		("dashboard", "后台主页", "⌂", "/admin/home", 10),
-		("user_manage", "用户管理", "👤", "", 20),
-		("role_manage", "角色管理", "🛡", "", 30),
-		("menu_manage", "功能管理", "▦", "", 40),
-		("model_engine", "模型引擎", "⚙", "", 50),
-		("skill_store", "技能仓库", "◇", "", 60),
-		("digital_staff", "数字员工", "🤖", "", 70),
-		("watch_collect", "瞭望采集", "⌁", "", 80),
-		("data_warehouse", "数据仓库", "▣", "", 90),
-		("deep_collect", "深度采集", "⌬", "", 100),
-		("smart_qa", "智能问数", "⌕", "", 110),
-		("smart_screen", "智能大屏", "◈", "", 120),
-	]
-	conn.executemany(
-		"""
+    menus = [
+        ("dashboard", "后台主页", "⌂", "/admin/home", 10),
+        ("user_manage", "用户管理", "👤", "", 20),
+        ("role_manage", "角色管理", "🛡", "", 30),
+        ("menu_manage", "功能管理", "▦", "", 40),
+        ("model_engine", "模型引擎", "⚙", "", 50),
+        ("skill_store", "技能仓库", "◇", "", 60),
+        ("digital_staff", "数字员工", "🤖", "", 70),
+        ("watch_collect", "瞭望采集", "⌁", "", 80),
+        ("data_warehouse", "数据仓库", "▣", "", 90),
+        ("deep_collect", "深度采集", "⌬", "", 100),
+        ("smart_qa", "智能问数", "⌕", "", 110),
+        ("smart_screen", "智能大屏", "◈", "", 120),
+    ]
+    conn.executemany(
+        """
 		INSERT OR IGNORE INTO admin_menus(menu_code, menu_name, icon, url, sort_order)
 		VALUES(?, ?, ?, ?, ?)
 		""",
-		menus
-	)
-	conn.execute("update admin_menus set url='/admin/users' where menu_code='user_manage'")
-	conn.execute("update admin_menus set url='/admin/roles' where menu_code='role_manage'")
-	conn.execute("update admin_menus set url='/admin/menus' where menu_code='menu_manage'")
+        menus,
+    )
+    conn.execute(
+        "update admin_menus set url='/admin/users' where menu_code='user_manage'"
+    )
+    conn.execute(
+        "update admin_menus set url='/admin/roles' where menu_code='role_manage'"
+    )
+    conn.execute(
+        "update admin_menus set url='/admin/menus' where menu_code='menu_manage'"
+    )
 
-	role = conn.execute("select id from admin_roles where role_code='super_admin'").fetchone()
-	if role:
-		menu_rows = conn.execute("select id from admin_menus").fetchall()
-		conn.executemany(
-			"INSERT OR IGNORE INTO admin_role_menus(role_id, menu_id) VALUES(?, ?)",
-			[(role["id"], row["id"]) for row in menu_rows]
-		)
+    role = conn.execute(
+        "select id from admin_roles where role_code='super_admin'"
+    ).fetchone()
+    if role:
+        menu_rows = conn.execute("select id from admin_menus").fetchall()
+        conn.executemany(
+            "INSERT OR IGNORE INTO admin_role_menus(role_id, menu_id) VALUES(?, ?)",
+            [(role["id"], row["id"]) for row in menu_rows],
+        )
 
-	admin_exists = conn.execute("select id from admin_users where username='admin'").fetchone()
-	if not admin_exists and role:
-		salt = secrets.token_bytes(16)
-		conn.execute(
-			"""
+    admin_exists = conn.execute(
+        "select id from admin_users where username='admin'"
+    ).fetchone()
+    if not admin_exists and role:
+        salt = secrets.token_bytes(16)
+        conn.execute(
+            """
 			INSERT INTO admin_users(username, password_hash, salt, display_name, role_id, is_super)
 			VALUES(?, ?, ?, ?, ?, ?)
 			""",
-			("admin", _hash_password("admin888", salt), salt.hex(), "超级管理员", role["id"], 1)
-		)
+            (
+                "admin",
+                _hash_password("admin888", salt),
+                salt.hex(),
+                "超级管理员",
+                role["id"],
+                1,
+            ),
+        )
 
 
 def _init_model_tables(conn):
-	conn.execute(
-		"""
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS ai_models(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL UNIQUE,
@@ -195,9 +222,9 @@ def _init_model_tables(conn):
 			updated_at TEXT
 		)
 		"""
-	)
-	conn.execute(
-		"""
+    )
+    conn.execute(
+        """
 		CREATE TABLE IF NOT EXISTS ai_model_usage(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			model_id INTEGER NOT NULL,
@@ -208,11 +235,11 @@ def _init_model_tables(conn):
 			FOREIGN KEY(model_id) REFERENCES ai_models(id)
 		)
 		"""
-	)
+    )
 
 
 def _init_business_tables(conn):
-	conn.executescript("""
+    conn.executescript("""
 		CREATE TABLE IF NOT EXISTS digital_employees(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL UNIQUE,
@@ -309,40 +336,46 @@ def _init_business_tables(conn):
 
 
 def _seed_business_data(conn):
-	builtin_skills = [
-		("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
-		("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
-		("campus", "西师妹校园助手", "builtin", '{"prefix": "@西师妹"}'),
-		("websearch", "网络搜索", "builtin", '{"prefix": "\\\\search"}'),
-	]
-	conn.executemany(
-		"INSERT OR IGNORE INTO skills(code, name, skill_type, config_json) VALUES(?,?,?,?)",
-		builtin_skills
-	)
-	default_employee = conn.execute("SELECT id FROM digital_employees WHERE name='智能助手'").fetchone()
-	if not default_employee:
-		conn.execute(
-			"""INSERT INTO digital_employees(name, avatar, system_prompt, skills)
+    builtin_skills = [
+        ("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
+        ("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
+        ("campus", "西师妹校园助手", "builtin", '{"prefix": "@西师妹"}'),
+        ("websearch", "网络搜索", "builtin", '{"prefix": "\\\\search"}'),
+    ]
+    conn.executemany(
+        "INSERT OR IGNORE INTO skills(code, name, skill_type, config_json) VALUES(?,?,?,?)",
+        builtin_skills,
+    )
+    default_employee = conn.execute(
+        "SELECT id FROM digital_employees WHERE name='智能助手'"
+    ).fetchone()
+    if not default_employee:
+        conn.execute(
+            """INSERT INTO digital_employees(name, avatar, system_prompt, skills)
 			   VALUES('智能助手', '🤖', '你是一个智能助手，请以专业、友善的方式回答用户问题。',
 			          '["weather","music","campus","websearch"]')"""
-		)
-	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('db_type', 'sqlite')")
-	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('site_name', 'DataFinder AgentOS')")
-	# seed a demo front-end user (demo / demo123) for quick testing
-	demo_exists = conn.execute("SELECT id FROM users WHERE username='demo'").fetchone()
-	if not demo_exists:
-		salt = secrets.token_bytes(16)
-		conn.execute(
-			"INSERT INTO users(username, password_hash, salt) VALUES(?,?,?)",
-			("demo", _hash_password("demo123", salt), salt.hex())
-		)
+        )
+    conn.execute(
+        "INSERT OR IGNORE INTO sys_settings(key, value) VALUES('db_type', 'sqlite')"
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO sys_settings(key, value) VALUES('site_name', 'DataFinder AgentOS')"
+    )
+    # seed a demo front-end user (demo / demo123) for quick testing
+    demo_exists = conn.execute("SELECT id FROM users WHERE username='demo'").fetchone()
+    if not demo_exists:
+        salt = secrets.token_bytes(16)
+        conn.execute(
+            "INSERT INTO users(username, password_hash, salt) VALUES(?,?,?)",
+            ("demo", _hash_password("demo123", salt), salt.hex()),
+        )
 
 
 def init_db():
-	with get_connection() as conn:
-		_init_users_table(conn)
-		_init_admin_tables(conn)
-		_seed_admin_data(conn)
-		_init_model_tables(conn)
-		_init_business_tables(conn)
-		_seed_business_data(conn)
+    with get_connection() as conn:
+        _init_users_table(conn)
+        _init_admin_tables(conn)
+        _seed_admin_data(conn)
+        _init_model_tables(conn)
+        _init_business_tables(conn)
+        _seed_business_data(conn)

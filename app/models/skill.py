@@ -1,19 +1,22 @@
 import sqlite3
+
 from app.models.db import get_connection
+
 
 class SkillRepository:
     @staticmethod
-    def list_skills(keyword='', page=1):
+    def list_skills(keyword="", page=1):
         per_page = 20
         offset = (page - 1) * per_page
-        like = f'%{keyword}%'
+        like = f"%{keyword}%"
         with get_connection() as conn:
             total = conn.execute(
-                "SELECT COUNT(*) FROM skills WHERE name LIKE ? OR code LIKE ?", (like, like)
+                "SELECT COUNT(*) FROM skills WHERE name LIKE ? OR code LIKE ?",
+                (like, like),
             ).fetchone()[0]
             rows = conn.execute(
                 "SELECT * FROM skills WHERE name LIKE ? OR code LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?",
-                (like, like, per_page, offset)
+                (like, like, per_page, offset),
             ).fetchall()
         return rows, total
 
@@ -27,7 +30,9 @@ class SkillRepository:
     @staticmethod
     def get_skill(skill_id):
         with get_connection() as conn:
-            return conn.execute("SELECT * FROM skills WHERE id=?", (skill_id,)).fetchone()
+            return conn.execute(
+                "SELECT * FROM skills WHERE id=?", (skill_id,)
+            ).fetchone()
 
     @staticmethod
     def get_skill_by_code(code):
@@ -40,7 +45,7 @@ class SkillRepository:
             with get_connection() as conn:
                 conn.execute(
                     "INSERT INTO skills(code, name, skill_type, config_json, status) VALUES(?,?,?,?,?)",
-                    (code, name, skill_type, config_json, status)
+                    (code, name, skill_type, config_json, status),
                 )
             return True, None
         except sqlite3.IntegrityError as e:
@@ -52,7 +57,7 @@ class SkillRepository:
             with get_connection() as conn:
                 conn.execute(
                     "UPDATE skills SET name=?, skill_type=?, config_json=?, status=? WHERE id=?",
-                    (name, skill_type, config_json, status, skill_id)
+                    (name, skill_type, config_json, status, skill_id),
                 )
             return True, None
         except Exception as e:

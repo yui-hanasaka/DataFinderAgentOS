@@ -8,7 +8,12 @@ from app.models.db import get_connection
 class AdminScreenHandler(AdminBaseHandler):
     def get(self):
         stats = _collect_stats()
-        self.render("admin/screen.html", title="数智大屏", username=self.current_user, stats=stats)
+        self.render(
+            "admin/screen.html",
+            title="数智大屏",
+            username=self.current_user,
+            stats=stats,
+        )
 
 
 class ScreenDataApiHandler(AdminBaseHandler):
@@ -48,9 +53,10 @@ def _collect_stats():
 
     # Simple word frequency for hot words
     import re
+
     word_freq: dict = {}
     for t in titles:
-        words = re.findall(r'[一-鿿]{2,6}|[a-zA-Z]{3,}', t["title"])
+        words = re.findall(r"[一-鿿]{2,6}|[a-zA-Z]{3,}", t["title"])
         for w in words:
             word_freq[w] = word_freq.get(w, 0) + 1
     hot_words = sorted(word_freq.items(), key=lambda x: -x[1])[:60]

@@ -1,11 +1,12 @@
 from app.models.db import get_connection
 
+
 class SourceRepository:
     @staticmethod
-    def list_sources(keyword='', page=1):
+    def list_sources(keyword="", page=1):
         per_page = 20
         offset = (page - 1) * per_page
-        like = f'%{keyword}%'
+        like = f"%{keyword}%"
         with get_connection() as conn:
             total = conn.execute(
                 "SELECT COUNT(*) FROM watchtower_sources WHERE name LIKE ?", (like,)
@@ -13,14 +14,16 @@ class SourceRepository:
             rows = conn.execute(
                 """SELECT s.*, (SELECT COUNT(*) FROM watchtower_items WHERE source_id=s.id) AS item_count
                    FROM watchtower_sources s WHERE s.name LIKE ? ORDER BY s.id DESC LIMIT ? OFFSET ?""",
-                (like, per_page, offset)
+                (like, per_page, offset),
             ).fetchall()
         return rows, total
 
     @staticmethod
     def get_source(src_id):
         with get_connection() as conn:
-            return conn.execute("SELECT * FROM watchtower_sources WHERE id=?", (src_id,)).fetchone()
+            return conn.execute(
+                "SELECT * FROM watchtower_sources WHERE id=?", (src_id,)
+            ).fetchone()
 
     @staticmethod
     def create_source(name, source_type, url, fetch_interval, status):
@@ -28,7 +31,7 @@ class SourceRepository:
             with get_connection() as conn:
                 conn.execute(
                     "INSERT INTO watchtower_sources(name, source_type, url, fetch_interval, status) VALUES(?,?,?,?,?)",
-                    (name, source_type, url, fetch_interval, status)
+                    (name, source_type, url, fetch_interval, status),
                 )
             return True, None
         except Exception as e:
@@ -40,7 +43,7 @@ class SourceRepository:
             with get_connection() as conn:
                 conn.execute(
                     "UPDATE watchtower_sources SET name=?, source_type=?, url=?, fetch_interval=?, status=? WHERE id=?",
-                    (name, source_type, url, fetch_interval, status, src_id)
+                    (name, source_type, url, fetch_interval, status, src_id),
                 )
             return True, None
         except Exception as e:
@@ -50,7 +53,9 @@ class SourceRepository:
     def delete_source(src_id):
         try:
             with get_connection() as conn:
-                conn.execute("DELETE FROM watchtower_items WHERE source_id=?", (src_id,))
+                conn.execute(
+                    "DELETE FROM watchtower_items WHERE source_id=?", (src_id,)
+                )
                 conn.execute("DELETE FROM watchtower_sources WHERE id=?", (src_id,))
             return True, None
         except Exception as e:
@@ -60,7 +65,8 @@ class SourceRepository:
     def mark_fetched(src_id):
         with get_connection() as conn:
             conn.execute(
-                "UPDATE watchtower_sources SET last_fetched=datetime('now') WHERE id=?", (src_id,)
+                "UPDATE watchtower_sources SET last_fetched=datetime('now') WHERE id=?",
+                (src_id,),
             )
 
 
@@ -71,7 +77,7 @@ class ItemRepository:
             cur = conn.execute(
                 """INSERT OR IGNORE INTO watchtower_items(source_id, title, content, url, published_at)
                    VALUES(?,?,?,?,?)""",
-                (source_id, title, content, url, published_at)
+                (source_id, title, content, url, published_at),
             )
             return cur.lastrowid
 
@@ -81,21 +87,24 @@ class ItemRepository:
         with get_connection() as conn:
             if source_id:
                 total = conn.execute(
-                    "SELECT COUNT(*) FROM watchtower_items WHERE source_id=?", (source_id,)
+                    "SELECT COUNT(*) FROM watchtower_items WHERE source_id=?",
+                    (source_id,),
                 ).fetchone()[0]
                 rows = conn.execute(
                     """SELECT i.*, s.name AS source_name FROM watchtower_items i
                        LEFT JOIN watchtower_sources s ON i.source_id=s.id
                        WHERE i.source_id=? ORDER BY i.id DESC LIMIT ? OFFSET ?""",
-                    (source_id, per_page, offset)
+                    (source_id, per_page, offset),
                 ).fetchall()
             else:
-                total = conn.execute("SELECT COUNT(*) FROM watchtower_items").fetchone()[0]
+                total = conn.execute(
+                    "SELECT COUNT(*) FROM watchtower_items"
+                ).fetchone()[0]
                 rows = conn.execute(
                     """SELECT i.*, s.name AS source_name FROM watchtower_items i
                        LEFT JOIN watchtower_sources s ON i.source_id=s.id
                        ORDER BY i.id DESC LIMIT ? OFFSET ?""",
-                    (per_page, offset)
+                    (per_page, offset),
                 ).fetchall()
         return rows, total
 
@@ -104,7 +113,7 @@ class ItemRepository:
         with get_connection() as conn:
             conn.execute(
                 "UPDATE watchtower_items SET sentiment=?, risk=? WHERE id=?",
-                (sentiment, risk, item_id)
+                (sentiment, risk, item_id),
             )
 
     @staticmethod
@@ -119,10 +128,12 @@ class ItemRepository:
                 """SELECT i.*, s.name AS source_name FROM watchtower_items i
                    LEFT JOIN watchtower_sources s ON i.source_id=s.id
                    ORDER BY i.id DESC LIMIT ?""",
-                (limit,)
+                (limit,),
             ).fetchall()
 
     @staticmethod
     def get_item(item_id):
         with get_connection() as conn:
-            return conn.execute("SELECT * FROM watchtower_items WHERE id=?", (item_id,)).fetchone()
+            return conn.execute(
+                "SELECT * FROM watchtower_items WHERE id=?", (item_id,)
+            ).fetchone()

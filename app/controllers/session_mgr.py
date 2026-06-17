@@ -3,14 +3,23 @@ from app.models.chat import ChatRepository
 
 PER_PAGE = 20
 
+
 class AdminSessionMgrHandler(AdminBaseHandler):
     def get(self):
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
         sessions, total = ChatRepository.list_all_sessions(page, PER_PAGE)
-        self.render("admin/sessions.html", title="会话管理", username=self.current_user,
-                    sessions=sessions, total=total, page=page, per_page=PER_PAGE,
-                    keyword=keyword, msg=self._message())
+        self.render(
+            "admin/sessions.html",
+            title="会话管理",
+            username=self.current_user,
+            sessions=sessions,
+            total=total,
+            page=page,
+            per_page=PER_PAGE,
+            keyword=keyword,
+            msg=self._message(),
+        )
 
     def post(self):
         action = self.get_body_argument("action", "")
@@ -27,5 +36,10 @@ class AdminConversationDetailHandler(AdminBaseHandler):
         if not session:
             return self.redirect("/admin/sessions")
         messages = ChatRepository.list_messages(int(session_id))
-        self.render("admin/conversations.html", title="对话详情", username=self.current_user,
-                    session=session, messages=messages)
+        self.render(
+            "admin/conversations.html",
+            title="对话详情",
+            username=self.current_user,
+            session=session,
+            messages=messages,
+        )

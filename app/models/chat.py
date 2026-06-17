@@ -1,5 +1,6 @@
 from app.models.db import get_connection
 
+
 class ChatRepository:
     @staticmethod
     def create_session(user_id, employee_id, title):
@@ -7,7 +8,7 @@ class ChatRepository:
             with get_connection() as conn:
                 cur = conn.execute(
                     "INSERT INTO chat_sessions(user_id, employee_id, title) VALUES(?,?,?)",
-                    (user_id, employee_id, title)
+                    (user_id, employee_id, title),
                 )
                 return cur.lastrowid, None
         except Exception as e:
@@ -30,7 +31,7 @@ class ChatRepository:
             ).fetchone()[0]
             rows = conn.execute(
                 "SELECT * FROM chat_sessions WHERE user_id=? ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?",
-                (user_id, per_page, offset)
+                (user_id, per_page, offset),
             ).fetchall()
         return rows, total
 
@@ -39,7 +40,7 @@ class ChatRepository:
         with get_connection() as conn:
             conn.execute(
                 "UPDATE chat_sessions SET title=?, updated_at=datetime('now') WHERE id=?",
-                (title, session_id)
+                (title, session_id),
             )
 
     @staticmethod
@@ -53,10 +54,11 @@ class ChatRepository:
         with get_connection() as conn:
             cur = conn.execute(
                 "INSERT INTO chat_messages(session_id, role, content, skill_meta) VALUES(?,?,?,?)",
-                (session_id, role, content, skill_meta)
+                (session_id, role, content, skill_meta),
             )
             conn.execute(
-                "UPDATE chat_sessions SET updated_at=datetime('now') WHERE id=?", (session_id,)
+                "UPDATE chat_sessions SET updated_at=datetime('now') WHERE id=?",
+                (session_id,),
             )
             return cur.lastrowid
 
@@ -64,7 +66,8 @@ class ChatRepository:
     def list_messages(session_id):
         with get_connection() as conn:
             return conn.execute(
-                "SELECT * FROM chat_messages WHERE session_id=? ORDER BY id ASC", (session_id,)
+                "SELECT * FROM chat_messages WHERE session_id=? ORDER BY id ASC",
+                (session_id,),
             ).fetchall()
 
     @staticmethod
@@ -86,6 +89,6 @@ class ChatRepository:
                 """SELECT s.*, u.username FROM chat_sessions s
                    LEFT JOIN users u ON s.user_id=u.id
                    ORDER BY s.id DESC LIMIT ? OFFSET ?""",
-                (per_page, offset)
+                (per_page, offset),
             ).fetchall()
         return rows, total

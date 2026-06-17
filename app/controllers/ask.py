@@ -19,8 +19,15 @@ class AskBaseHandler(BaseHandler):
 
 class AskHomeHandler(AskBaseHandler):
     def get(self):
-        self.render("web/ask.html", title="问数", username=self.current_user,
-                    query="", results=[], columns=[], error=None)
+        self.render(
+            "web/ask.html",
+            title="问数",
+            username=self.current_user,
+            query="",
+            results=[],
+            columns=[],
+            error=None,
+        )
 
 
 class AskQueryHandler(AskBaseHandler):
@@ -61,9 +68,13 @@ class AskQueryHandler(AskBaseHandler):
         )
         try:
             resp = chat_complete(
-                model_row["base_url"], model_row["api_key"], model_row["model_id"],
+                model_row["base_url"],
+                model_row["api_key"],
+                model_row["model_id"],
                 [{"role": "user", "content": prompt}],
-                temperature=0.1, max_tokens=512, stream=False
+                temperature=0.1,
+                max_tokens=512,
+                stream=False,
             )
             parsed = parse_chat_response(resp.read())
             sql = parsed.get("content", "").strip()
@@ -77,4 +88,6 @@ class AskQueryHandler(AskBaseHandler):
         if err:
             return self.write({"error": f"SQL执行失败：{err}", "sql": sql})
         self.set_header("Content-Type", "application/json")
-        self.write({"columns": cols, "rows": [list(r) for r in (rows or [])], "sql": sql})
+        self.write(
+            {"columns": cols, "rows": [list(r) for r in (rows or [])], "sql": sql}
+        )

@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 def test_weather_skill() -> None:
     from app.models.skill_dispatcher import dispatch
+
     result = dispatch("@weather 重庆")
     assert result["type"] == "skill"
     assert result["skill_code"] == "weather"
@@ -12,6 +13,7 @@ def test_weather_skill() -> None:
 
 def test_music_skill() -> None:
     from app.models.skill_dispatcher import dispatch
+
     result = dispatch("@music")
     assert result["type"] == "skill"
     assert result["skill_code"] == "music"
@@ -19,6 +21,7 @@ def test_music_skill() -> None:
 
 def test_campus_skill() -> None:
     from app.models.skill_dispatcher import dispatch
+
     result = dispatch("@西师妹 食堂几点开门")
     assert result["type"] == "ai"
     assert result["skill_code"] == "campus"
@@ -27,6 +30,7 @@ def test_campus_skill() -> None:
 
 def test_search_skill() -> None:
     from app.models.skill_dispatcher import dispatch
+
     with patch("app.models.skill_dispatcher._web_search", return_value="mock") as mock:
         result = dispatch(r"\search Python教程")
         mock.assert_called_once()
@@ -36,6 +40,7 @@ def test_search_skill() -> None:
 
 def test_plain_ai() -> None:
     from app.models.skill_dispatcher import dispatch
+
     result = dispatch("你好")
     assert result["type"] == "ai"
     assert result["skill_code"] is None
@@ -44,4 +49,5 @@ def test_plain_ai() -> None:
 
 def test_case_insensitive_weather() -> None:
     from app.models.skill_dispatcher import dispatch
+
     assert dispatch("@Weather 北京")["skill_code"] == "weather"
