@@ -173,6 +173,11 @@ class AdminRoleHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"admin_roles:{self.current_user}", 30, 60):
+            self.set_status(429)
+            self.finish("请求过于频繁，请稍后再试")
+            return
+
         action = self.get_body_argument("action", "")
         role_id = self.get_body_argument("id", "")
         if action == "delete" and role_id.isdigit():
@@ -229,6 +234,11 @@ class AdminUserHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"admin_users:{self.current_user}", 30, 60):
+            self.set_status(429)
+            self.finish("请求过于频繁，请稍后再试")
+            return
+
         action = self.get_body_argument("action", "")
         user_id = self.get_body_argument("id", "")
         if action == "delete" and user_id.isdigit():
@@ -283,6 +293,11 @@ class AdminMenuHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"admin_menus:{self.current_user}", 30, 60):
+            self.set_status(429)
+            self.finish("请求过于频繁，请稍后再试")
+            return
+
         action = self.get_body_argument("action", "")
         menu_id = self.get_body_argument("id", "")
         if action == "delete" and menu_id.isdigit():

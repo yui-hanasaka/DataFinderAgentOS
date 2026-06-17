@@ -1,6 +1,7 @@
 import sqlite3
 
 from app.models.db import get_connection
+from app.models.errors import log_error
 
 
 class ChatRepository:
@@ -15,7 +16,8 @@ class ChatRepository:
                     (user_id, employee_id, title),
                 )
                 return cur.lastrowid, None
-        except Exception:
+        except Exception as e:
+            log_error("创建会话失败", e)
             return None, "创建会话失败"
 
     @staticmethod

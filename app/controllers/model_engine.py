@@ -3,7 +3,7 @@ from typing import Any
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.errors import log_error
-from app.models.validators import parse_int
+from app.models.validators import parse_float, parse_int
 from app.models.model_client import chat_complete, iter_sse_chunks, parse_chat_response
 from app.models.model_engine import PER_PAGE, ModelRepository
 from app.models.rate_limit import check_rate_limit
@@ -62,7 +62,9 @@ class AdminModelEngineHandler(AdminBaseHandler):
             "model_type": self.get_body_argument("model_type", "text"),
             "base_url": self.get_body_argument("base_url", "").strip(),
             "api_key": self.get_body_argument("api_key", "").strip(),
-            "temperature": float(self.get_body_argument("temperature", "0.7") or 0.7),
+            "temperature": parse_float(
+                self.get_body_argument("temperature", "0.7"), 0.7
+            ),
             "max_tokens": parse_int(self.get_body_argument("max_tokens", "1024"), 1024),
             "system_prompt": self.get_body_argument("system_prompt", "").strip(),
             "support_stream": 1

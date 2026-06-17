@@ -1,6 +1,7 @@
 import sqlite3
 
 from app.models.db import get_connection
+from app.models.errors import log_error
 
 
 class SourceRepository:
@@ -56,7 +57,8 @@ class SourceRepository:
                     ),
                 )
             return True, None
-        except Exception:
+        except Exception as e:
+            log_error("Watchtower.create_source", e)
             return False, "创建采集源失败"
 
     @staticmethod
@@ -90,7 +92,8 @@ class SourceRepository:
                     ),
                 )
             return True, None
-        except Exception:
+        except Exception as e:
+            log_error("Watchtower.update_source", e)
             return False, "更新采集源失败"
 
     @staticmethod
@@ -102,7 +105,8 @@ class SourceRepository:
                 )
                 conn.execute("DELETE FROM watchtower_sources WHERE id=?", (source_id,))
             return True, None
-        except Exception:
+        except Exception as e:
+            log_error("Watchtower.delete_source", e)
             return False, "删除采集源失败"
 
     @staticmethod
@@ -227,6 +231,6 @@ class ItemRepository:
                     )
                     if conn.total_changes:
                         count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    log_error("Watchtower.batch_add_items", e)
         return count

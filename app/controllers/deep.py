@@ -4,6 +4,7 @@ from tornado.ioloop import IOLoop
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.deep import PER_PAGE, DeepRepository
+from app.models.rate_limit import check_rate_limit
 
 
 class AdminDeepHandler(AdminBaseHandler):
@@ -58,6 +59,12 @@ class AdminDeepHandler(AdminBaseHandler):
 
     def post(self) -> None:
         action = self.get_body_argument("action", "")
+
+        if action in ("collect", "collect_single"):
+            if not check_rate_limit(f"deep_collect:{self.current_user}", 5, 300):
+                self.set_status(429)
+                self.write({"error": "深度采集请求过于频繁，请5分钟后再试"})
+                return
 
         if action == "collect":
             return self._handle_collect()

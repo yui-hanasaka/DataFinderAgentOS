@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from app.models.db import get_connection
+from app.models.errors import log_error
 from app.models.model_client import chat_complete, parse_chat_response
 from app.models.model_engine import ModelRepository
 
@@ -112,8 +113,11 @@ class DeepRepository:
                     return soup.get_text(separator="\n", strip=True)[:8000]
 
                 content_text = await IOLoop.current().run_in_executor(None, _fetch)
-        except Exception:
-            pass
+        except Exception as e:
+            log_error(
+                f"DeepRepository.collect_single_item fetch_url item_id={item_id} url={item['url']}",
+                e,
+            )
 
         if not content_text:
             result["ok"] = True
@@ -135,7 +139,11 @@ class DeepRepository:
                 result["sentiment"] = summary.get("sentiment", "")
                 result["risk"] = summary.get("risk", 0)
                 result["markdown"] = summary.get("markdown", "")
-            except Exception:
+            except Exception as e:
+                log_error(
+                    f"DeepRepository.collect_single_item summarize item_id={item_id} title={item['title'] or ''}",
+                    e,
+                )
                 result["summary"] = content_text[:500]
 
         result["ok"] = True
@@ -165,6 +173,7 @@ class DeepRepository:
             {"role": "user", "content": prompt},
         ]
 
+        content_str = ""
         try:
             resp = await chat_complete(
                 model["base_url"],
@@ -185,7 +194,11 @@ class DeepRepository:
                     lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
                 )
             return json.loads(content_str)
-        except Exception:
+        except Exception as e:
+            log_error(
+                f"DeepRepository._summarize_with_model json_parse title={title} content_preview={content_str[:200]}",
+                e,
+            )
             return {
                 "summary": content[:200],
                 "keywords": [],

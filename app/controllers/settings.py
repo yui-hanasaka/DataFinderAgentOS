@@ -1,6 +1,9 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
+from app.models.errors import log_error
+from app.models.rate_limit import check_rate_limit
 from app.models.secrets_store import decrypt, encrypt, mask
+from app.models.validators import parse_int
 
 
 class AdminSettingsHandler(AdminBaseHandler):
@@ -36,6 +39,10 @@ class AdminSettingsHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"admin_settings:{self.current_user}", 10, 60):
+            self.set_status(429)
+            return self.write({"error": "请求过于频繁，请稍后再试"})
+
         action = self.get_body_argument("action", "")
         if action == "test_db":
             self.set_header("Content-Type", "application/json")
@@ -46,7 +53,12 @@ class AdminSettingsHandler(AdminBaseHandler):
                 import pymysql
 
                 host = self.get_body_argument("mysql_host", "127.0.0.1")
-                port = int(self.get_body_argument("mysql_port", "3306") or 3306)
+                port = parse_int(
+                    self.get_body_argument("mysql_port", "3306"),
+                    3306,
+                    min_value=1,
+                    max_value=65535,
+                )
                 user = self.get_body_argument("mysql_user", "")
                 password = self.get_body_argument("mysql_password", "")
                 database = self.get_body_argument("mysql_database", "")
@@ -60,7 +72,8 @@ class AdminSettingsHandler(AdminBaseHandler):
                 )
                 conn.close()
                 return self.write({"ok": True, "msg": "MySQL 连接成功"})
-            except Exception:
+            except Exception as e:
+                log_error("MySQL 连接测试失败", e)
                 return self.write({"ok": False, "msg": "MySQL 连接失败"})
 
         site_name = self.get_body_argument("site_name", "DataFinder AgentOS").strip()

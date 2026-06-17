@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from app.models.errors import log_error
+
 DispatchResult = dict[str, Any]
 
 
@@ -80,7 +82,8 @@ async def _weather(city: str, api_key: str | None = None) -> str:
         return (
             f"【天气查询】无法获取 {city} 的天气信息：{data.get('message', '未知错误')}"
         )
-    except Exception:
+    except Exception as exc:
+        log_error(f"weather API request failed for city={city}", exc)
         return "【天气查询】请求失败，请稍后重试"
 
 
@@ -107,5 +110,6 @@ async def _web_search(query: str, _api_key: str | None = None) -> str:
         if results:
             return "\n".join(results)
         return f"（搜索「{query}」未找到直接结果，请尝试更换关键词）"
-    except Exception:
+    except Exception as exc:
+        log_error(f"web search request failed for query={query}", exc)
         return "（网络搜索暂时不可用，请稍后重试）"

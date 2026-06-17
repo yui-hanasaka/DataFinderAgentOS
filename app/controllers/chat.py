@@ -9,6 +9,7 @@ from app.models.model_client import chat_complete, iter_sse_chunks
 from app.models.model_engine import ModelRepository
 from app.models.rate_limit import check_rate_limit
 from app.models.skill_dispatcher import dispatch
+from app.models.validators import parse_int
 
 
 class ChatBaseHandler(BaseHandler):
@@ -69,7 +70,7 @@ class ChatSessionHandler(ChatBaseHandler):
 class ChatNewHandler(ChatBaseHandler):
     def get(self) -> None:
         user_id = self._user_id()
-        employee_id = int(self.get_query_argument("employee_id", "0") or 0)
+        employee_id = parse_int(self.get_query_argument("employee_id", "0"), 0)
         sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
         self.redirect(f"/chat/session/{sess_id}")
 
@@ -79,7 +80,7 @@ class ChatNewHandler(ChatBaseHandler):
             self.set_status(429)
             self.write("请求过于频繁，请稍后再试")
             return
-        employee_id = int(self.get_body_argument("employee_id", "0") or 0)
+        employee_id = parse_int(self.get_body_argument("employee_id", "0"), 0)
         sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
         self.redirect(f"/chat/session/{sess_id}")
 
@@ -87,6 +88,10 @@ class ChatNewHandler(ChatBaseHandler):
 class ChatDeleteHandler(ChatBaseHandler):
     def post(self, session_id: str) -> None:
         user_id = self._user_id()
+        if not check_rate_limit(f"chat_delete:user:{user_id}", 5, 60):
+            self.set_status(429)
+            self.write("请求过于频繁，请稍后再试")
+            return
         session = ChatRepository.get_session(int(session_id))
         if session and session["user_id"] == user_id:
             ChatRepository.delete_session(int(session_id))
@@ -96,6 +101,10 @@ class ChatDeleteHandler(ChatBaseHandler):
 class ChatBatchDeleteHandler(ChatBaseHandler):
     def post(self) -> None:
         user_id = self._user_id()
+        if not check_rate_limit(f"chat_batch_delete:user:{user_id}", 5, 60):
+            self.set_status(429)
+            self.set_header("Content-Type", "application/json; charset=utf-8")
+            return self.write({"error": "请求过于频繁，请稍后再试"})
         try:
             payload = json.loads(self.request.body or b"{}")
         except json.JSONDecodeError:
@@ -122,8 +131,8 @@ class ChatEmployeeHandler(ChatBaseHandler):
         except json.JSONDecodeError:
             self.set_status(400)
             return self.write({"error": "请求体格式错误"})
-        session_id = int(payload.get("session_id") or 0)
-        employee_id = int(payload.get("employee_id") or 0)
+        session_id = parse_int(payload.get("session_id"), 0)
+        employee_id = parse_int(payload.get("employee_id"), 0)
         if not session_id or not employee_id:
             self.set_status(400)
             return self.write({"error": "参数不完整"})
@@ -174,7 +183,14 @@ class ChatSendHandler(ChatBaseHandler):
         if not session["title"] or session["title"] == "新对话":
             ChatRepository.update_session_title(int(session_id), user_text[:20])
 
-        dispatched = await dispatch(user_text, self._get_api_keys())
+        try:
+            dispatched = await dispatch(user_text, self._get_api_keys())
+        except Exception as e:
+            log_error("ChatSendHandler dispatch", e)
+            self.set_status(500)
+            self.set_header("Content-Type", "application/json; charset=utf-8")
+            self.write({"error": "消息处理失败，请稍后重试"})
+            return
 
         # Non-AI skill response (weather direct answer, music placeholder)
         if dispatched["type"] == "skill" and dispatched["skill_code"] in (
@@ -268,7 +284,8 @@ class ChatSendHandler(ChatBaseHandler):
                             await self.flush()
                         except Exception:
                             break
-            except Exception:
+            except Exception as e:
+                log_error("ChatSendHandler SSE loop", e)
                 pass
             finally:
                 _client = getattr(resp, "_client", None)

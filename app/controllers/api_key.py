@@ -1,5 +1,6 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
+from app.models.rate_limit import check_rate_limit
 from app.models.secrets_store import encrypt, mask
 
 PER_PAGE = 20
@@ -44,6 +45,11 @@ class AdminApiKeyHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"api_key:{self.current_user}", 20, 60):
+            self.set_status(429)
+            self.write({"error": "操作过于频繁，请稍后再试"})
+            return
+
         action = self.get_body_argument("action", "")
         api_id = self.get_body_argument("id", "")
         if action == "delete" and api_id.isdigit():

@@ -1,6 +1,7 @@
 import sqlite3
 
 from app.models.db import get_connection
+from app.models.errors import log_error
 from app.models.sql_guard import validate_select_sql
 
 
@@ -97,7 +98,8 @@ class WarehouseRepository:
                 rows = cur.fetchall()
                 columns = [d[0] for d in cur.description] if cur.description else []
             return rows, columns, None
-        except Exception:
+        except Exception as e:
+            log_error("数据仓库查询执行失败", e)
             return None, None, "查询执行失败"
 
     _FORBIDDEN_KEYWORDS: tuple[str, ...] = (

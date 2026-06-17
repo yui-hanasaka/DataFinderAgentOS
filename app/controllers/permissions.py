@@ -1,5 +1,6 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.admin import AdminRepository
+from app.models.rate_limit import check_rate_limit
 
 
 class AdminPermissionHandler(AdminBaseHandler):
@@ -20,6 +21,11 @@ class AdminPermissionHandler(AdminBaseHandler):
         )
 
     def post(self) -> None:
+        if not check_rate_limit(f"permissions:{self.current_user}", 20, 60):
+            self.set_status(429)
+            self.write({"error": "操作过于频繁，请稍后再试"})
+            return
+
         role_id = self.get_body_argument("role_id", "")
         menu_ids = self.get_body_arguments("menu_ids")
         if role_id.isdigit():
