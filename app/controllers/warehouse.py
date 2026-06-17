@@ -37,7 +37,9 @@ class AdminWarehouseHandler(AdminBaseHandler):
         if action == "execute" and q_id.isdigit():
             query = WarehouseRepository.get_query(int(q_id))
             if query:
-                rows, cols, err = WarehouseRepository.execute_query(query["sql_query"], trusted=True)
+                rows, cols, err = WarehouseRepository.execute_query(
+                    query["sql_query"], trusted=True
+                )
                 self.set_header("Content-Type", "application/json")
                 if err:
                     return self.write({"error": err})

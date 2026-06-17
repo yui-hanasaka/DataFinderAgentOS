@@ -74,9 +74,7 @@ class WatchtowerScraper:
         all_items = []
         for page in range(pages):
             url_template = (
-                source["url_template"]
-                if source["url_template"]
-                else source["url"]
+                source["url_template"] if source["url_template"] else source["url"]
             )
             url = WatchtowerScraper.build_url(url_template, keyword, page)
 
