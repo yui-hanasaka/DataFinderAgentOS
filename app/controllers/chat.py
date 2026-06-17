@@ -65,6 +65,12 @@ class ChatSessionHandler(ChatBaseHandler):
 
 
 class ChatNewHandler(ChatBaseHandler):
+    def get(self):
+        user_id = self._user_id()
+        employee_id = int(self.get_query_argument("employee_id", "0") or 0)
+        sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
+        self.redirect(f"/chat/session/{sess_id}")
+
     def post(self):
         user_id = self._user_id()
         employee_id = int(self.get_body_argument("employee_id", "0") or 0)

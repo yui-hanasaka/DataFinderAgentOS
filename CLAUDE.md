@@ -14,6 +14,23 @@ uv run ruff format .          # format
 npx @biomejs/biome check app/static/js/  # JS lint
 ```
 
+## Quality Gate (mandatory after every task)
+
+After completing any code change, run ALL three checks in order and ensure 100% pass:
+
+```
+1. uv run ruff check .        # 0 errors
+2. uv run ruff format .       # no changes left
+3. uv run pyright             # 0 errors, 0 warnings, 0 informations
+```
+
+**Strict rules:**
+- Zero `#noqa` comments allowed anywhere — fix the root cause instead.
+- Zero `# type: ignore` comments allowed anywhere — fix the type issue instead.
+- If ruff format produces changes, re-run ruff check afterwards.
+- pyright must report `0 errors, 0 warnings, 0 informations` — no suppressed diagnostics of any severity.
+- Run all three checks sequentially and report the output verbatim. Do not skip any check.
+
 ## Architecture
 
 **Entry point:** `app.py` — registers all routes and starts the Tornado server. `init_db()` runs on startup to create/migrate all SQLite tables.

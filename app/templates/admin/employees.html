@@ -49,7 +49,7 @@
 						<div class="admin-form-section-title">绑定技能</div>
 						<div class="admin-grid-form">
 							{% for skill in all_skills %}
-							<label><span></span><label class="d-flex align-items-center gap-2"><input type="checkbox" name="skills" value="{{ skill['id'] }}" {% if edit_employee and skill['id'] in edit_employee.get('skill_ids', []) %}checked{% end %}> {{ skill['name'] }}</label></label>
+							<label><span></span><label class="d-flex align-items-center gap-2"><input type="checkbox" name="skills" value="{{ skill['id'] }}" {% if edit_employee and skill['id'] in edit_skill_ids %}checked{% end %}> {{ skill['name'] }}</label></label>
 							{% end %}
 						</div>
 					</section>

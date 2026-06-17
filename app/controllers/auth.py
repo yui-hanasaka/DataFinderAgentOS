@@ -1,5 +1,4 @@
 from app.controllers.base import BaseHandler
-from app.models.admin import AdminRepository
 from app.models.user import UserRepository
 
 
@@ -16,7 +15,7 @@ class LoginHandler(BaseHandler):
     def get(self):
         if self.get_secure_cookie("username"):
             return self.redirect("/home")
-        self.render("web/login.html", title="登录", error=None)
+        self.render("web/login.html", title="用户登录", error=None)
 
     def post(self):
         username = self.get_body_argument("username", "").strip()
@@ -24,16 +23,14 @@ class LoginHandler(BaseHandler):
         if not username or not password:
             self.set_status(400)
             return self.render(
-                "web/login.html", title="登录", error="请输入用户名或密码"
+                "web/login.html", title="用户登录", error="请输入用户名或密码"
             )
-
-        if AdminRepository.verify_admin(username, password):
-            self.set_secure_cookie("admin_username", username)
-            return self.redirect("/admin/home")
 
         if not UserRepository.verify_user(username, password):
             self.set_status(401)
-            return self.render("web/login.html", title="登录", error="用户名或密码错误")
+            return self.render(
+                "web/login.html", title="用户登录", error="用户名或密码错误"
+            )
 
         self.set_secure_cookie("username", username)
         self.redirect("/home")

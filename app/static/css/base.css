@@ -282,6 +282,234 @@ body {
 	text-align: center;
 }
 
+/* ── User login distinct styling ── */
+.user-login-page {
+	min-height: 100vh;
+	background:
+		radial-gradient(circle at 82% 12%, rgba(168, 130, 255, .32), transparent 38%),
+		radial-gradient(circle at 15% 90%, rgba(255, 140, 100, .28), transparent 40%),
+		linear-gradient(145deg, #1a1040 0%, #1f1652 50%, #140f35 100%);
+	overflow: hidden;
+}
+
+.user-login-page .admin-login-shell {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px;
+}
+
+.user-login-page .admin-login-card {
+	width: min(1180px, 100%);
+	min-height: 590px;
+	display: grid;
+	grid-template-columns: 1.05fr .95fr;
+	background: rgba(255, 255, 255, .97);
+	border-radius: 12px;
+	box-shadow: 0 30px 80px rgba(80, 40, 160, .25);
+	overflow: hidden;
+}
+
+.user-login-page .admin-login-visual {
+	position: relative;
+	min-height: 590px;
+	background: linear-gradient(145deg, #2d1865 0%, #1c0f48 100%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.user-login-page .admin-login-visual::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(circle at 30% 25%, rgba(168, 130, 255, .45), transparent 50%),
+		radial-gradient(circle at 75% 70%, rgba(255, 140, 100, .3), transparent 50%);
+}
+
+.user-login-visual-content {
+	position: relative;
+	z-index: 1;
+	text-align: center;
+	color: #e8e0ff;
+}
+
+.user-login-visual-content .uv-icon {
+	width: 100px;
+	height: 100px;
+	margin: 0 auto 24px;
+	border-radius: 28px;
+	background: linear-gradient(135deg, #8b5cf6, #6366f1);
+	display: grid;
+	place-items: center;
+	font-size: 48px;
+	box-shadow: 0 20px 50px rgba(139, 92, 246, .45);
+}
+
+.user-login-visual-content h2 {
+	margin: 0 0 12px;
+	font-size: 28px;
+	font-weight: 700;
+	color: #fff;
+	letter-spacing: .06em;
+}
+
+.user-login-visual-content p {
+	margin: 0;
+	font-size: 14px;
+	color: #b0a0d8;
+	line-height: 1.7;
+	max-width: 280px;
+}
+
+.user-login-page .admin-login-panel {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 68px 84px;
+	background: #fff;
+}
+
+.user-login-page .admin-login-panel::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	right: 60px;
+	width: 3px;
+	height: 130px;
+	background: linear-gradient(#8b5cf6, #6366f1);
+	box-shadow: 0 116px 0 -8px #6366f1;
+}
+
+.user-login-page .admin-login-title p {
+	margin: 0 0 12px;
+	font-size: 13px;
+	letter-spacing: .16em;
+	color: #8b5cf6;
+	text-transform: uppercase;
+}
+
+.user-login-page .admin-login-title h1 {
+	margin: 0;
+	font-size: clamp(30px, 4vw, 40px);
+	letter-spacing: .16em;
+	color: #6d28d9;
+}
+
+.user-login-page .admin-login-title span {
+	display: block;
+	margin-top: 12px;
+	color: #9aa5b8;
+	font-size: 15px;
+}
+
+.user-login-page .admin-login-error {
+	margin-top: 28px;
+	padding: 11px 14px;
+	border-radius: 10px;
+	background: #fff1f0;
+	color: #d4380d;
+	border: 1px solid #ffccc7;
+}
+
+.user-login-page .admin-login-form {
+	margin-top: 28px;
+	display: grid;
+	gap: 18px;
+}
+
+.user-login-page .admin-login-form label {
+	display: grid;
+	gap: 8px;
+	font-size: 14px;
+	color: #6b778c;
+}
+
+.user-login-page .admin-login-form input {
+	height: 52px;
+	border: 1px solid #d7dce5;
+	border-radius: 7px;
+	padding: 0 16px;
+	font-size: 16px;
+	outline: none;
+	transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.user-login-page .admin-login-form input:focus {
+	border-color: #8b5cf6;
+	box-shadow: 0 0 0 4px rgba(139, 92, 246, .13);
+}
+
+.user-login-page .admin-login-form button {
+	height: 54px;
+	margin-top: 12px;
+	border: 0;
+	border-radius: 999px;
+	background: linear-gradient(90deg, #8b5cf6, #6366f1);
+	color: #fff;
+	font-size: 18px;
+	font-weight: 700;
+	letter-spacing: .18em;
+	cursor: pointer;
+	box-shadow: 0 14px 24px rgba(139, 92, 246, .35);
+}
+
+.user-login-page .admin-login-tip {
+	margin-top: 44px;
+	text-align: center;
+}
+
+/* Back-to-home link shared by both login pages */
+.login-nav-back {
+	position: absolute;
+	top: 28px;
+	left: 32px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 18px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, .35);
+	background: rgba(255, 255, 255, .08);
+	color: #fff;
+	font-size: 13px;
+	text-decoration: none;
+	backdrop-filter: blur(8px);
+	transition: background .2s, border-color .2s;
+	z-index: 10;
+}
+
+.login-nav-back:hover {
+	background: rgba(255, 255, 255, .18);
+	border-color: rgba(255, 255, 255, .55);
+	color: #fff;
+}
+
+/* Cross-link between login pages */
+.login-cross-link {
+	display: block;
+	margin-top: 18px;
+	text-align: center;
+}
+
+.login-cross-link a {
+	color: #9aa5b8;
+	font-size: 13px;
+	text-decoration: none;
+	transition: color .2s;
+}
+
+.login-cross-link a:hover {
+	color: #4d8df8;
+}
+
+.user-login-page .login-cross-link a:hover {
+	color: #8b5cf6;
+}
+
 .admin-layout-page {
 	min-height: 100vh;
 	background: #eef3fb;

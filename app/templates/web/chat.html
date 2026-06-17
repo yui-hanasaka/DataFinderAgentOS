@@ -60,9 +60,9 @@
         <span>@weather</span><span>@music</span><span>@西师妹</span><span>\search</span>
       </div>
       <div class="input-row">
-        <textarea id="msgInput" placeholder="输入消息..." rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
-        <button class="btn-send" id="sendBtn" onclick="send()">发送</button>
+        <textarea id="msgInput" placeholder="{% if current_session %}输入消息...{% else %}请先新建对话{% end %}" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" {% if not current_session %}disabled{% end %}></textarea>
+        <button class="btn-send" id="sendBtn" onclick="send()" {% if not current_session %}disabled{% end %}>发送</button>
         <a class="export-link" {% if current_session %}href="/chat/export/{{ current_session["id"] }}"{% end %} target="_blank">导出PDF</a>
       </div>
     </div>
@@ -110,6 +110,7 @@ function scrollBottom() {
 }
 
 async function send() {
+  if (!SESSION_ID) return;
   const input = document.getElementById('msgInput');
   const content = input.value.trim();
   if (!content) return;
@@ -152,11 +153,12 @@ async function send() {
 }
 
 function switchSession(id) {
-  window.location.href = '/chat?session=' + id;
+  window.location.href = '/chat/session/' + id;
 }
 
 function newSession() {
-  window.location.href = '/chat/new';
+  const empId = document.getElementById('empSelect').value || 0;
+  window.location.href = '/chat/new?employee_id=' + empId;
 }
 
 function switchEmployee(id) {

@@ -47,7 +47,53 @@ from app.models.db import init_db
 def app():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
-    settings = dict(
+    routes: list[tuple[str, object]] = [
+        # user auth
+        (r"/", LandingHandler),
+        (r"/login", LoginHandler),
+        (r"/user/login", LoginHandler),
+        (r"/user/logout", LogoutHandler),
+        (r"/home", HomeHandler),
+        # user chat
+        (r"/chat", ChatHomeHandler),
+        (r"/chat/new", ChatNewHandler),
+        (r"/chat/session/(\d+)", ChatSessionHandler),
+        (r"/chat/delete/(\d+)", ChatDeleteHandler),
+        (r"/chat/send/(\d+)", ChatSendHandler),
+        (r"/chat/export/(\d+)", ChatExportHandler),
+        # user ask
+        (r"/ask", AskHomeHandler),
+        (r"/ask/query", AskQueryHandler),
+        # admin auth
+        (r"/admin/login", AdminLoginHandler),
+        (r"/admin/logout", AdminLogoutHandler),
+        # admin core
+        (r"/admin/home", AdminHomeHandler),
+        (r"/admin/users", AdminUserHandler),
+        (r"/admin/roles", AdminRoleHandler),
+        (r"/admin/menus", AdminMenuHandler),
+        (r"/admin/permissions", AdminPermissionHandler),
+        # admin model engine
+        (r"/admin/models", AdminModelEngineHandler),
+        (r"/admin/models/(\d+)/test", AdminModelTestHandler),
+        (r"/admin/models/(\d+)/chat", AdminModelChatHandler),
+        # admin business
+        (r"/admin/employees", AdminEmployeeHandler),
+        (r"/admin/skills", AdminSkillHandler),
+        (r"/admin/watchtower", AdminWatchtowerHandler),
+        (r"/admin/warehouse", AdminWarehouseHandler),
+        (r"/admin/deep", AdminDeepHandler),
+        (r"/admin/apis", AdminApiKeyHandler),
+        (r"/admin/sessions", AdminSessionMgrHandler),
+        (r"/admin/conversations/(\d+)", AdminConversationDetailHandler),
+        (r"/admin/screen", AdminScreenHandler),
+        (r"/admin/settings", AdminSettingsHandler),
+        # api
+        (r"/api/screen/data", ScreenDataApiHandler),
+    ]
+
+    return tornado.web.Application(
+        routes,
         template_path=os.path.join(base_dir, "app", "templates"),
         static_path=os.path.join(base_dir, "app", "static"),
         cookie_secret="demo-cookie-secret-change-me",
@@ -55,54 +101,6 @@ def app():
         xsrf_cookies=True,
         debug=dev,
         autoreload=dev,
-    )
-
-    return tornado.web.Application(
-        [
-            # user auth
-            (r"/", LandingHandler),
-            (r"/login", LoginHandler),
-            (r"/user/login", LoginHandler),
-            (r"/user/logout", LogoutHandler),
-            (r"/home", HomeHandler),
-            # user chat
-            (r"/chat", ChatHomeHandler),
-            (r"/chat/new", ChatNewHandler),
-            (r"/chat/session/(\d+)", ChatSessionHandler),
-            (r"/chat/delete/(\d+)", ChatDeleteHandler),
-            (r"/chat/send/(\d+)", ChatSendHandler),
-            (r"/chat/export/(\d+)", ChatExportHandler),
-            # user ask
-            (r"/ask", AskHomeHandler),
-            (r"/ask/query", AskQueryHandler),
-            # admin auth
-            (r"/admin/login", AdminLoginHandler),
-            (r"/admin/logout", AdminLogoutHandler),
-            # admin core
-            (r"/admin/home", AdminHomeHandler),
-            (r"/admin/users", AdminUserHandler),
-            (r"/admin/roles", AdminRoleHandler),
-            (r"/admin/menus", AdminMenuHandler),
-            (r"/admin/permissions", AdminPermissionHandler),
-            # admin model engine
-            (r"/admin/models", AdminModelEngineHandler),
-            (r"/admin/models/(\d+)/test", AdminModelTestHandler),
-            (r"/admin/models/(\d+)/chat", AdminModelChatHandler),
-            # admin business
-            (r"/admin/employees", AdminEmployeeHandler),
-            (r"/admin/skills", AdminSkillHandler),
-            (r"/admin/watchtower", AdminWatchtowerHandler),
-            (r"/admin/warehouse", AdminWarehouseHandler),
-            (r"/admin/deep", AdminDeepHandler),
-            (r"/admin/apis", AdminApiKeyHandler),
-            (r"/admin/sessions", AdminSessionMgrHandler),
-            (r"/admin/conversations/(\d+)", AdminConversationDetailHandler),
-            (r"/admin/screen", AdminScreenHandler),
-            (r"/admin/settings", AdminSettingsHandler),
-            # api
-            (r"/api/screen/data", ScreenDataApiHandler),
-        ],
-        **settings,
     )
 
 

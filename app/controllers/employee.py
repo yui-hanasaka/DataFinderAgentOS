@@ -1,3 +1,5 @@
+import json
+
 from app.controllers.admin import AdminBaseHandler
 from app.models.employee import EmployeeRepository
 from app.models.model_engine import ModelRepository
@@ -14,6 +16,13 @@ class AdminEmployeeHandler(AdminBaseHandler):
         edit_emp = (
             EmployeeRepository.get_employee(int(edit_id)) if edit_id.isdigit() else None
         )
+        edit_skill_ids: list[int] = []
+        if edit_emp:
+            try:
+                raw = json.loads(edit_emp["skills"] or "[]")
+                edit_skill_ids = [int(x) for x in raw]
+            except (json.JSONDecodeError, ValueError):
+                edit_skill_ids = []
         all_models, _ = ModelRepository.list_models(page=1, per_page=100)
         from app.models.skill import SkillRepository
 
@@ -28,6 +37,7 @@ class AdminEmployeeHandler(AdminBaseHandler):
             per_page=PER_PAGE,
             keyword=keyword,
             edit_employee=edit_emp,
+            edit_skill_ids=edit_skill_ids,
             all_models=all_models,
             all_skills=all_skills,
             msg=self._message(),
