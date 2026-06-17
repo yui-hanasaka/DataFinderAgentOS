@@ -1,3 +1,5 @@
+import json
+
 from app.controllers.admin import AdminBaseHandler
 from app.models.skill import SkillRepository
 
@@ -38,6 +40,12 @@ class AdminSkillHandler(AdminBaseHandler):
         name = self.get_body_argument("name", "").strip()
         skill_type = self.get_body_argument("skill_type", "builtin")
         config_json = self.get_body_argument("config_json", "{}").strip()
+        try:
+            json.loads(config_json)
+        except json.JSONDecodeError:
+            return self._redirect_with_message(
+                "/admin/skills", "config_json 格式无效，请输入有效的 JSON"
+            )
         status = self.get_body_argument("status", "enabled")
         data: dict[str, object] = {
             "code": code,

@@ -1,10 +1,160 @@
 {% extends "base.html" %}
 {% block body %}
-<div class="adm-welcome-card">
-  <p>数字孪生</p>
-  <h1>场景详情</h1>
-  <span>功能开发中</span>
+<section class="admin-page-head">
+  <div>
+    <p>数字孪生</p>
+    <h1>场景详情{% if scene %} · {{ scene['name'] }}{% end %}</h1>
+    <span>模型绑定 · 数据驱动可视化</span>
+  </div>
+  <div>
+    <a href="/admin/digital-twin" class="adm-btn adm-btn-ghost">← 返回场景列表</a>
+    {% if scene %}
+    <button type="button" data-bs-toggle="modal" data-bs-target="#modelModal" class="adm-btn adm-btn-primary"><i class="fa-solid fa-plus"></i> 新增模型</button>
+    <button type="button" data-bs-toggle="modal" data-bs-target="#editSceneModal" class="adm-btn adm-btn-ghost">编辑场景</button>
+    {% end %}
+  </div>
+</section>
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
+
+{% if not scene %}
+<div class="adm-table-card">
+  <p style="text-align:center;color:#8a86c0;padding:20px">场景不存在或已被删除</p>
 </div>
-{% if msg %}<div class="adm-toast-auto">{{ msg }}</div>{% end %}
-<a href="/admin/digital-twin" class="adm-btn adm-btn-ghost" style="margin:12px 0">← 返回场景列表</a>
+{% else %}
+
+<!-- Scene Info Card -->
+<div class="adm-table-card" style="margin-bottom:16px">
+  <div class="table-title"><strong>场景信息</strong></div>
+  <table class="admin-table">
+    <tbody>
+      <tr><td style="width:120px;font-weight:600">ID</td><td>{{ scene['id'] }}</td></tr>
+      <tr><td style="width:120px;font-weight:600">名称</td><td>{{ scene['name'] }}</td></tr>
+      <tr><td style="width:120px;font-weight:600">描述</td><td>{{ scene['description'] or '-' }}</td></tr>
+      <tr><td style="width:120px;font-weight:600">状态</td><td>{% if scene['status'] == 'enabled' %}<span class="status-active">启用</span>{% else %}<span class="status-inactive">禁用</span>{% end %}</td></tr>
+      <tr><td style="width:120px;font-weight:600">创建时间</td><td>{{ scene['created_at'] }}</td></tr>
+      <tr><td style="width:120px;font-weight:600">更新时间</td><td>{{ scene['updated_at'] or '-' }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Models List -->
+<section class="admin-table-card">
+  <div class="table-title"><strong>模型列表</strong><span>共 {{ len(models) }} 个模型</span></div>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>名称</th>
+        <th>类型</th>
+        <th>资源URL</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if models %}
+      {% for m in models %}
+      <tr>
+        <td>{{ m['id'] }}</td>
+        <td>{{ m['name'] }}</td>
+        <td><span class="badge">{{ m['model_type'] }}</span></td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m['asset_url'] or '-' }}</td>
+        <td class="table-actions">
+          <a href="/admin/digital-twin/scenes/{{ scene['id'] }}?edit_model={{ m['id'] }}">编辑</a>
+          <form method="post" action="/admin/digital-twin/scenes/{{ scene['id'] }}" data-confirm="确认删除该模型？">{% module xsrf_form_html() %}
+            <input type="hidden" name="action" value="delete_model">
+            <input type="hidden" name="model_id" value="{{ m['id'] }}">
+            <button type="submit">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% end %}
+      {% else %}
+      <tr>
+        <td colspan="5" style="text-align:center;color:#8a86c0;padding:20px">暂无模型 — 点击上方「新增模型」开始添加</td>
+      </tr>
+      {% end %}
+    </tbody>
+  </table>
+</section>
+
+<!-- Edit Scene Modal -->
+<div class="modal fade admin-edit-modal" id="editSceneModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">编辑场景</h5>
+          <small class="field-hint">修改场景基本信息和配置。<span class="required-tip">* 为必填项</span></small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/digital-twin/scenes/{{ scene['id'] }}" data-confirm="确认保存场景信息？">
+        <div class="modal-body">
+          {% module xsrf_form_html() %}
+          <input type="hidden" name="action" value="update_scene">
+          <section class="admin-form-section">
+            <div class="admin-grid-form">
+              <label class="required"><span>名称</span><input type="text" name="name" value="{{ scene['name'] }}" required></label>
+              <label><span>状态</span>
+                <select name="status">
+                  <option value="enabled" {% if scene['status'] == 'enabled' %}selected{% end %}>启用</option>
+                  <option value="disabled" {% if scene['status'] == 'disabled' %}selected{% end %}>禁用</option>
+                </select>
+              </label>
+              <label class="form-wide"><span>描述</span><input type="text" name="description" value="{{ scene['description'] or '' }}" placeholder="场景描述"></label>
+              <label class="form-wide"><span>场景配置 (JSON)</span><textarea name="scene_json" rows="6" style="font-family:monospace;font-size:13px" placeholder='{"camera": {"position": [0, 10, 20]}}'>{{ scene['scene_json'] }}</textarea></label>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">确认保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Model Modal -->
+<div class="modal fade admin-edit-modal" id="modelModal" tabindex="-1" {% if edit_model %}data-auto-open="true"{% end %}>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">{% if edit_model %}修改模型{% else %}新增模型{% end %}</h5>
+          <small class="field-hint">添加或编辑场景中的 3D 模型。<span class="required-tip">* 为必填项</span></small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/digital-twin/scenes/{{ scene['id'] }}" data-confirm="确认保存模型信息？">
+        <div class="modal-body">
+          {% module xsrf_form_html() %}
+          {% if edit_model %}<input type="hidden" name="model_id" value="{{ edit_model['id'] }}">{% end %}
+          <section class="admin-form-section">
+            <div class="admin-grid-form">
+              <label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_model['name'] if edit_model else '' }}" placeholder="模型名称" required></label>
+              <label><span>类型</span>
+                <select name="model_type">
+                  <option value="primitive" {% if edit_model and edit_model['model_type'] == 'primitive' %}selected{% end %}>基础几何体</option>
+                  <option value="gltf" {% if edit_model and edit_model['model_type'] == 'gltf' %}selected{% end %}>GLTF模型</option>
+                  <option value="glb" {% if edit_model and edit_model['model_type'] == 'glb' %}selected{% end %}>GLB模型</option>
+                  <option value="obj" {% if edit_model and edit_model['model_type'] == 'obj' %}selected{% end %}>OBJ模型</option>
+                  <option value="pointcloud" {% if edit_model and edit_model['model_type'] == 'pointcloud' %}selected{% end %}>点云</option>
+                </select>
+              </label>
+              <label><span>资源URL</span><input type="text" name="asset_url" value="{{ edit_model['asset_url'] if edit_model else '' }}" placeholder="模型文件URL（可选）"></label>
+              <label class="form-wide"><span>变换参数 (JSON)</span><textarea name="transform_json" rows="3" style="font-family:monospace;font-size:13px" placeholder='{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}'>{{ edit_model['transform_json'] if edit_model else '{}' }}</textarea></label>
+              <label class="form-wide"><span>元数据 (JSON)</span><textarea name="metadata_json" rows="3" style="font-family:monospace;font-size:13px" placeholder='{"tags":[],"data_bind":{}}'>{{ edit_model['metadata_json'] if edit_model else '{}' }}</textarea></label>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">确认保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% end %}
 {% end %}

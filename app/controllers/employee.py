@@ -1,9 +1,13 @@
 import json
+import logging
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.employee import EmployeeRepository
 from app.models.model_engine import ModelRepository
+from app.models.skill import SkillRepository
 from app.models.validators import parse_int
+
+logger = logging.getLogger(__name__)
 
 PER_PAGE = 20
 
@@ -27,8 +31,6 @@ class AdminEmployeeHandler(AdminBaseHandler):
             except (json.JSONDecodeError, ValueError):
                 edit_skill_ids = []
         all_models, _ = ModelRepository.list_models(page=1, per_page=100)
-        from app.models.skill import SkillRepository
-
         all_skills = SkillRepository.list_all_active()
         self.render(
             "admin/employees.html",
@@ -55,6 +57,13 @@ class AdminEmployeeHandler(AdminBaseHandler):
                 "/admin/employees", msg or "已删除" if ok else msg
             )
         skills_list = self.get_body_arguments("skills")
+        all_skills = SkillRepository.list_all_active()
+        valid_ids = {str(s["id"]) for s in all_skills}
+        filtered_skills = [s for s in skills_list if s in valid_ids]
+        removed = [s for s in skills_list if s not in valid_ids]
+        if removed:
+            logger.warning("员工表单包含无效技能ID，已移除: %s", ", ".join(removed))
+        skills_list = filtered_skills
         name = self.get_body_argument("name", "").strip()
         avatar = self.get_body_argument("avatar", "🤖").strip()
         model_id = parse_int(self.get_body_argument("model_id", "0"), 0)

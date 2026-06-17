@@ -34,11 +34,24 @@ class AdminWarehouseHandler(AdminBaseHandler):
             return self._redirect_with_message(
                 "/admin/warehouse", msg or "已删除" if ok else msg
             )
-        if action == "execute" and q_id.isdigit():
-            query = WarehouseRepository.get_query(int(q_id))
-            if query:
+        if action == "execute":
+            raw_sql = self.get_body_argument("query", "").strip()
+            if q_id.isdigit():
+                query = WarehouseRepository.get_query(int(q_id))
+                if query:
+                    rows, cols, err = WarehouseRepository.execute_query(
+                        query["sql_query"], trusted=True
+                    )
+                    self.set_header("Content-Type", "application/json")
+                    if err:
+                        return self.write({"error": err})
+                    return self.write(
+                        {"columns": cols, "rows": [list(r) for r in (rows or [])]}
+                    )
+                return self.write({"error": "查询不存在"})
+            if raw_sql:
                 rows, cols, err = WarehouseRepository.execute_query(
-                    query["sql_query"], trusted=True
+                    raw_sql, trusted=True
                 )
                 self.set_header("Content-Type", "application/json")
                 if err:
@@ -46,7 +59,7 @@ class AdminWarehouseHandler(AdminBaseHandler):
                 return self.write(
                     {"columns": cols, "rows": [list(r) for r in (rows or [])]}
                 )
-            return self.write({"error": "查询不存在"})
+            return self.write({"error": "请提供查询ID或SQL语句"})
         name = self.get_body_argument("name", "").strip()
         sql_query = self.get_body_argument("sql_query", "").strip()
         description = self.get_body_argument("description", "").strip()

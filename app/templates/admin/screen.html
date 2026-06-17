@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>数智大屏</title>
 	<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2/dist/echarts-gl.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2/dist/echarts-wordcloud.min.js"></script>
 	<style>
 		* {
@@ -74,12 +75,26 @@
 			color: #e6edf3;
 		}
 
-		.screen-charts {
+		.screen-main {
 			display: flex;
 			gap: 12px;
 			padding: 0 16px;
 			flex: 1;
 			min-height: 0;
+		}
+
+		.screen-globe-col {
+			flex: 3;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		.screen-right-col {
+			flex: 4;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
 		}
 
 		.chart-box {
@@ -103,22 +118,21 @@
 			min-height: 0;
 		}
 
-		.chart-left {
-			flex: 6;
+		.globe-box {
+			flex: 1;
+			min-height: 0;
 		}
 
-		.chart-right {
-			flex: 4;
+		.trend-box {
+			flex: 3;
 		}
 
-		.screen-wordcloud {
-			padding: 12px 16px;
-			flex-shrink: 0;
-			height: 180px;
+		.sentiment-box {
+			flex: 2;
 		}
 
-		.screen-wordcloud .chart-box {
-			height: 100%;
+		.wordcloud-box {
+			flex: 2;
 		}
 	</style>
 </head>
@@ -146,20 +160,26 @@
 			<div class="value" id="s-items">{{ stats.get('item_count', 0) }}</div>
 		</div>
 	</div>
-	<div class="screen-charts">
-		<div class="chart-box chart-left">
-			<div class="chart-title">最近7天消息趋势</div>
-			<div class="chart-area" id="msgChart"></div>
+	<div class="screen-main">
+		<div class="screen-globe-col">
+			<div class="chart-box globe-box">
+				<div class="chart-title">瞭望数据地球</div>
+				<div class="chart-area" id="globeChart"></div>
+			</div>
 		</div>
-		<div class="chart-box chart-right">
-			<div class="chart-title">舆情情感分布</div>
-			<div class="chart-area" id="sentimentChart"></div>
-		</div>
-	</div>
-	<div class="screen-wordcloud">
-		<div class="chart-box">
-			<div class="chart-title">热词云</div>
-			<div class="chart-area" id="wordCloud"></div>
+		<div class="screen-right-col">
+			<div class="chart-box trend-box">
+				<div class="chart-title">最近7天消息趋势</div>
+				<div class="chart-area" id="msgChart"></div>
+			</div>
+			<div class="chart-box sentiment-box">
+				<div class="chart-title">舆情情感分布</div>
+				<div class="chart-area" id="sentimentChart"></div>
+			</div>
+			<div class="chart-box wordcloud-box">
+				<div class="chart-title">热词云</div>
+				<div class="chart-area" id="wordCloud"></div>
+			</div>
 		</div>
 	</div>
 	<div id="screen-data" hidden>{% raw stats_json %}</div>
@@ -167,6 +187,7 @@
 		var msgChart = echarts.init(document.getElementById('msgChart'), 'dark');
 		var sentimentChart = echarts.init(document.getElementById('sentimentChart'), 'dark');
 		var wordCloudChart = echarts.init(document.getElementById('wordCloud'), 'dark');
+		var globeChart = echarts.init(document.getElementById('globeChart'), 'dark');
 
 		var initData = JSON.parse(document.getElementById('screen-data').textContent);
 
@@ -191,7 +212,72 @@
 			});
 		}
 
+		function renderGlobe(points) {
+			var scatterData = points.map(function (p) {
+				return [p.lng, p.lat, Math.max(0.3, p.risk / 10 || 0.5)];
+			});
+			globeChart.setOption({
+				backgroundColor: 'transparent',
+				globe: {
+					baseTexture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/earth.jpg',
+					heightTexture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/earth.jpg',
+					displacementScale: 0.04,
+					shading: 'realistic',
+					environment: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/starfield.jpg',
+					realisticMaterial: {
+						roughness: 0.9
+					},
+					postEffect: {
+						enable: true
+					},
+					light: {
+						main: {
+							intensity: 1.2,
+							shadow: true
+						},
+						ambientCubemap: {
+							texture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/pisa.hdr',
+							diffuseIntensity: 0.8
+						}
+					},
+					viewControl: {
+						autoRotate: true,
+						autoRotateSpeed: 3,
+						targetCoord: [104, 35, 0]
+					}
+				},
+				series: [{
+					type: 'scatter3D',
+					coordinateSystem: 'globe',
+					blendMode: 'lighter',
+					symbolSize: function (val) {
+						return Math.max(4, val[2] * 12);
+					},
+					itemStyle: {
+						color: function (params) {
+							var risk = points[params.dataIndex] && points[params.dataIndex].risk || 0;
+							if (risk >= 7) return '#ff4444';
+							if (risk >= 4) return '#ffaa00';
+							return '#58a6ff';
+						},
+						opacity: 0.8
+					},
+					label: {
+						show: false
+					},
+					data: scatterData
+				}]
+			});
+		}
+
 		renderCharts(initData);
+
+		// Load globe data
+		var xsrfToken = (document.cookie.match(/_xsrf=([^;]+)/) || [])[1] || '';
+		fetch('/admin/screen/data/globe', { headers: { 'X-XSRFToken': xsrfToken } })
+			.then(function (r) { return r.json(); })
+			.then(function (d) { renderGlobe(d.points || []); })
+			.catch(function () { });
 
 		function updateClock() {
 			var now = new Date();
@@ -201,18 +287,32 @@
 		setInterval(updateClock, 1000);
 
 		function refreshData() {
-			fetch('/api/screen/data', { headers: { 'X-XSRFToken': (document.cookie.match(/_xsrf=([^;]+)/) || [])[1] || '' } }).then(function (r) { return r.json(); }).then(function (d) {
+			fetch('/api/screen/data', { headers: { 'X-XSRFToken': xsrfToken } }).then(function (r) { return r.json(); }).then(function (d) {
 				document.getElementById('s-users').textContent = d.user_count || 0;
 				document.getElementById('s-sessions').textContent = d.session_count || 0;
 				document.getElementById('s-msgs').textContent = d.msg_count || 0;
 				document.getElementById('s-items').textContent = d.item_count || 0;
 				renderCharts(d);
 			}).catch(function () { });
+			// Refresh wordcloud from dedicated endpoint
+			fetch('/admin/screen/data/wordcloud', { headers: { 'X-XSRFToken': xsrfToken } })
+				.then(function (r) { return r.json(); })
+				.then(function (d) {
+					wordCloudChart.setOption({
+						backgroundColor: 'transparent',
+						series: [{ type: 'wordCloud', gridSize: 6, sizeRange: [12, 36], rotationRange: [-45, 45], shape: 'circle', width: '100%', height: '100%', data: d.words || [], textStyle: { color: function () { return 'rgb(' + [Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100)].join(',') + ')'; } } }]
+					});
+				}).catch(function () { });
+			// Refresh globe
+			fetch('/admin/screen/data/globe', { headers: { 'X-XSRFToken': xsrfToken } })
+				.then(function (r) { return r.json(); })
+				.then(function (d) { renderGlobe(d.points || []); })
+				.catch(function () { });
 		}
 		setInterval(refreshData, 30000);
 
 		window.addEventListener('resize', function () {
-			msgChart.resize(); sentimentChart.resize(); wordCloudChart.resize();
+			msgChart.resize(); sentimentChart.resize(); wordCloudChart.resize(); globeChart.resize();
 		});
 	</script>
 </body>

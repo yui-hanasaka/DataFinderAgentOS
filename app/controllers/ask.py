@@ -1,10 +1,12 @@
 import json
 
 from app.controllers.base import BaseHandler
+from app.models.db import get_connection
 from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
 from app.models.model_client import chat_complete, parse_chat_response
 from app.models.model_engine import ModelRepository
+from app.models.sql_guard import ALLOWED_TABLES
 from app.models.warehouse import WarehouseRepository
 
 
@@ -32,9 +34,10 @@ class AskHomeHandler(AskBaseHandler):
         )
 
 
-# Public tables accessible via AI ask — only collected/warehouse data
-# Schema hint exposed to AI model — only public non-sensitive tables
-_PUBLIC_TABLES = {
+# Column-level metadata for AI schema hints — table names governed by
+# sql_guard.ALLOWED_TABLES (single source of truth for the allowlist).
+# Add a table's columns here when it is approved in ALLOWED_TABLES.
+_TABLE_COLUMNS: dict[str, list[str]] = {
     "watchtower_items": [
         "id",
         "source_id",
@@ -94,8 +97,10 @@ _PUBLIC_TABLES = {
 class AskQueryHandler(AskBaseHandler):
     def _public_schema_hint(self) -> str:
         hints = []
-        for table, cols in _PUBLIC_TABLES.items():
-            hints.append(f"{table}({', '.join(cols)})")
+        for table in sorted(ALLOWED_TABLES):
+            cols = _TABLE_COLUMNS.get(table)
+            if cols:
+                hints.append(f"{table}({', '.join(cols)})")
         return "; ".join(hints)
 
     async def post(self) -> None:
@@ -118,6 +123,13 @@ class AskQueryHandler(AskBaseHandler):
         model_row = ModelRepository.get_default_model()
         if not model_row:
             return self.write({"ok": False, "error": "未配置默认模型"})
+        if not model_row.get("api_key"):
+            return self.write(
+                {
+                    "ok": False,
+                    "error": "模型 API Key 未设置或已失效，请联系管理员更新模型配置",
+                }
+            )
 
         schema = self._public_schema_hint()
         prompt = (
@@ -162,8 +174,6 @@ class AskQueryHandler(AskBaseHandler):
 
         # Store in ask_history (SQL kept server-side only)
         try:
-            from app.models.db import get_connection
-
             with get_connection() as conn:
                 conn.execute(
                     """INSERT INTO ask_history(user_id, query, generated_sql, result_count, status, model_id)

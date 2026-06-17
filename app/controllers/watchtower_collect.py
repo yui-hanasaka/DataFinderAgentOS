@@ -1,10 +1,15 @@
+import asyncio
 import json
 
 from app.controllers.admin import AdminBaseHandler
 from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
 from app.models.validators import parse_int
-from app.models.watchtower import ItemRepository, SourceRepository
+from app.models.watchtower import (
+    ItemRepository,
+    SourceRepository,
+    analyze_items_sentiment,
+)
 from app.models.watchtower_scraper import WatchtowerScraper
 
 
@@ -39,7 +44,7 @@ class WatchtowerCollectHandler(AdminBaseHandler):
         if action == "search":
             return await self._handle_search()
         if action == "save":
-            return self._handle_save(content_type)
+            return await self._handle_save(content_type)
 
         self.set_status(400)
         self.write({"error": "未知操作"})
@@ -94,7 +99,7 @@ class WatchtowerCollectHandler(AdminBaseHandler):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"ok": True, "items": all_items, "total": len(all_items)})
 
-    def _handle_save(self, content_type: str = ""):
+    async def _handle_save(self, content_type: str = ""):
         if "application/json" in content_type:
             try:
                 payload = json.loads(self.request.body or b"{}")
@@ -113,6 +118,43 @@ class WatchtowerCollectHandler(AdminBaseHandler):
             self.set_status(400)
             return self.write({"error": "请选择要保存的数据"})
 
-        saved = ItemRepository.batch_add_items(items)
+        # Normalize scraper field names to DB column names
+        # Scraper returns: snippet, published_time, source
+        # DB expects:      content, published_at
+        normalized: list[dict] = []
+        for item in items:
+            entry: dict[str, object] = {
+                "source_id": item.get("source_id", 0),
+                "title": item.get("title", ""),
+                "content": item.get("snippet") or item.get("content") or "",
+                "url": item.get("url") or "",
+                "published_at": item.get("published_time")
+                or item.get("published_at")
+                or "",
+                "keywords": item.get("keywords", "[]"),
+                "raw_json": item.get("raw_json", "{}"),
+                "source_name": item.get("source_name", ""),
+            }
+            normalized.append(entry)
+
+        saved, new_ids = ItemRepository.batch_add_items(normalized)
+
+        # Mark sources as fetched
+        source_ids_seen: set[int] = set()
+        for item in items:
+            src_id = item.get("source_id")
+            if src_id is not None:
+                sid = int(src_id)
+                if sid not in source_ids_seen:
+                    source_ids_seen.add(sid)
+                    try:
+                        SourceRepository.mark_fetched(sid)
+                    except Exception as e:
+                        log_error(f"mark_fetched source_id={sid}", e)
+
+        # Trigger background AI analysis for newly inserted items
+        if new_ids:
+            asyncio.create_task(analyze_items_sentiment(new_ids))
+
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"ok": True, "saved": saved, "total": len(items)})

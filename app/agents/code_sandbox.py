@@ -7,10 +7,27 @@ from pathlib import Path
 from tornado.ioloop import IOLoop
 
 _BLOCKED_IMPORTS = frozenset(
-    {"subprocess", "socket", "ctypes", "multiprocessing", "threading"}
+    {
+        "subprocess",
+        "socket",
+        "ctypes",
+        "multiprocessing",
+        "threading",
+        "pickle",
+        "shutil",
+        "importlib",
+        "inspect",
+        "code",
+        "sys",
+        "os",
+    }
 )
 _BLOCKED_CALLS = frozenset({"exec", "eval", "compile", "__import__"})
 _BLOCKED_ATTRS = {("os", "system"), ("os", "popen")}
+_DANGEROUS_IMPORT_NAMES = frozenset(
+    {"system", "popen", "exec", "eval", "compile", "__import__"}
+)
+_DANGEROUS_GETATTR_TARGETS = frozenset({"system", "popen", "exec", "eval"})
 
 _STDOUT_LIMIT = 8 * 1024
 _STDERR_LIMIT = 2 * 1024
@@ -28,8 +45,13 @@ def _check_ast(code: str) -> str | None:
                 if alias.name.split(".")[0] in _BLOCKED_IMPORTS:
                     return f"禁止导入: {alias.name}"
         elif isinstance(node, ast.ImportFrom):
-            if (node.module or "").split(".")[0] in _BLOCKED_IMPORTS:
+            module_root = (node.module or "").split(".")[0]
+            if module_root in _BLOCKED_IMPORTS:
                 return f"禁止导入: {node.module}"
+            # Block `from X import Y` where Y is a dangerous function name
+            for alias in node.names:
+                if alias.name in _DANGEROUS_IMPORT_NAMES:
+                    return f"禁止导入危险名称: {alias.name} (from {node.module})"
         elif isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name) and node.func.id in _BLOCKED_CALLS:
                 return f"禁止调用: {node.func.id}"
@@ -39,6 +61,43 @@ def _check_ast(code: str) -> str | None:
                 and (node.func.value.id, node.func.attr) in _BLOCKED_ATTRS
             ):
                 return f"禁止调用: {node.func.value.id}.{node.func.attr}"
+            # Block getattr(blocked_module, 'dangerous_attr') pattern
+            if isinstance(node.func, ast.Name) and node.func.id == "getattr":
+                if len(node.args) >= 2:
+                    first_arg = node.args[0]
+                    second_arg = node.args[1]
+                    if (
+                        isinstance(first_arg, ast.Name)
+                        and first_arg.id in _BLOCKED_IMPORTS
+                        and isinstance(second_arg, ast.Constant)
+                        and isinstance(second_arg.value, str)
+                        and second_arg.value in _DANGEROUS_GETATTR_TARGETS
+                    ):
+                        return (
+                            f"禁止调用: getattr({first_arg.id}, {second_arg.value!r})"
+                        )
+            # Block call via sys.modules[...].dangerous_function() pattern
+            if (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr in _DANGEROUS_IMPORT_NAMES
+                and isinstance(node.func.value, ast.Subscript)
+                and isinstance(node.func.value.value, ast.Attribute)
+                and node.func.value.value.attr == "modules"
+                and isinstance(node.func.value.value.value, ast.Name)
+                and node.func.value.value.value.id == "sys"
+            ):
+                return f"禁止调用: sys.modules[...]{node.func.attr}()"
+        # Block globals()['__builtins__'] pattern
+        if isinstance(node, ast.Subscript):
+            if (
+                isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name)
+                and node.value.func.id in ("globals", "locals")
+                and isinstance(node.slice, ast.Constant)
+                and isinstance(node.slice.value, str)
+                and node.slice.value in ("__builtins__", "__builtin__")
+            ):
+                return f"禁止访问: {node.value.func.id}()[{node.slice.value!r}]"
     return None
 
 

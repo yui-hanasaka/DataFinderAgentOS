@@ -62,7 +62,6 @@ class WatchtowerAgent:
     async def _ai_decide(self, stats: dict) -> list[dict]:
         from app.models.model_client import chat_complete, parse_chat_response
         from app.models.model_engine import ModelRepository
-        from app.models.secrets_store import decrypt
 
         model_row = ModelRepository.get_default_model()
         if not model_row:
@@ -72,12 +71,15 @@ class WatchtowerAgent:
             "你是数据瞭望AI调度员。根据数据源状态，以JSON数组返回调度决策。\n"
             "可用action类型:\n"
             '  {"type":"trigger_deep_collect","item_ids":[int,...]}\n'
+            '  {"type":"scrape_source","source_id":int,"keyword":"..."}\n'
             '  {"type":"log_observation","message":"..."}\n'
             "只返回JSON数组，不要包含任何解释文字。"
         )
         prompt = f"当前瞭望状态:\n{json.dumps(stats, ensure_ascii=False, indent=2)}\n\n请给出调度决策:"
         try:
-            api_key = decrypt(str(model_row["api_key"]))
+            api_key = str(model_row["api_key"])
+            if not api_key:
+                return []
             resp = await chat_complete(
                 str(model_row["base_url"]),
                 api_key,
@@ -105,22 +107,105 @@ class WatchtowerAgent:
             return []
 
     async def _execute_action(self, action: dict) -> None:
+        action_type = action.get("type", "")
         try:
-            match action.get("type"):
+            match action_type:
                 case "trigger_deep_collect":
                     item_ids: list[int] = [
                         int(i) for i in (action.get("item_ids") or [])[:5]
                     ]
                     if item_ids:
-                        self._log_decision(
-                            "trigger_deep_collect", json.dumps(item_ids), "scheduled"
-                        )
+                        self._execute_trigger_deep_collect(item_ids)
+                case "scrape_source":
+                    await self._execute_scrape_source(action)
                 case "log_observation":
                     self._log_decision(
                         "log_observation", str(action.get("message", "")), "logged"
                     )
         except Exception as exc:
-            log_error(f"WatchtowerAgent._execute_action {action.get('type')}", exc)
+            log_error(f"WatchtowerAgent._execute_action {action_type}", exc)
+
+    def _execute_trigger_deep_collect(self, item_ids: list[int]) -> None:
+        """实际执行深度采集：创建 deep task 并记录决策。"""
+        from app.models.deep import DeepRepository
+
+        try:
+            task_id = DeepRepository.start_deep_collect(item_ids)
+            self._log_decision(
+                "trigger_deep_collect",
+                json.dumps({"item_ids": item_ids, "task_id": task_id}),
+                "executed",
+            )
+        except Exception as exc:
+            log_error(
+                f"WatchtowerAgent._execute_trigger_deep_collect item_ids={item_ids}",
+                exc,
+            )
+            self._log_decision(
+                "trigger_deep_collect",
+                json.dumps(item_ids),
+                f"failed: {exc}",
+            )
+
+    async def _execute_scrape_source(self, action: dict) -> None:
+        """实际执行数据源抓取。"""
+        from app.models.watchtower import ItemRepository, SourceRepository
+        from app.models.watchtower_scraper import WatchtowerScraper
+
+        source_id = int(action.get("source_id", 0))
+        keyword = str(action.get("keyword", "") or "")
+        pages = min(int(action.get("pages", 1) or 1), 3)
+        limit = min(int(action.get("limit", 20) or 20), 60)
+
+        if not source_id or not keyword:
+            self._log_decision(
+                "scrape_source",
+                json.dumps({"source_id": source_id, "keyword": keyword}),
+                "skipped: missing source_id or keyword",
+            )
+            return
+
+        try:
+            items = await WatchtowerScraper.scrape_source_async(
+                source_id, keyword, pages, limit
+            )
+            saved = 0
+            new_ids: list[int] = []
+            if items:
+                for item in items:
+                    item["source_id"] = source_id
+                saved, new_ids = ItemRepository.batch_add_items(items)
+            SourceRepository.mark_fetched(source_id)
+
+            # Trigger background AI analysis for newly saved items
+            if new_ids:
+                from app.models.watchtower import analyze_items_sentiment
+
+                await analyze_items_sentiment(new_ids)
+
+            self._log_decision(
+                "scrape_source",
+                json.dumps(
+                    {
+                        "source_id": source_id,
+                        "keyword": keyword,
+                        "pages": pages,
+                        "fetched": len(items),
+                        "saved": saved,
+                    }
+                ),
+                "executed",
+            )
+        except Exception as exc:
+            log_error(
+                f"WatchtowerAgent._execute_scrape_source source_id={source_id} keyword={keyword}",
+                exc,
+            )
+            self._log_decision(
+                "scrape_source",
+                json.dumps({"source_id": source_id, "keyword": keyword}),
+                f"failed: {exc}",
+            )
 
     def _log_decision(self, action: str, reason: str, outcome: str) -> None:
         try:

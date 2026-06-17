@@ -130,7 +130,8 @@
 									value="{{ '{:.2f}'.format(edit_model['temperature']) if edit_model else '0.70' }}"
 									required></label>
 							<label class="required"><span>最大长度 max_tokens</span><input type="number" min="1"
-									name="max_tokens" value="{{ edit_model['max_tokens'] if edit_model else 1024 }}"
+									max="393216" name="max_tokens"
+									value="{{ edit_model['max_tokens'] if edit_model else 1024 }}"
 									required></label>
 							<label class="form-wide"><span>系统提示 system_prompt</span><textarea name="system_prompt"
 									placeholder="可选，作为 system 消息注入对话上下文">{{ edit_model['system_prompt'] if edit_model and edit_model['system_prompt'] else '' }}</textarea></label>

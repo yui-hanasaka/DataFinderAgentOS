@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from app.models.crypto import hash_password, verify_password
-from app.models.db import get_connection
+from app.models.db import DatabaseConnection, get_connection
 
 PER_PAGE = 20
 
@@ -326,7 +326,7 @@ class AdminRepository:
 
     @staticmethod
     def _replace_role_menus(
-        conn: sqlite3.Connection, role_id: int, menu_ids: list[str]
+        conn: DatabaseConnection, role_id: int, menu_ids: list[str]
     ) -> None:
         conn.execute("DELETE FROM admin_role_menus WHERE role_id=?", (role_id,))
         ids = [

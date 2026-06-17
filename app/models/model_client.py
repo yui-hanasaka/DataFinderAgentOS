@@ -1,8 +1,46 @@
+import asyncio
+import atexit
 import json
+import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
+_MAX_RETRIES = 2
+_RETRY_DELAYS = [1.0, 2.0]
+
+_shared_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None:
+        limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+        timeout = httpx.Timeout(120, connect=10)
+        _shared_client = httpx.AsyncClient(limits=limits, timeout=timeout)
+    return _shared_client
+
+
+async def close_shared_client() -> None:
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+
+
+def _cleanup() -> None:
+    """Best-effort sync cleanup for atexit."""
+    try:
+        asyncio.run(close_shared_client())
+    except Exception:
+        pass
+
+
+atexit.register(_cleanup)
 
 
 async def chat_complete(
@@ -20,7 +58,7 @@ async def chat_complete(
         "model": model_id,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": max(1, min(max_tokens, 393216)),
         "stream": stream,
     }
     if tools is not None:
@@ -30,33 +68,64 @@ async def chat_complete(
         "Authorization": f"Bearer {api_key}",
         "Accept": "text/event-stream" if stream else "application/json",
     }
-    # Don't use context manager for streaming — the client must stay alive
-    # while the caller iterates the response body. httpx.AsyncClient.__aexit__
-    # closes all connections, which would kill the SSE stream mid-flight.
-    timeout = httpx.Timeout(120, connect=10)
-    client = httpx.AsyncClient(timeout=timeout)
-    resp = await client.send(
-        client.build_request("POST", url, headers=headers, json=body),
-        stream=stream,
-    )
-    if resp.status_code >= 400:
-        # Read the error body and surface it as an exception
+
+    client = _get_client()
+    last_exc: Exception | None = None
+
+    for attempt in range(_MAX_RETRIES + 1):
         try:
-            error_body = await resp.aread()
-            error_json = json.loads(error_body.decode("utf-8"))
-            err_msg = error_json.get("error", {}).get("message", "") or str(error_json)
-        except Exception:
-            err_msg = f"HTTP {resp.status_code}"
-        await client.aclose()
-        raise RuntimeError(f"API error {resp.status_code}: {err_msg}")
-    if not stream:
-        # Read the full response before closing the client
-        await resp.aread()
-        await client.aclose()
-    else:
-        # Keep client alive for streaming — caller must close it via resp._client.aclose()
-        setattr(resp, "_client", client)
-    return resp
+            resp = await client.send(
+                client.build_request("POST", url, headers=headers, json=body),
+                stream=stream,
+            )
+        except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError) as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES:
+                delay = _RETRY_DELAYS[attempt]
+                logger.debug(
+                    "Connection error (attempt %d/%d), retrying in %.1fs: %s",
+                    attempt + 1,
+                    _MAX_RETRIES + 1,
+                    delay,
+                    exc,
+                )
+                await asyncio.sleep(delay)
+                continue
+            raise
+
+        if resp.status_code >= 400:
+            try:
+                error_body = await resp.aread()
+                error_json = json.loads(error_body.decode("utf-8"))
+                err_msg = error_json.get("error", {}).get("message", "") or str(
+                    error_json
+                )
+            except Exception:
+                err_msg = f"HTTP {resp.status_code}"
+
+            if resp.status_code in _RETRYABLE_STATUSES and attempt < _MAX_RETRIES:
+                delay = _RETRY_DELAYS[attempt]
+                logger.debug(
+                    "Retryable HTTP %d (attempt %d/%d), retrying in %.1fs",
+                    resp.status_code,
+                    attempt + 1,
+                    _MAX_RETRIES + 1,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+                continue
+
+            raise RuntimeError(f"API error {resp.status_code}: {err_msg}")
+
+        # Success
+        if not stream:
+            await resp.aread()
+        # Shared client persists across calls — callers must NOT close it
+        return resp
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Unexpected retry exhaustion")
 
 
 def parse_chat_response(raw_bytes: bytes) -> dict[str, str | int]:
@@ -87,8 +156,19 @@ async def parse_chat_response_async(resp: httpx.Response) -> dict[str, str | int
 
 async def iter_sse_chunks(
     stream: httpx.Response,
+    timeout: float | None = 120.0,
 ) -> AsyncGenerator[dict[str, Any], None]:
-    async for raw in stream.aiter_lines():
+    ait = stream.aiter_lines()
+    while True:
+        try:
+            if timeout is not None:
+                raw = await asyncio.wait_for(ait.__anext__(), timeout=timeout)
+            else:
+                raw = await ait.__anext__()
+        except StopAsyncIteration:
+            break
+        except asyncio.TimeoutError:
+            break
         line = raw.strip()
         if not line or not line.startswith("data:"):
             continue

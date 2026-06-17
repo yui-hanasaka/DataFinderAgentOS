@@ -599,6 +599,181 @@
   [data-theme="light"] .empty-state h2 { color: #8a86c0 }
   [data-theme="light"] .empty-state p { color: #9a96c8 }
   [data-theme="light"] .skill-toggle.open .arrow { color: #6366f1 }
+
+  /* ═══════════════ Tool Call Cards ═══════════════ */
+  .tool-card {
+    align-self: flex-start;
+    max-width: 70%;
+    margin: 4px 0;
+    border-radius: 14px;
+    background: rgba(20, 18, 44, .65);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(139, 130, 255, .12);
+    box-shadow: 0 6px 20px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.03);
+    overflow: hidden;
+    animation: msgSlideUp .45s var(--spring-soft);
+    font-size: 13px;
+  }
+  .tool-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .2s;
+  }
+  .tool-card-header:hover { background: rgba(139,130,255,.04); }
+  .tool-card-header .tool-icon { font-size: 16px; flex-shrink: 0; }
+  .tool-card-header .tool-name { font-weight: 600; color: #c4b5fd; flex: 1; }
+  .tool-card-header .tool-status { font-size: 11px; color: #6b6b9e; }
+  .tool-card-header .tool-arrow { font-size: 10px; color: #6b6b9e; transition: transform .3s; }
+  .tool-card.expanded .tool-arrow { transform: rotate(180deg); }
+  .tool-card-body {
+    display: none;
+    padding: 0 14px 12px;
+    border-top: 1px solid rgba(139,130,255,.06);
+  }
+  .tool-card.expanded .tool-card-body { display: block; }
+  .tool-card-body .tool-args {
+    font-family: "SF Mono","Cascadia Code","Fira Code",monospace;
+    font-size: 11px;
+    color: #9088d0;
+    background: rgba(0,0,0,.15);
+    padding: 8px 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .tool-card-body .tool-result {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #a0a0d0;
+    background: rgba(52,211,153,.06);
+    border: 1px solid rgba(52,211,153,.1);
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .tool-card-body .tool-review {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .tool-card-body .tool-review.approved { color: #52d89a; background: rgba(52,211,153,.06); }
+  .tool-card-body .tool-review.denied { color: #f87171; background: rgba(248,113,113,.06); }
+  .tool-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(139,130,255,.15);
+    border-top-color: #818cf8;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tool-card.completed .tool-status { color: #52d89a; }
+
+  /* ═══════════════ Model Row & Popover ═══════════════ */
+  .model-row-glass {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    margin: 10px 0;
+    border: 1px solid rgba(139,130,255,.1);
+    border-radius: 11px;
+    background: rgba(20,18,48,.5);
+    color: #a0a0d0;
+    font-size: 13px;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all .25s ease;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .model-row-glass:hover {
+    border-color: rgba(139,130,255,.35);
+    color: #e0e0f8;
+    background: rgba(30,28,60,.55);
+  }
+  .model-label { display: flex; align-items: center; gap: 6px; }
+  .model-label small { font-size: 10px; color: #818cf8; font-weight: 500; }
+  .model-arrow { font-size: 10px; opacity: .7; transition: transform .3s; }
+  .model-row-glass.open .model-arrow { transform: rotate(180deg); }
+  .model-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: rgba(16,14,38,.95);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(139,130,255,.15);
+    border-radius: 11px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+    z-index: 10;
+    overflow: hidden;
+    display: none;
+  }
+  .model-pop-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #c0c0e0;
+    transition: all .15s ease;
+  }
+  .model-pop-item:hover { background: rgba(139,130,255,.08); color: #fff; }
+  .model-pop-item.active { color: #c4b5fd; background: rgba(99,102,241,.1); }
+  .model-pop-item.active::after { content: '\2713'; font-size: 12px; color: #818cf8; }
+  .model-type-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(139,130,255,.08);
+    color: #9088d0;
+    border: 1px solid rgba(139,130,255,.1);
+  }
+
+  /* Light theme — tool cards */
+  [data-theme="light"] .tool-card {
+    background: rgba(255,255,255,.7);
+    border-color: rgba(99,102,241,.06);
+    box-shadow: 0 6px 20px rgba(99,102,241,.04), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  [data-theme="light"] .tool-card-header .tool-name { color: #6366f1; }
+  [data-theme="light"] .tool-card-body .tool-args { background: rgba(99,102,241,.03); color: #6b67a0; }
+  [data-theme="light"] .tool-card-body .tool-result { background: rgba(52,211,153,.03); border-color: rgba(52,211,153,.06); color: #4d4a70; }
+
+  /* Light theme — model row */
+  [data-theme="light"] .model-row-glass {
+    background: rgba(255,255,255,.5);
+    border-color: rgba(99,102,241,.06);
+    color: #3d3a60;
+  }
+  [data-theme="light"] .model-row-glass:hover { background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.2); }
+  [data-theme="light"] .model-label small { color: #6366f1; }
+  [data-theme="light"] .model-popover {
+    background: rgba(255,255,255,.94);
+    border-color: rgba(99,102,241,.1);
+    box-shadow: 0 16px 48px rgba(99,102,241,.1), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  [data-theme="light"] .model-pop-item { color: #3d3a60; }
+  [data-theme="light"] .model-pop-item:hover { background: rgba(99,102,241,.06); color: #2d2a4a; }
+  [data-theme="light"] .model-pop-item.active { background: rgba(99,102,241,.08); }
+  [data-theme="light"] .model-type-tag { background: rgba(99,102,241,.04); border-color: rgba(99,102,241,.08); color: #6b67a0; }
 </style>
 
 <div class="glass-shell">
@@ -616,6 +791,19 @@
       <option value="{{ e["id"] }}" data-model-name="{{ e["model_name"] or "未绑定" }}" {% if e["id"]==current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
       {% end %}
     </select>
+    <div class="model-row-glass" id="modelRow" {% if not current_session %}style="pointer-events:none;opacity:.5"{% end %}>
+      <span class="model-label">🤖 <span id="modelName">{{ current_model_name }}</span>{% if is_model_custom %} <small>(自选)</small>{% end %}</span>
+      <span class="model-arrow">▾</span>
+      <div class="model-popover" id="modelPopover" style="display:none">
+        {% for m in models %}
+        <div class="model-pop-item {% if m['id'] == current_model_id %}active{% end %}"
+             data-id="{{ m['id'] }}" onclick="event.stopPropagation();switchModel({{ m['id'] }})">
+          <span>{{ m['name'] }}</span>
+          <span class="model-type-tag">{{ m['model_type'] }}</span>
+        </div>
+        {% end %}
+      </div>
+    </div>
     <div class="emp-model-info" id="empModelInfo"></div>
 
     <div class="side-section-header" style="margin-top:16px">
@@ -815,10 +1003,25 @@
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            if (data === '[DONE]') { btn.disabled = false; return; }
-            try { accumulated += JSON.parse(data).content; } catch { /* partial SSE chunk */ }
-            msgDiv.innerHTML = renderSafeMarkdown(accumulated);
-            scrollBottom();
+            if (data === '[DONE]') return;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type === 'text') {
+                accumulated += parsed.content || '';
+                msgDiv.innerHTML = renderSafeMarkdown(accumulated);
+                scrollBottom();
+              } else if (parsed.type === 'music_html') {
+                msgDiv.innerHTML = parsed.html || '';
+                scrollBottom();
+              } else if (parsed.type === 'tool_call') {
+                appendToolCard(parsed);
+                scrollBottom();
+              } else if (parsed.type === 'tool_review') {
+                updateToolReview(parsed);
+              } else if (parsed.type === 'tool_result') {
+                updateToolResult(parsed);
+              }
+            } catch { /* partial SSE chunk */ }
           }
         }
       }
@@ -827,8 +1030,9 @@
       if (typing) typing.remove();
       const errDiv = appendAssistantMsg('❌ 请求失败：' + e.message);
       errDiv.style.color = '#f87171';
+    } finally {
+      btn.disabled = false;
     }
-    btn.disabled = false;
   }
 
   /* ── Session management ── */
@@ -905,6 +1109,163 @@
 
   document.getElementById('empSelect').addEventListener('change', updateModelInfo);
   updateModelInfo();
+
+  /* ── Tool Card Helpers ── */
+  const _toolCards = {};
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  /* ── Music Search (client-side, shared by @music assistant card) ── */
+  async function musicSearch(form) {
+    const q = form.q.value.trim();
+    if (!q) return false;
+    const d = document.getElementById('musicResults');
+    d.innerHTML = '<div style="padding:12px;text-align:center">⏳ 正在搜索多个数据源...</div>';
+    try {
+      const r = await fetch('/chat/music/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: q })
+      });
+      const j = await r.json();
+      if (!j.sources || !j.sources.length) {
+        d.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted)">未找到相关音乐结果，请尝试其他关键词</div>';
+        return false;
+      }
+      let h = '';
+      j.sources.forEach(function (src) {
+        h += '<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border)">';
+        h += '<div style="font-size:0.8em;color:var(--text-muted);margin-bottom:6px">📡 ' + escHtml(src.source) + '</div>';
+        (src.items || []).forEach(function (item) {
+          const url = item.url || '#';
+          h += '<a href="' + escHtml(url) + '" target="_blank" style="display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--text);text-decoration:none;border-bottom:1px solid var(--border-light)">';
+          h += '<span>🎶</span>';
+          h += '<div style="flex:1"><div style="font-weight:500">' + escHtml(item.title || '未知歌曲') + '</div>';
+          if (item.artist) h += '<div style="font-size:0.85em;color:var(--text-muted)">' + escHtml(item.artist) + '</div>';
+          h += '</div>';
+          if (item.album) h += '<span style="font-size:0.8em;color:var(--text-muted)">' + escHtml(item.album) + '</span>';
+          h += '</a>';
+        });
+        h += '</div>';
+      });
+      d.innerHTML = h;
+    } catch (e) {
+      d.innerHTML = '<div style="padding:12px;text-align:center;color:var(--danger)">搜索失败，请稍后重试</div>';
+    }
+    return false;
+  }
+
+  function appendToolCard(evt) {
+    clearEmptyState();
+    const card = document.createElement('div');
+    card.className = 'tool-card expanded';
+    card.id = 'tool-' + evt.call_id;
+    _toolCards[evt.call_id] = card;
+    const argsStr = evt.args ? JSON.stringify(evt.args, null, 2) : '';
+    card.innerHTML =
+      '<div class="tool-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
+        '<span class="tool-icon">🔧</span>' +
+        '<span class="tool-name">' + escHtml(evt.name || 'tool') + '</span>' +
+        '<span class="tool-spinner"></span>' +
+        '<span class="tool-status">执行中…</span>' +
+        '<span class="tool-arrow">▾</span>' +
+      '</div>' +
+      '<div class="tool-card-body">' +
+        (argsStr ? '<div class="tool-args">' + escHtml(argsStr) + '</div>' : '') +
+      '</div>';
+    document.getElementById('messages').appendChild(card);
+  }
+
+  function updateToolReview(evt) {
+    const card = _toolCards[evt.call_id];
+    if (!card) return;
+    const body = card.querySelector('.tool-card-body');
+    const reviewCls = evt.approved ? 'approved' : 'denied';
+    var reviewText = evt.approved ? '✓ 已批准' : '✗ 已拒绝';
+    if (evt.reason) reviewText += ': ' + evt.reason;
+    const existingReview = body.querySelector('.tool-review');
+    if (existingReview) existingReview.remove();
+    const reviewDiv = document.createElement('div');
+    reviewDiv.className = 'tool-review ' + reviewCls;
+    reviewDiv.textContent = reviewText;
+    body.appendChild(reviewDiv);
+  }
+
+  function updateToolResult(evt) {
+    const card = _toolCards[evt.call_id];
+    if (!card) return;
+    card.classList.add('completed');
+    const spinner = card.querySelector('.tool-spinner');
+    if (spinner) spinner.remove();
+    const status = card.querySelector('.tool-status');
+    if (status) status.textContent = '完成';
+    const body = card.querySelector('.tool-card-body');
+    const existingResult = body.querySelector('.tool-result');
+    if (existingResult) existingResult.remove();
+    if (evt.content) {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = 'tool-result';
+      resultDiv.textContent = evt.content;
+      body.appendChild(resultDiv);
+    }
+  }
+
+  /* ── Model Selector ── */
+  async function switchModel(modelId) {
+    if (!SESSION_ID) return;
+    const popover = document.getElementById('modelPopover');
+    popover.style.display = 'none';
+    document.getElementById('modelRow').classList.remove('open');
+
+    try {
+      const resp = await fetch('/chat/model', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
+        body: JSON.stringify({session_id: SESSION_ID, model_id: modelId})
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        document.getElementById('modelName').textContent = data.model_name;
+        const modelLabel = document.querySelector('.model-label');
+        const customTag = modelLabel.querySelector('small');
+        if (modelId === 0 && customTag) customTag.remove();
+        else if (modelId > 0 && !customTag) {
+          const tag = document.createElement('small');
+          tag.textContent = '(自选)';
+          modelLabel.appendChild(tag);
+        }
+        document.querySelectorAll('.model-pop-item').forEach(function(el) {
+          el.classList.toggle('active', parseInt(el.dataset.id) === modelId);
+        });
+        var tagSpan = document.querySelector('#inputModelTag span');
+        if (tagSpan) { tagSpan.textContent = data.model_name; }
+      }
+    } catch(e) {
+      console.error('切换模型失败:', e);
+    }
+  }
+
+  document.getElementById('modelRow').addEventListener('click', function(e) {
+    if (!SESSION_ID) return;
+    const popover = document.getElementById('modelPopover');
+    const row = document.getElementById('modelRow');
+    const isOpen = popover.style.display === 'block';
+    popover.style.display = isOpen ? 'none' : 'block';
+    row.classList.toggle('open', !isOpen);
+    e.stopPropagation();
+  });
+
+  document.addEventListener('click', function() {
+    const popover = document.getElementById('modelPopover');
+    if (popover.style.display === 'block') {
+      popover.style.display = 'none';
+      document.getElementById('modelRow').classList.remove('open');
+    }
+  });
 
 </script>
 {% end %}

@@ -133,7 +133,9 @@ class DatabaseConnection:
 
     # -- execute ---------------------------------------------------
 
-    def execute(self, sql: str, parameters: tuple | None = None) -> "CursorProxy":
+    def execute(
+        self, sql: str, parameters: tuple | list | None = None
+    ) -> "CursorProxy":
         if self._dialect == "mysql":
             sql = sql.replace("?", "%s")
         cur = self._conn.execute(sql, parameters or ())
@@ -180,12 +182,16 @@ class CursorProxy:
         return self._cur.fetchall()
 
     @property
-    def lastrowid(self) -> int | None:
-        return getattr(self._cur, "lastrowid", None)
+    def lastrowid(self) -> int:
+        return self._cur.lastrowid
 
     @property
-    def rowcount(self) -> int | None:
-        return getattr(self._cur, "rowcount", None)
+    def rowcount(self) -> int:
+        return self._cur.rowcount
+
+    @property
+    def description(self) -> Any:
+        return getattr(self._cur, "description", None)
 
 
 # ── Table initialisers ──────────────────────────────────────────
@@ -700,30 +706,24 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
             "{}",
         ),
         (
-            "360新闻搜索",
-            "generic",
-            "https://news.so.com/ns",
-            "https://news.so.com/ns?q={关键词}&pn={分页步进}",
-            120,
+            "搜狗网页搜索",
+            "sogou_web",
+            "https://www.sogou.com/web",
+            "https://www.sogou.com/web?query={关键词}&page={分页步进}",
+            60,
             (
                 "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
                 " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
                 "Accept: text/html,application/xhtml+xml\n"
                 "Accept-Language: zh-CN,zh;q=0.9"
             ),
-            (
-                '{"container_selector":".result, .res-list, .news-item",'
-                '"title_selector":"h3 a, .title a, a.title",'
-                '"snippet_selector":"p, .desc, .summary, .abstract",'
-                '"source_selector":".source, .site, .from",'
-                '"date_selector":".date, .time, span.time"}'
-            ),
+            "{}",
         ),
         (
-            "360网页搜索",
+            "搜狗知乎搜索",
             "generic",
-            "https://www.so.com/s",
-            "https://www.so.com/s?q={关键词}&pn={分页步进}",
+            "https://www.sogou.com/sogou",
+            "https://www.sogou.com/sogou?query=site:zhihu.com+{关键词}&page={分页步进}",
             120,
             (
                 "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -732,11 +732,11 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
                 "Accept-Language: zh-CN,zh;q=0.9"
             ),
             (
-                '{"container_selector":".result, .res-list, li.res-list",'
-                '"title_selector":"h3 a, .res-title a, a.res-title",'
-                '"snippet_selector":".res-desc, .res-summary, p",'
-                '"source_selector":".res-source, .source, cite",'
-                '"date_selector":".res-date, .date, time"}'
+                '{"container_selector":".results .result, .vrwrap, .rb",'
+                '"title_selector":"h3 a, .vr-title a, .vrTitle a",'
+                '"snippet_selector":".star-wiki, .space-txt, .str_info_div, .abstract",'
+                '"source_selector":".source, cite, .refer, .source-site",'
+                '"date_selector":".date, .time, .str-time"}'
             ),
         ),
         (
@@ -812,6 +812,31 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
                     request_headers, config_json, status)
                    VALUES(?,?,?,?,?,?,?,'enabled')""",
                 (name, src_type, url, url_tpl, interval, req_hdrs, cfg_json),
+            )
+
+    # Clean up obsolete / non-working legacy sources that are no longer
+    # in the default list.  Keep user-added sources (those with no match
+    # on both name AND source_type) intact.
+    current_names = {(n, t) for n, t, *_ in default_sources}
+    legacy_cleanup = {
+        ("少数派", "rss"),
+        ("中国教育在线新闻", "generic"),
+        ("新浪教育新闻", "generic"),
+        ("360新闻搜索", "generic"),
+        ("360网页搜索", "generic"),
+        ("Bing 新闻 RSS", "rss"),
+        ("百度", "url"),
+    }
+    for name, src_type in legacy_cleanup:
+        if (name, src_type) not in current_names:
+            conn.execute(
+                "DELETE FROM watchtower_items WHERE source_id IN "
+                "(SELECT id FROM watchtower_sources WHERE name=? AND source_type=?)",
+                (name, src_type),
+            )
+            conn.execute(
+                "DELETE FROM watchtower_sources WHERE name=? AND source_type=?",
+                (name, src_type),
             )
 
 
@@ -949,6 +974,11 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         ) AND url IS NOT NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS idx_watchtower_items_url_unique ON watchtower_items(url);
         """,
+    )
+    _migrate(
+        conn,
+        "v4_drop_url_unique_index",
+        "DROP INDEX IF EXISTS idx_watchtower_items_url_unique;",
     )
 
     # Indexes (idempotent)
