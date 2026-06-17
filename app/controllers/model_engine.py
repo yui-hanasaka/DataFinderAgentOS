@@ -138,7 +138,9 @@ class AdminModelChatHandler(AdminBaseHandler):
         except Exception as e:
             log_error("AdminModelChatHandler", e)
             self.set_status(502)
-            self.write({"error": "模型调用失败，请稍后重试"})
+            # If SSE headers haven't been sent yet, write JSON
+            if "text/event-stream" not in self._headers.get("Content-Type", ""):
+                self.write({"error": "模型调用失败，请稍后重试"})
 
     async def _sync_response(
         self, model: dict[str, Any], messages: list[dict[str, str]]
@@ -180,33 +182,41 @@ class AdminModelChatHandler(AdminBaseHandler):
         self.set_header("Content-Type", "text/event-stream; charset=utf-8")
         self.set_header("Cache-Control", "no-cache")
         self.set_header("X-Accel-Buffering", "no")
-        resp = await chat_complete(
-            base_url,
-            api_key,
-            model_name,
-            messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-        )
         prompt_tokens = 0
         completion_tokens = 0
-        async for chunk in iter_sse_chunks(resp):
-            usage = chunk.get("usage") or {}
-            if usage:
-                prompt_tokens = max(prompt_tokens, int(usage.get("prompt_tokens") or 0))
-                completion_tokens = max(
-                    completion_tokens, int(usage.get("completion_tokens") or 0)
-                )
-            delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
-            text = delta.get("content") or ""
-            reasoning = delta.get("reasoning_content") or ""
-            self.write(
-                "data: "
-                + json.dumps({"content": text, "reasoning": reasoning})
-                + "\n\n"
+        try:
+            resp = await chat_complete(
+                base_url,
+                api_key,
+                model_name,
+                messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
             )
-            await self.flush()
-        ModelRepository.record_usage(model_id, prompt_tokens, completion_tokens)
+            async for chunk in iter_sse_chunks(resp):
+                usage = chunk.get("usage") or {}
+                if usage:
+                    prompt_tokens = max(
+                        prompt_tokens, int(usage.get("prompt_tokens") or 0)
+                    )
+                    completion_tokens = max(
+                        completion_tokens, int(usage.get("completion_tokens") or 0)
+                    )
+                delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
+                text = delta.get("content") or ""
+                reasoning = delta.get("reasoning_content") or ""
+                self.write(
+                    "data: "
+                    + json.dumps({"content": text, "reasoning": reasoning})
+                    + "\n\n"
+                )
+                await self.flush()
+            ModelRepository.record_usage(model_id, prompt_tokens, completion_tokens)
+        except Exception as e:
+            log_error("AdminModelChatHandler SSE stream", e)
+            self.write(
+                "data: " + json.dumps({"error": "模型调用失败，请稍后重试"}) + "\n\n"
+            )
         self.write("data: [DONE]\n\n")
         await self.flush()

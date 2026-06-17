@@ -28,12 +28,16 @@ async def chat_complete(
         "Accept": "text/event-stream" if stream else "application/json",
     }
     # Use a shared client or create per request — per request is safer for now
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=10)) as client:
-        if stream:
-            return await client.send(
-                client.build_request("POST", url, headers=headers, json=body),
-                stream=True,
-            )
+    timeout = httpx.Timeout(120, connect=10)
+    if stream:
+        # Do NOT use async with here — returning exits the context manager,
+        # closing the client and breaking the streaming response.
+        client = httpx.AsyncClient(timeout=timeout)
+        return await client.send(
+            client.build_request("POST", url, headers=headers, json=body),
+            stream=True,
+        )
+    async with httpx.AsyncClient(timeout=timeout) as client:
         return await client.post(url, headers=headers, json=body)
 
 
