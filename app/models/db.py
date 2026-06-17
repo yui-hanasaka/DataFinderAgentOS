@@ -211,9 +211,130 @@ def _init_model_tables(conn):
 	)
 
 
+def _init_business_tables(conn):
+	conn.executescript("""
+		CREATE TABLE IF NOT EXISTS digital_employees(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			avatar TEXT NOT NULL DEFAULT '🤖',
+			model_id INTEGER NOT NULL DEFAULT 0,
+			system_prompt TEXT,
+			skills TEXT NOT NULL DEFAULT '[]',
+			status TEXT NOT NULL DEFAULT 'enabled',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT
+		);
+		CREATE TABLE IF NOT EXISTS skills(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			code TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			skill_type TEXT NOT NULL DEFAULT 'builtin',
+			config_json TEXT NOT NULL DEFAULT '{}',
+			status TEXT NOT NULL DEFAULT 'enabled',
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS chat_sessions(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL DEFAULT 0,
+			employee_id INTEGER NOT NULL DEFAULT 0,
+			title TEXT NOT NULL DEFAULT '新对话',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT
+		);
+		CREATE TABLE IF NOT EXISTS chat_messages(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			session_id INTEGER NOT NULL,
+			role TEXT NOT NULL DEFAULT 'user',
+			content TEXT NOT NULL,
+			skill_meta TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(session_id) REFERENCES chat_sessions(id)
+		);
+		CREATE TABLE IF NOT EXISTS watchtower_sources(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			source_type TEXT NOT NULL DEFAULT 'rss',
+			url TEXT NOT NULL,
+			fetch_interval INTEGER NOT NULL DEFAULT 60,
+			status TEXT NOT NULL DEFAULT 'enabled',
+			last_fetched TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS watchtower_items(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			source_id INTEGER NOT NULL,
+			title TEXT NOT NULL,
+			content TEXT,
+			url TEXT,
+			sentiment TEXT,
+			risk INTEGER NOT NULL DEFAULT 0,
+			published_at TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(source_id) REFERENCES watchtower_sources(id)
+		);
+		CREATE TABLE IF NOT EXISTS deep_tasks(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			target_url TEXT NOT NULL,
+			depth INTEGER NOT NULL DEFAULT 1,
+			schedule TEXT,
+			status TEXT NOT NULL DEFAULT 'idle',
+			last_run TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS api_keys(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			api_type TEXT NOT NULL DEFAULT 'weather',
+			endpoint TEXT,
+			api_key TEXT,
+			status TEXT NOT NULL DEFAULT 'enabled',
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS data_warehouse(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			sql_query TEXT NOT NULL,
+			description TEXT,
+			category TEXT NOT NULL DEFAULT '默认',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT
+		);
+		CREATE TABLE IF NOT EXISTS sys_settings(
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+	""")
+
+
+def _seed_business_data(conn):
+	builtin_skills = [
+		("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
+		("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
+		("campus", "西师妹校园助手", "builtin", '{"prefix": "@西师妹"}'),
+		("websearch", "网络搜索", "builtin", '{"prefix": "\\\\search"}'),
+	]
+	conn.executemany(
+		"INSERT OR IGNORE INTO skills(code, name, skill_type, config_json) VALUES(?,?,?,?)",
+		builtin_skills
+	)
+	default_employee = conn.execute("SELECT id FROM digital_employees WHERE name='智能助手'").fetchone()
+	if not default_employee:
+		conn.execute(
+			"""INSERT INTO digital_employees(name, avatar, system_prompt, skills)
+			   VALUES('智能助手', '🤖', '你是一个智能助手，请以专业、友善的方式回答用户问题。',
+			          '["weather","music","campus","websearch"]')"""
+		)
+	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('db_type', 'sqlite')")
+	conn.execute("INSERT OR IGNORE INTO sys_settings(key, value) VALUES('site_name', 'DataFinder AgentOS')")
+
+
 def init_db():
 	with get_connection() as conn:
 		_init_users_table(conn)
 		_init_admin_tables(conn)
 		_seed_admin_data(conn)
 		_init_model_tables(conn)
+		_init_business_tables(conn)
+		_seed_business_data(conn)

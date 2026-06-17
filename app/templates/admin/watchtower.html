@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-page-head">
+	<div><p>智能业务</p><h1>瞭望管理</h1><span>管理数据采集源，监控最新采集条目与舆情动态。</span></div>
+	<form class="admin-search" method="get" action="/admin/watchtower">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索采集源名称">
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/watchtower">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#sourceModal"><i class="fa-solid fa-plus"></i> 新增采集源</button>
+	</form>
+</section>
+{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>采集源列表</strong><span>共 {{ src_total }} 条，每页 {{ per_page }} 条</span></div>
+	<table class="admin-table">
+		<thead><tr><th>ID</th><th>名称</th><th>类型</th><th>URL</th><th>采集间隔</th><th>状态</th><th>最后采集</th><th>条目数</th><th>操作</th></tr></thead>
+		<tbody>{% for src in sources %}<tr><td>{{ src['id'] }}</td><td>{{ src['name'] }}</td><td>{{ src['source_type'] }}</td><td class="text-truncate" style="max-width:160px" title="{{ src['url'] }}">{{ src['url'] }}</td><td>{{ src['fetch_interval'] }}s</td><td>{{ src['status'] }}</td><td>{{ src['last_fetched'] or '-' }}</td><td>{{ src['item_count'] }}</td><td class="table-actions"><a href="/admin/watchtower?edit={{ src['id'] }}">修改</a><form method="post" action="/admin/watchtower" data-confirm="确认删除该采集源？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ src['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+	</table>
+	<div class="admin-pagination">{% if src_page > 1 %}<a href="/admin/watchtower?page={{ src_page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ src_page }} 页</span>{% if src_page * per_page < src_total %}<a href="/admin/watchtower?page={{ src_page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+</section>
+<section class="admin-table-card">
+	<div class="table-title"><strong>最新条目</strong><span>最近采集的舆情条目</span></div>
+	<table class="admin-table">
+		<thead><tr><th>标题</th><th>来源</th><th>情感</th><th>风险</th><th>发布时间</th></tr></thead>
+		<tbody>{% for item in recent_items %}<tr><td>{{ item['title'] }}</td><td>{{ item['source_name'] or '-' }}</td><td>{{ item['sentiment'] or '-' }}</td><td>{{ item['risk'] or '-' }}</td><td>{{ item['published_at'] or '-' }}</td></tr>{% end %}</tbody>
+	</table>
+</section>
+<div class="modal fade admin-edit-modal" id="sourceModal" tabindex="-1" {% if edit_source %}data-auto-open="true"{% end %}>
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div>
+					<h5 class="modal-title">{% if edit_source %}修改采集源{% else %}新增采集源{% end %}</h5>
+					<small class="field-hint">配置数据采集源地址与调度参数。<span class="required-tip">* 为必填项</span></small>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+			<form method="post" action="/admin/watchtower" data-confirm="确认保存采集源信息？">
+				<div class="modal-body">
+					{% module xsrf_form_html() %}
+					{% if edit_source %}<input type="hidden" name="id" value="{{ edit_source['id'] }}">{% end %}
+					<section class="admin-form-section">
+						<div class="admin-grid-form">
+							<label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_source['name'] if edit_source else '' }}" placeholder="采集源名称" required></label>
+							<label class="required"><span>类型</span><select name="source_type"><option value="rss" {% if not edit_source or edit_source['source_type'] == 'rss' %}selected{% end %}>RSS</option><option value="url" {% if edit_source and edit_source['source_type'] == 'url' %}selected{% end %}>URL</option></select></label>
+							<label class="required form-wide"><span>URL</span><input type="url" name="url" value="{{ edit_source['url'] if edit_source else '' }}" placeholder="https://" required></label>
+							<label class="required"><span>采集间隔(秒)</span><input type="number" name="fetch_interval" value="{{ edit_source['fetch_interval'] if edit_source else '3600' }}" min="60" required></label>
+							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_source or edit_source['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_source and edit_source['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+						</div>
+					</section>
+				</div>
+				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+			</form>
+		</div>
+	</div>
+</div>
+{% end %}
