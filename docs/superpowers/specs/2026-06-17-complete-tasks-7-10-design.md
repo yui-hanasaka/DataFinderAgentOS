@@ -423,3 +423,766 @@ class AdminWarehouseDetailHandler(AdminBaseHandler):
                     item=item, 
                     deep_content=deep_content)
 ```
+
+---
+
+## 5. 任务9: 深度采集
+
+### 5.1 功能需求
+
+1. 使用 crawl4ai 抓取完整网页内容（支持JS渲染）
+2. 调用默认AI模型提取/总结核心内容
+3. 保存到 `data_warehouse` 表
+4. 更新 `watchtower_items` 的深度采集标记
+5. SSE实时进度推送（日志、统计）
+6. 支持单条/批量采集
+7. 失败重试机制（最多3次）
+
+### 5.2 数据库设计
+
+**扩展 `deep_tasks` 表**:
+
+```sql
+ALTER TABLE deep_tasks ADD COLUMN progress INTEGER DEFAULT 0;
+ALTER TABLE deep_tasks ADD COLUMN total_items INTEGER DEFAULT 0;
+ALTER TABLE deep_tasks ADD COLUMN completed_items INTEGER DEFAULT 0;
+ALTER TABLE deep_tasks ADD COLUMN failed_items INTEGER DEFAULT 0;
+ALTER TABLE deep_tasks ADD COLUMN logs TEXT DEFAULT '[]';
+```
+
+**`data_warehouse` 表结构** (已存在，复用):
+
+```sql
+CREATE TABLE IF NOT EXISTS data_warehouse (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    watchtower_item_id INTEGER,  -- FK到watchtower_items
+    title TEXT,
+    url TEXT,
+    raw_content TEXT,  -- crawl4ai抓取的完整markdown
+    summary TEXT,      -- AI生成的摘要
+    collected_at TEXT,
+    FOREIGN KEY (watchtower_item_id) REFERENCES watchtower_items(id)
+);
+```
+
+### 5.3 深度采集引擎
+
+**采集器模块** (`app/models/deep_collector.py`):
+
+```python
+import asyncio
+from crawl4ai import AsyncWebCrawler
+from app.models.model_client import ModelClient
+
+class DeepCollector:
+    MAX_RETRIES = 3
+    
+    @staticmethod
+    async def collect_item(item_id: int, task_id: int, retry_count: int = 0):
+        """采集单个条目"""
+        try:
+            # 获取条目
+            item = WatchtowerRepository.get_item(item_id)
+            DeepTaskRepository.add_log(task_id, f'开始采集: {item["title"]}')
+            
+            # 使用crawl4ai深度抓取
+            async with AsyncWebCrawler(verbose=False) as crawler:
+                result = await crawler.arun(
+                    url=item['url'],
+                    word_count_threshold=10,
+                    bypass_cache=True
+                )
+                raw_content = result.markdown
+            
+            # AI提取核心内容
+            model = ModelRepository.get_default_model()
+            summary_prompt = f"""请提取以下文章的核心内容，保留关键信息，去除广告和无关内容：
+
+标题：{item['title']}
+内容：{raw_content[:2000]}  # 限制长度避免超token
+
+要求：
+1. 保留文章主要观点和事实
+2. 去除广告、推广、导航等无关内容
+3. 输出格式为markdown
+4. 字数控制在500字以内
+"""
+            
+            summary = await ModelClient.chat_complete_simple(model, summary_prompt)
+            
+            # 保存到数据仓库
+            warehouse_id = DataWarehouseRepository.insert({
+                'watchtower_item_id': item_id,
+                'title': item['title'],
+                'url': item['url'],
+                'raw_content': raw_content,
+                'summary': summary,
+                'collected_at': datetime.now().isoformat()
+            })
+            
+            # 更新标记
+            WatchtowerRepository.mark_deep_collected(item_id, task_id)
+            
+            # 记录成功
+            DeepTaskRepository.add_log(task_id, f'✓ 采集成功: {item["title"]} (ID: {warehouse_id})')
+            DeepTaskRepository.increment_completed(task_id)
+            
+            return True
+            
+        except Exception as e:
+            # 重试逻辑
+            if retry_count < DeepCollector.MAX_RETRIES:
+                DeepTaskRepository.add_log(task_id, f'⚠ 重试 ({retry_count+1}/{DeepCollector.MAX_RETRIES}): {item["title"]} - {str(e)}')
+                await asyncio.sleep(2 ** retry_count)  # 指数退避
+                return await DeepCollector.collect_item(item_id, task_id, retry_count + 1)
+            else:
+                # 失败
+                DeepTaskRepository.add_log(task_id, f'✗ 采集失败: {item["title"]} - {str(e)}')
+                DeepTaskRepository.increment_failed(task_id)
+                return False
+    
+    @staticmethod
+    async def collect_batch(item_ids: list, task_id: int):
+        """批量采集（并发控制）"""
+        DeepTaskRepository.update_status(task_id, 'running')
+        DeepTaskRepository.add_log(task_id, f'开始批量采集，共 {len(item_ids)} 条')
+        
+        # 限制并发数（避免过载）
+        semaphore = asyncio.Semaphore(3)
+        
+        async def limited_collect(item_id):
+            async with semaphore:
+                return await DeepCollector.collect_item(item_id, task_id)
+        
+        results = await asyncio.gather(*[limited_collect(item_id) for item_id in item_ids])
+        
+        # 更新任务状态
+        success_count = sum(results)
+        failed_count = len(results) - success_count
+        
+        DeepTaskRepository.update_final_status(task_id, 'completed', 100)
+        DeepTaskRepository.add_log(task_id, f'批量采集完成: 成功 {success_count}, 失败 {failed_count}')
+```
+
+### 5.4 进度推送Handler
+
+**SSE进度Handler** (`app/controllers/deep_collect.py`):
+
+```python
+class AdminDeepCollectProgressHandler(AdminBaseHandler):
+    async def get(self):
+        """SSE推送采集进度"""
+        task_id = int(self.get_argument('task_id'))
+        self.set_header('Content-Type', 'text/event-stream')
+        self.set_header('Cache-Control', 'no-cache')
+        
+        last_log_count = 0
+        
+        while True:
+            task = DeepTaskRepository.get(task_id)
+            logs = json.loads(task['logs'] or '[]')
+            
+            # 推送新日志
+            new_logs = logs[last_log_count:]
+            if new_logs:
+                for log in new_logs:
+                    self.write(f'event: log\ndata: {json.dumps(log)}\n\n')
+                    await self.flush()
+                last_log_count = len(logs)
+            
+            # 推送进度
+            progress_data = {
+                'progress': task['progress'],
+                'completed': task['completed_items'],
+                'failed': task['failed_items'],
+                'total': task['total_items']
+            }
+            self.write(f'event: progress\ndata: {json.dumps(progress_data)}\n\n')
+            await self.flush()
+            
+            # 检查完成
+            if task['status'] in ('completed', 'failed'):
+                self.write(f'event: complete\ndata: {json.dumps({"status": task["status"]})}\n\n')
+                await self.flush()
+                break
+            
+            await asyncio.sleep(1)
+```
+
+### 5.5 前端进度弹窗
+
+**进度Modal** (admin/warehouse.html内嵌):
+
+```html
+<div id="deepCollectModal" class="modal">
+    <div class="modal-content">
+        <h3>深度采集进度</h3>
+        <div class="progress-bar">
+            <div id="progressFill" style="width: 0%"></div>
+        </div>
+        <p id="progressText">0% (0/0)</p>
+        
+        <div id="logContainer" style="max-height: 300px; overflow-y: auto;">
+            <!-- 实时日志 -->
+        </div>
+        
+        <div id="statsContainer">
+            成功: <span id="successCount">0</span> | 
+            失败: <span id="failCount">0</span> | 
+            待处理: <span id="pendingCount">0</span>
+        </div>
+        
+        <button onclick="closeModal()">关闭</button>
+    </div>
+</div>
+
+<script>
+function startDeepCollect(itemIds) {
+    // 触发采集
+    fetch('/admin/warehouse/trigger_deep', {
+        method: 'POST',
+        body: JSON.stringify({item_ids: itemIds})
+    })
+    .then(res => res.json())
+    .then(data => {
+        showModal();
+        watchProgress(data.task_id);
+    });
+}
+
+function watchProgress(taskId) {
+    const eventSource = new EventSource(`/admin/deep/progress?task_id=${taskId}`);
+    
+    eventSource.addEventListener('progress', (e) => {
+        const data = JSON.parse(e.data);
+        updateProgressBar(data.progress);
+        updateStats(data);
+    });
+    
+    eventSource.addEventListener('log', (e) => {
+        const log = JSON.parse(e.data);
+        appendLog(log);
+    });
+    
+    eventSource.addEventListener('complete', (e) => {
+        eventSource.close();
+        showSuccessMessage();
+    });
+}
+</script>
+```
+
+---
+
+## 6. 任务10: 用户侧功能
+
+### 6.1 用户注册
+
+**新增路由**: `/user/register` (GET + POST)
+
+**Handler实现** (`app/controllers/auth.py`):
+
+```python
+class RegisterHandler(BaseHandler):
+    def get(self):
+        if self.current_user:
+            self.redirect('/home')
+            return
+        self.render('web/register.html', error=None)
+    
+    def post(self):
+        username = self.get_body_argument('username')
+        password = self.get_body_argument('password')
+        confirm_password = self.get_body_argument('confirm_password')
+        
+        # 验证
+        if not username or len(username) < 3:
+            self.render('web/register.html', error='用户名至少3个字符')
+            return
+        
+        if password != confirm_password:
+            self.render('web/register.html', error='两次密码不一致')
+            return
+        
+        if len(password) < 6:
+            self.render('web/register.html', error='密码至少6个字符')
+            return
+        
+        # 创建用户（普通用户role_id=2）
+        try:
+            user_id = UserRepository.create_user(username, password, role_id=2)
+            self.set_secure_cookie('username', username)
+            self.redirect('/home')
+        except Exception as e:
+            self.render('web/register.html', error='用户名已存在')
+```
+
+**注册页面** (`web/register.html`):
+
+```html
+{% extends "base.html" %}
+{% block body %}
+<div class="register-container">
+    <form method="post">
+        {% module xsrf_form_html() %}
+        <h2>用户注册</h2>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% end %}
+        <input type="text" name="username" placeholder="用户名（3-20字符）" required>
+        <input type="password" name="password" placeholder="密码（至少6字符）" required>
+        <input type="password" name="confirm_password" placeholder="确认密码" required>
+        <button type="submit">注册</button>
+        <p>已有账号？<a href="/user/login">去登录</a></p>
+    </form>
+</div>
+{% end %}
+```
+
+### 6.2 意图识别系统
+
+**意图分类器** (`app/models/intent_classifier.py`):
+
+```python
+class IntentClassifier:
+    """规则引擎意图识别"""
+    
+    # 数据查询关键词
+    SQL_KEYWORDS = [
+        '数据库', '表', '查询', '统计', '分析', '数据', '记录', 
+        '多少', '有多少', '几个', '几条', '总数', '数量',
+        '列出', '显示', '查看', '所有', '全部',
+        '用户', '会话', '消息', '模型', '采集'
+    ]
+    
+    # 天气查询
+    WEATHER_KEYWORDS = ['天气', '气温', '温度', '下雨', '晴天', '阴天', '下雪']
+    
+    # 音乐查询
+    MUSIC_KEYWORDS = ['音乐', '歌曲', '播放', '歌手', '专辑', '听歌']
+    
+    @staticmethod
+    def classify(user_query: str) -> dict:
+        """
+        分类用户意图
+        
+        返回: {
+            'intent': 'sql' | 'weather' | 'music' | 'skill' | 'general',
+            'confidence': 0.0-1.0,
+            'matched_keywords': []
+        }
+        """
+        query_lower = user_query.lower()
+        
+        # 1. 检查@前缀（技能调度）
+        if '@' in user_query or user_query.startswith('\\'):
+            return {
+                'intent': 'skill',
+                'confidence': 1.0,
+                'matched_keywords': []
+            }
+        
+        # 2. SQL数据查询
+        sql_matches = [kw for kw in IntentClassifier.SQL_KEYWORDS if kw in query_lower]
+        if len(sql_matches) >= 2:  # 至少匹配2个关键词
+            return {
+                'intent': 'sql',
+                'confidence': min(len(sql_matches) * 0.25, 1.0),
+                'matched_keywords': sql_matches
+            }
+        
+        # 3. 天气查询
+        weather_matches = [kw for kw in IntentClassifier.WEATHER_KEYWORDS if kw in query_lower]
+        if weather_matches:
+            return {
+                'intent': 'weather',
+                'confidence': 0.9,
+                'matched_keywords': weather_matches
+            }
+        
+        # 4. 音乐查询
+        music_matches = [kw for kw in IntentClassifier.MUSIC_KEYWORDS if kw in query_lower]
+        if music_matches:
+            return {
+                'intent': 'music',
+                'confidence': 0.9,
+                'matched_keywords': music_matches
+            }
+        
+        # 5. 默认：通用对话
+        return {
+            'intent': 'general',
+            'confidence': 0.5,
+            'matched_keywords': []
+        }
+```
+
+### 6.3 增强对话Handler
+
+**SQL查询工具** (`app/models/sql_tool.py`):
+
+```python
+class SQLTool:
+    """SQL查询工具 - 隐藏SQL语句，只返回自然语言结果"""
+    
+    SAFE_TABLES = [
+        'users', 'chat_sessions', 'chat_messages', 
+        'watchtower_items', 'data_warehouse', 'ai_models'
+    ]
+    
+    @staticmethod
+    async def execute_query(user_query: str, model_config: dict) -> str:
+        """
+        1. 调用AI生成SQL
+        2. 执行SQL（安全检查）
+        3. 格式化结果为自然语言
+        """
+        # 步骤1: 生成SQL
+        schema_info = SQLTool._get_schema_info()
+        sql_prompt = f"""你是SQL专家，根据用户问题生成SQLite查询语句。
+
+可用表结构：
+{schema_info}
+
+用户问题：{user_query}
+
+要求：
+1. 只返回SQL语句，不要任何解释
+2. 使用SELECT查询，禁止UPDATE/DELETE/DROP
+3. 限制结果数量 LIMIT 100
+
+SQL:"""
+        
+        sql_query = await ModelClient.chat_complete_simple(model_config, sql_prompt)
+        sql_query = sql_query.strip().replace('```sql', '').replace('```', '').strip()
+        
+        # 步骤2: 安全检查
+        if not SQLTool._is_safe_query(sql_query):
+            return "❌ 查询请求包含不安全操作，已拒绝执行"
+        
+        # 步骤3: 执行SQL
+        try:
+            results = SQLTool._execute_sql(sql_query)
+        except Exception as e:
+            return f"❌ 查询执行失败：{str(e)}"
+        
+        # 步骤4: 格式化结果
+        if not results:
+            return "查询完成，但没有找到匹配的数据。"
+        
+        format_prompt = f"""将SQL查询结果转换为自然语言回答：
+
+用户问题：{user_query}
+查询结果：{json.dumps(results[:10], ensure_ascii=False)}  # 限制长度
+结果总数：{len(results)} 条
+
+要求：
+1. 用清晰易懂的语言描述结果
+2. 如果结果较多，总结关键信息
+3. 不要提及SQL语句
+"""
+        
+        answer = await ModelClient.chat_complete_simple(model_config, format_prompt)
+        return answer
+    
+    @staticmethod
+    def _is_safe_query(sql: str) -> bool:
+        """安全检查：只允许SELECT，禁止修改操作"""
+        sql_upper = sql.upper()
+        dangerous = ['UPDATE', 'DELETE', 'DROP', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE']
+        return sql_upper.startswith('SELECT') and not any(d in sql_upper for d in dangerous)
+    
+    @staticmethod
+    def _execute_sql(sql: str) -> list:
+        """执行SQL查询"""
+        conn = get_connection()
+        cursor = conn.execute(sql)
+        columns = [desc[0] for desc in cursor.description]
+        results = []
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
+        conn.close()
+        return results
+    
+    @staticmethod
+    def _get_schema_info() -> str:
+        """获取表结构信息"""
+        conn = get_connection()
+        tables_info = []
+        
+        for table in SQLTool.SAFE_TABLES:
+            cursor = conn.execute(f"PRAGMA table_info({table})")
+            columns = [f"{row[1]} ({row[2]})" for row in cursor.fetchall()]
+            tables_info.append(f"{table}: {', '.join(columns)}")
+        
+        conn.close()
+        return '\n'.join(tables_info)
+```
+
+**增强聊天Handler** (`app/controllers/chat.py`):
+
+```python
+class ChatSendHandler(ChatBaseHandler):
+    async def post(self):
+        """处理用户消息 - 集成意图识别"""
+        session_id = int(self.get_body_argument('session_id'))
+        user_input = self.get_body_argument('message')
+        model_id = int(self.get_body_argument('model_id', 0))
+        
+        self.set_header('Content-Type', 'text/event-stream')
+        self.set_header('Cache-Control', 'no-cache')
+        
+        # 保存用户消息
+        ChatRepository.add_message(session_id, 'user', user_input)
+        
+        # 意图识别
+        intent_result = IntentClassifier.classify(user_input)
+        
+        try:
+            # 根据意图路由
+            if intent_result['intent'] == 'sql':
+                # SQL查询
+                model = ModelRepository.get_model(model_id) if model_id else ModelRepository.get_default_model()
+                response = await SQLTool.execute_query(user_input, model)
+                
+                # 流式输出
+                for char in response:
+                    self.write(f'data: {json.dumps({"content": char})}\n\n')
+                    await self.flush()
+                    await asyncio.sleep(0.01)  # 模拟流式
+                
+                # 保存助手回复
+                ChatRepository.add_message(session_id, 'assistant', response)
+            
+            elif intent_result['intent'] == 'skill':
+                # 技能调度（现有逻辑）
+                dispatch_result = SkillDispatcher.dispatch(user_input)
+                response = await self._handle_skill(dispatch_result, session_id)
+                # ... 流式输出
+            
+            else:
+                # 通用对话
+                model = ModelRepository.get_model(model_id) if model_id else ModelRepository.get_default_model()
+                history = ChatRepository.get_session_messages(session_id)
+                
+                full_response = ''
+                async for chunk in ModelClient.stream_chat(model, user_input, history):
+                    content = chunk.get('content', '')
+                    full_response += content
+                    self.write(f'data: {json.dumps({"content": content})}\n\n')
+                    await self.flush()
+                
+                # 保存助手回复
+                ChatRepository.add_message(session_id, 'assistant', full_response)
+        
+        except Exception as e:
+            error_msg = f'处理失败：{str(e)}'
+            self.write(f'data: {json.dumps({"error": error_msg})}\n\n')
+            await self.flush()
+        
+        # 完成
+        self.write('data: [DONE]\n\n')
+        await self.flush()
+```
+
+### 6.4 前端增强
+
+**模型切换器** (web/chat.html):
+
+```html
+<div class="model-selector">
+    <label>当前模型:</label>
+    <select id="modelSelect" onchange="switchModel()">
+        {% for model in available_models %}
+        <option value="{{ model['id'] }}" {% if model['is_default'] %}selected{% end %}>
+            {{ model['model_name'] }}
+            {% if model['is_default'] %}(默认){% end %}
+        </option>
+        {% end %}
+    </select>
+</div>
+```
+
+**Markdown渲染** (引入marked.js):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function renderMessage(content) {
+    const html = marked.parse(content);
+    return html;
+}
+
+// 处理SSE响应
+eventSource.onmessage = (e) => {
+    if (e.data === '[DONE]') {
+        eventSource.close();
+        return;
+    }
+    
+    const data = JSON.parse(e.data);
+    accumulatedContent += data.content;
+    
+    // 实时渲染markdown
+    document.getElementById('messageArea').innerHTML = renderMessage(accumulatedContent);
+};
+</script>
+```
+
+---
+
+## 7. 测试策略
+
+### 7.1 单元测试
+
+**测试文件**: `test/test_intent_classifier.py`
+
+```python
+def test_sql_intent():
+    result = IntentClassifier.classify("数据库中有多少用户？")
+    assert result['intent'] == 'sql'
+    assert result['confidence'] > 0.5
+
+def test_general_intent():
+    result = IntentClassifier.classify("你好，今天天气怎么样？")
+    assert result['intent'] in ('general', 'weather')
+```
+
+### 7.2 集成测试
+
+**测试采集流程**:
+1. 启动服务器
+2. 访问 `/admin/watchtower/collect`
+3. 输入关键词"西华师范大学"，开始采集
+4. 验证SSE事件流
+5. 检查 `watchtower_items` 表数据
+
+**测试深度采集**:
+1. 从仓库触发深度采集
+2. 监听SSE进度
+3. 验证 `data_warehouse` 表数据
+4. 检查 `is_deep_collected` 标记
+
+---
+
+## 8. 部署清单
+
+### 8.1 依赖安装
+
+```bash
+# 新增依赖
+pip install crawl4ai beautifulsoup4 requests
+
+# 或使用uv
+uv pip install crawl4ai beautifulsoup4 requests
+```
+
+### 8.2 数据库迁移
+
+执行SQL扩展脚本（在 `app/models/db.py` 的 `init_db()` 中添加）:
+
+```python
+def _migrate_tasks_7_10():
+    """扩展表结构以支持任务7-10"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # 扩展watchtower_items
+    cursor.execute("""
+        ALTER TABLE watchtower_items 
+        ADD COLUMN is_deep_collected INTEGER DEFAULT 0
+    """)
+    cursor.execute("""
+        ALTER TABLE watchtower_items 
+        ADD COLUMN deep_task_id INTEGER DEFAULT NULL
+    """)
+    cursor.execute("""
+        ALTER TABLE watchtower_items 
+        ADD COLUMN deep_collected_at TEXT DEFAULT NULL
+    """)
+    
+    # 扩展deep_tasks
+    cursor.execute("""
+        ALTER TABLE deep_tasks 
+        ADD COLUMN progress INTEGER DEFAULT 0
+    """)
+    cursor.execute("""
+        ALTER TABLE deep_tasks 
+        ADD COLUMN total_items INTEGER DEFAULT 0
+    """)
+    cursor.execute("""
+        ALTER TABLE deep_tasks 
+        ADD COLUMN completed_items INTEGER DEFAULT 0
+    """)
+    cursor.execute("""
+        ALTER TABLE deep_tasks 
+        ADD COLUMN failed_items INTEGER DEFAULT 0
+    """)
+    cursor.execute("""
+        ALTER TABLE deep_tasks 
+        ADD COLUMN logs TEXT DEFAULT '[]'
+    """)
+    
+    conn.commit()
+    conn.close()
+```
+
+### 8.3 路由注册
+
+在 `app.py` 中添加新路由:
+
+```python
+# 瞭望采集
+(r'/admin/watchtower/collect', AdminWatchtowerCollectHandler),
+(r'/admin/watchtower/collect/stream', AdminWatchtowerCollectStreamHandler),
+(r'/admin/watchtower/collect/save', AdminWatchtowerCollectSaveHandler),
+
+# 数据仓库增强
+(r'/admin/warehouse/trigger_deep', AdminWarehouseTriggerDeepHandler),
+(r'/admin/warehouse/(\d+)/detail', AdminWarehouseDetailHandler),
+
+# 深度采集
+(r'/admin/deep/progress', AdminDeepCollectProgressHandler),
+
+# 用户注册
+(r'/user/register', RegisterHandler),
+```
+
+---
+
+## 9. 风险与应对
+
+| 风险 | 影响 | 应对措施 |
+|------|------|---------|
+| crawl4ai抓取失败（JS渲染、反爬） | 深度采集不完整 | 重试机制 + 降级到requests |
+| AI模型调用超时 | 深度采集阻塞 | 设置timeout=30s，失败跳过 |
+| 并发采集过多导致服务器卡顿 | 用户体验差 | Semaphore限制并发数=3 |
+| SQL注入风险（用户构造恶意查询） | 数据泄露 | 白名单表 + 禁止修改操作 |
+| 意图识别误判 | 用户体验差 | 增加关键词库 + 用户反馈机制 |
+
+---
+
+## 10. 未来优化方向
+
+1. **意图识别升级**: 从规则引擎升级为LLM分类（调用默认模型判断意图）
+2. **采集源管理**: 可视化编辑器，支持XPath/CSS选择器配置
+3. **分布式采集**: 引入Celery + Redis，支持大规模并发
+4. **智能去重**: 对采集结果做相似度检测，避免重复存储
+5. **用户权限细化**: 不同角色访问不同数据仓库（数据隔离）
+
+---
+
+## 11. 总结
+
+本设计完成了智能数据瞭望与问数系统的核心业务闭环：
+
+- ✅ **瞭望采集**: SSE实时流式采集，炫酷搜索界面
+- ✅ **数据仓库**: 统一管理采集数据，状态可视化
+- ✅ **深度采集**: crawl4ai + AI提取，进度实时推送
+- ✅ **用户侧**: 注册系统 + 意图识别 + SQL工具
+
+技术选型遵循**轻量级原则**，基于Tornado + SQLite + SSE，无需额外中间件，满足中小规模部署需求。
+
+---
+
+**批准后续步骤**: 进入实施计划编写阶段（调用 writing-plans skill）
