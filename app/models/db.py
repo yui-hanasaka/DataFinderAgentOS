@@ -432,6 +432,26 @@ def _migrate_deep_tasks():
         conn.commit()
 
 
+def _migrate_watchtower_sources():
+    """扩展watchtower_sources表以支持采集器配置"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(watchtower_sources)")
+        existing_columns = [row[1] for row in cursor.fetchall()]
+
+        if "url_template" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE watchtower_sources ADD COLUMN url_template TEXT"
+            )
+
+        if "request_headers" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE watchtower_sources ADD COLUMN request_headers TEXT"
+            )
+
+        conn.commit()
+
+
 def init_db():
     with get_connection() as conn:
         _init_users_table(conn)
@@ -444,3 +464,4 @@ def init_db():
     # 执行迁移
     _migrate_watchtower_items()
     _migrate_deep_tasks()
+    _migrate_watchtower_sources()
