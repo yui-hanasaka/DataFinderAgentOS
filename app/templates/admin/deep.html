@@ -26,7 +26,8 @@
   </div>
   <form method="post" action="/admin/deep" id="batchForm">
     {% module xsrf_form_html() %}
-    <input type="hidden" name="action" value="collect">
+    <input type="hidden" name="action" id="batchAction" value="collect">
+    <input type="hidden" name="item_id" id="singleItemId" value="">
     <table class="admin-table">
       <thead>
         <tr>
@@ -59,12 +60,9 @@
             {% if item['is_deep_collected'] %}
             <a href="/admin/deep?view={{ item['id'] }}">查看详情</a>
             {% end %}
-            <form method="post" action="/admin/deep" style="display:inline">
-              {% module xsrf_form_html() %}
-              <input type="hidden" name="action" value="collect_single">
-              <input type="hidden" name="item_id" value="{{ item['id'] }}">
-              <button type="submit">{% if item['is_deep_collected'] %}重新采集{% else %}深度采集{% end %}</button>
-            </form>
+            <button type="button" onclick="submitSingleCollect('{{ item['id'] }}')">
+              {% if item['is_deep_collected'] %}重新采集{% else %}深度采集{% end %}
+            </button>
           </td>
         </tr>
         {% end %}
@@ -75,7 +73,7 @@
     </table>
     {% if items %}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">
-      <button type="submit" class="adm-btn adm-btn-primary" onclick="return confirm('确认对选中的条目进行深度采集？')">⚡ 深度采集选中</button>
+      <button type="button" class="adm-btn adm-btn-primary" onclick="submitBatchCollect()">⚡ 深度采集选中</button>
       <div class="admin-pagination">
         {% if page > 1 %}<a href="/admin/deep?page={{ page - 1 }}&keyword={{ keyword }}{% if filter_status %}&status={{ filter_status }}{% end %}">上一页</a>{% end %}
         <span>第 {{ page }} 页</span>
@@ -171,8 +169,30 @@
 {% end %}
 
 <script>
+/* global showAdmToast, openAdmModal */
 function toggleAll(el) {
   document.querySelectorAll('.item-cb').forEach(function(cb){ cb.checked = el.checked; });
+}
+
+function submitBatchCollect() {
+  var checked = document.querySelectorAll('.item-cb:checked');
+  if (checked.length === 0) {
+    showAdmToast('请选择要深度采集的数据');
+    return;
+  }
+  document.getElementById('batchAction').value = 'collect';
+  document.getElementById('singleItemId').value = '';
+  openAdmModal('操作确认', '确认对选中的 ' + checked.length + ' 条数据进行深度采集？', function() {
+    document.getElementById('batchForm').submit();
+  });
+}
+
+function submitSingleCollect(itemId) {
+  document.getElementById('batchAction').value = 'collect_single';
+  document.getElementById('singleItemId').value = itemId;
+  openAdmModal('操作确认', '确认对该条目进行深度采集？', function() {
+    document.getElementById('batchForm').submit();
+  });
 }
 </script>
 <a href="/admin/watchtower" class="adm-btn adm-btn-ghost" style="margin:12px 0">← 返回瞭望管理</a>

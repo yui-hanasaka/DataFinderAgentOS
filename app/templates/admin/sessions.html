@@ -8,14 +8,27 @@
 	<form class="admin-search" method="get" action="/admin/sessions">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索用户/员工/标题">
 		<button type="submit">🔍 搜索</button><a href="/admin/sessions">重置</a>
+		<button type="button" id="btnBatch" onclick="toggleBatchMode()" style="margin-left:8px">📋 批量操作</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
+<div class="batch-bar" id="batchBar" style="display:none;margin-bottom:14px;padding:10px 14px;background:var(--c-surface,#fff);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);align-items:center;gap:12px">
+	<label style="font-size:13px;cursor:pointer"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"> 全选</label>
+	<button type="button" class="batch-delete-btn" onclick="batchDelete()">🗑 批量删除</button>
+	<button type="button" class="batch-cancel-btn" onclick="toggleBatchMode()">取消</button>
+</div>
+{% if total == 0 %}
+<section class="admin-table-card"><div class="table-title"><strong>会话列表</strong><span>暂无数据</span></div></section>
+{% else %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>会话列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
+	<form id="batchForm" method="post" action="/admin/sessions">
+	{% module xsrf_form_html() %}
+	<input type="hidden" name="action" value="batch_delete">
 	<table class="admin-table">
 		<thead>
 			<tr>
+				<th class="cb-col" style="display:none">选</th>
 				<th>ID</th>
 				<th>用户</th>
 				<th>数字员工</th>
@@ -26,6 +39,7 @@
 			</tr>
 		</thead>
 		<tbody>{% for s in sessions %}<tr>
+				<td class="cb-col" style="display:none"><input type="checkbox" name="ids" value="{{ s['id'] }}"></td>
 				<td>{{ s['id'] }}</td>
 				<td>{{ s['username'] or '-' }}</td>
 				<td>{{ s['employee_name'] or '-' }}</td>
@@ -38,9 +52,33 @@
 				</td>
 			</tr>{% end %}</tbody>
 	</table>
+	</form>
 	<div class="admin-pagination">{% if page > 1 %}<a
 			href="/admin/sessions?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
 			页</span>{% if page * per_page < total %}<a href="/admin/sessions?page={{ page + 1 }}&keyword={{ keyword }}">
 			下一页</a>{% end %}</div>
 </section>
+{% end %}
+<script>
+let batchMode = false;
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  document.querySelectorAll('.cb-col').forEach(function(el) { el.style.display = batchMode ? '' : 'none'; });
+  document.getElementById('batchBar').style.display = batchMode ? 'flex' : 'none';
+  document.getElementById('selectAll').checked = false;
+  if (!batchMode) {
+    document.querySelectorAll('input[name="ids"]').forEach(function(cb) { cb.checked = false; });
+  }
+}
+function toggleSelectAll() {
+  var checked = document.getElementById('selectAll').checked;
+  document.querySelectorAll('input[name="ids"]').forEach(function(cb) { cb.checked = checked; });
+}
+function batchDelete() {
+  var checked = document.querySelectorAll('input[name="ids"]:checked');
+  if (!checked.length) { alert('请至少选择一个会话'); return; }
+  if (!confirm('确认删除选中的 ' + checked.length + ' 个会话？此操作不可恢复。')) return;
+  document.getElementById('batchForm').submit();
+}
+</script>
 {% end %}

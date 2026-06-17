@@ -1,7 +1,76 @@
+import json
 import sqlite3
 
 from app.models.db import get_connection
 from app.models.errors import log_error
+
+
+async def analyze_items_sentiment(item_ids: list[int]) -> int:
+    """对指定条目调用默认模型进行情感+风险分析，并更新 sentiment/risk 字段。
+
+    返回成功分析的条目数量。
+    """
+    from app.models.model_client import chat_complete, parse_chat_response
+    from app.models.model_engine import ModelRepository
+    from app.models.secrets_store import decrypt
+
+    model = ModelRepository.get_default_model()
+    if not model:
+        return 0
+
+    api_key = decrypt(str(model["api_key"]))
+    if not api_key:
+        return 0
+
+    analyzed = 0
+    for item_id in item_ids[:20]:  # 单次最多分析 20 条
+        try:
+            item = ItemRepository.get_item(item_id)
+            if not item:
+                continue
+
+            title = item["title"] or ""
+            content = (item["content"] or "")[:1000]
+
+            prompt = (
+                "请分析以下信息条目，以JSON格式返回结果（不要包含markdown代码块标记）：\n"
+                f"标题：{title}\n"
+                f"内容：{content}\n\n"
+                '返回JSON：{"sentiment":"positive/negative/neutral","risk":0-10,"summary":"50字以内中文摘要"}'
+            )
+
+            resp = await chat_complete(
+                str(model["base_url"]),
+                api_key,
+                str(model["model_id"]),
+                [
+                    {
+                        "role": "system",
+                        "content": "你是信息分析助手，严格以JSON格式返回结果，不要包含```json标记。",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+                max_tokens=256,
+                stream=False,
+            )
+            parsed = parse_chat_response(resp.content)
+            raw_content = str(parsed.get("content", "{}")).strip()
+            raw_content = (
+                raw_content.removeprefix("```json")
+                .removeprefix("```")
+                .removesuffix("```")
+                .strip()
+            )
+            result = json.loads(raw_content)
+            sentiment = str(result.get("sentiment", "neutral"))
+            risk = str(result.get("risk", 0))
+            ItemRepository.update_sentiment(item_id, sentiment, risk)
+            analyzed += 1
+        except Exception as e:
+            log_error(f"analyze_items_sentiment item_id={item_id}", e)
+
+    return analyzed
 
 
 class SourceRepository:
@@ -209,28 +278,44 @@ class ItemRepository:
             ).fetchone()
 
     @staticmethod
-    def batch_add_items(items: list[dict]) -> int:
-        """批量保存采集条目，返回成功插入数量"""
+    def batch_add_items(items: list[dict]) -> tuple[int, list[int]]:
+        """批量保存采集条目，返回 (成功插入数量, 新插入的ID列表)。
+
+        去重策略：相同 source_id + url（非空）在本批次内视为重复，跳过。
+        """
         count = 0
+        new_ids: list[int] = []
+        seen: set[tuple[int, str]] = set()
         with get_connection() as conn:
             for item in items:
                 try:
-                    conn.execute(
+                    src_id = int(item.get("source_id", 0))
+                    url = str(item.get("url") or "")
+                    # Dedup within batch by (source_id, url); empty URL skips dedup
+                    if url:
+                        key = (src_id, url)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+
+                    cur = conn.execute(
                         """INSERT OR IGNORE INTO watchtower_items
                            (source_id, title, content, url, published_at, keywords, raw_json)
                            VALUES(?,?,?,?,?,?,?)""",
                         (
-                            item["source_id"],
-                            item["title"],
+                            src_id,
+                            item.get("title", ""),
                             item.get("content", ""),
-                            item.get("url", ""),
+                            url,
                             item.get("published_at", ""),
                             item.get("keywords", "[]"),
                             item.get("raw_json", "{}"),
                         ),
                     )
-                    if conn.total_changes:
+                    row_id = cur.lastrowid
+                    if row_id:
                         count += 1
+                        new_ids.append(row_id)
                 except Exception as e:
                     log_error("Watchtower.batch_add_items", e)
-        return count
+        return count, new_ids

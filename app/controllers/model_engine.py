@@ -65,7 +65,13 @@ class AdminModelEngineHandler(AdminBaseHandler):
             "temperature": parse_float(
                 self.get_body_argument("temperature", "0.7"), 0.7
             ),
-            "max_tokens": parse_int(self.get_body_argument("max_tokens", "1024"), 1024),
+            "max_tokens": max(
+                1,
+                min(
+                    parse_int(self.get_body_argument("max_tokens", "1024"), 1024),
+                    393216,
+                ),
+            ),
             "system_prompt": self.get_body_argument("system_prompt", "").strip(),
             "support_stream": 1
             if self.get_body_argument("support_stream", "0") == "1"
@@ -117,6 +123,13 @@ class AdminModelChatHandler(AdminBaseHandler):
         if not model:
             self.set_status(404)
             return self.write({"error": "模型不存在"})
+        if not model.get("api_key"):
+            self.set_status(400)
+            return self.write(
+                {
+                    "error": "API Key 未设置或已失效（服务器重启后加密密钥可能变更）。请前往模型编辑页面重新填写 API Key。"
+                }
+            )
         try:
             payload = json.loads(self.request.body or b"{}")
         except json.JSONDecodeError:
@@ -230,9 +243,7 @@ class AdminModelChatHandler(AdminBaseHandler):
                         break
                 ModelRepository.record_usage(model_id, prompt_tokens, completion_tokens)
             finally:
-                _client = getattr(resp, "_client", None)
-                if _client is not None:
-                    await _client.aclose()
+                await resp.aclose()
         except Exception as e:
             log_error("AdminModelChatHandler SSE stream", e)
             self.write(

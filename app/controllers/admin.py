@@ -2,6 +2,8 @@ import re
 
 from app.controllers.base import BaseHandler
 from app.models.admin import PER_PAGE, AdminRepository
+from app.models.crypto import hash_password, new_salt, verify_password
+from app.models.db import get_connection
 from app.models.rate_limit import check_rate_limit
 
 
@@ -45,7 +47,7 @@ class AdminLoginHandler(BaseHandler):
 
         # Check must_change_password
         if admin_row and admin_row["must_change_password"]:
-            return self.redirect("/admin/settings?must_change=1")
+            return self.redirect("/admin/change-password")
 
         self.redirect("/admin/home")
 
@@ -143,6 +145,103 @@ class AdminLogoutHandler(BaseHandler):
     def post(self) -> None:
         self.clear_auth_cookie("admin_username")
         self.redirect("/admin/login")
+
+
+class AdminChangePasswordHandler(AdminBaseHandler):
+    def get(self) -> None:
+        self.set_header("Content-Type", "text/html; charset=utf-8")
+        self.write(self._render_form())
+
+    def post(self) -> None:
+        if not check_rate_limit(f"admin_change_pw:{self.current_user}", 5, 60):
+            self.set_header("Content-Type", "text/html; charset=utf-8")
+            self.write("<h3>请求过于频繁，请稍后再试</h3>")
+            return
+
+        old_password = self.get_body_argument("old_password", "")
+        new_password = self.get_body_argument("new_password", "")
+        confirm_password = self.get_body_argument("confirm_password", "")
+
+        admin_row = AdminRepository.get_admin_by_username(self.current_user)
+        if not admin_row:
+            self.redirect("/admin/login")
+            return
+
+        # Validate old password
+        if not verify_password(
+            old_password, admin_row["salt"], admin_row["password_hash"]
+        ):
+            self.set_header("Content-Type", "text/html; charset=utf-8")
+            self.write(self._render_form(error="当前密码不正确"))
+            return
+
+        # Validate new password
+        if len(new_password) < 8:
+            self.set_header("Content-Type", "text/html; charset=utf-8")
+            self.write(self._render_form(error="新密码长度不能少于 8 位"))
+            return
+
+        if new_password != confirm_password:
+            self.set_header("Content-Type", "text/html; charset=utf-8")
+            self.write(self._render_form(error="两次输入的新密码不一致"))
+            return
+
+        # Update password and clear must_change_password flag
+        salt = new_salt()
+        with get_connection() as conn:
+            conn.execute(
+                """UPDATE admin_users
+                   SET password_hash=?, salt=?, must_change_password=0,
+                       updated_at=datetime('now')
+                   WHERE id=?""",
+                (hash_password(new_password, salt), salt.hex(), admin_row["id"]),
+            )
+
+        self.redirect("/admin/home")
+
+    def _render_form(self, error: str = "") -> str:
+        xsrf = self.xsrf_form_html() if hasattr(self, "xsrf_form_html") else ""
+        error_html = f'<div class="cp-error">{error}</div>' if error else ""
+        return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>修改密码 · AgentOS 管理</title>
+<link rel="stylesheet" href="/static/css/base.css">
+<style>
+  .cp-wrapper{{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--c-bg,#f5f7fb)}}
+  .cp-card{{background:var(--c-surface,#fff);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:36px 32px;width:100%;max-width:420px}}
+  .cp-card h2{{margin:0 0 8px;font-size:20px;color:var(--c-text,#1a1a2e)}}
+  .cp-card .cp-sub{{margin:0 0 24px;font-size:13px;color:var(--c-text-soft,#6b778c)}}
+  .cp-card label{{display:block;margin-bottom:16px;font-size:13px;color:var(--c-text-soft,#6b778c)}}
+  .cp-card label span{{display:block;margin-bottom:4px;font-weight:500}}
+  .cp-card input[type=password]{{width:100%;padding:10px 12px;border:1px solid var(--c-border,#d0d7de);border-radius:8px;font-size:14px;box-sizing:border-box;background:var(--c-surface,#fff);color:var(--c-text,#1a1a2e)}}
+  .cp-card input[type=password]:focus{{outline:none;border-color:var(--c-accent,#247ff0);box-shadow:0 0 0 3px rgba(36,127,240,0.12)}}
+  .cp-card .cp-error{{color:#dc3545;font-size:13px;margin-bottom:12px}}
+  .cp-card button{{width:100%;padding:10px 0;border:none;border-radius:8px;background:var(--c-accent,#247ff0);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}}
+  .cp-card button:hover{{opacity:0.9}}
+  [data-theme="dark"] .cp-wrapper{{background:var(--c-bg,#0f0f1a)}}
+  [data-theme="dark"] .cp-card{{background:var(--c-surface,#1a1a2e);box-shadow:0 4px 24px rgba(0,0,0,0.3)}}
+</style>
+<script src="/static/js/base.js"></script>
+</head>
+<body class="cp-wrapper">
+<div class="cp-card">
+  <h2>修改密码</h2>
+  <p class="cp-sub">首次登录或管理员要求时，请设置新密码（至少 8 位）。</p>
+  {error_html}
+  <form method="post" action="/admin/change-password">
+    {xsrf}
+    <label><span>当前密码</span><input type="password" name="old_password" required autocomplete="current-password"></label>
+    <label><span>新密码</span><input type="password" name="new_password" required minlength="8" autocomplete="new-password"></label>
+    <label><span>确认新密码</span><input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
+    <button type="submit">更新密码</button>
+  </form>
+</div>
+<script>initThemeIcon();</script>
+</body>
+</html>"""
 
 
 class AdminRoleHandler(AdminBaseHandler):
@@ -248,6 +347,13 @@ class AdminUserHandler(AdminBaseHandler):
             )
 
         if user_id.isdigit():
+            target_user = AdminRepository.get_user(int(user_id))
+            if target_user and target_user["is_super"]:
+                current_admin = AdminRepository.get_admin_by_username(self.current_user)
+                if not current_admin or not current_admin["is_super"]:
+                    return self._redirect_with_message(
+                        "/admin/users", "只有超级管理员才能修改超级管理员的信息"
+                    )
             ok, msg = AdminRepository.update_user(
                 int(user_id),
                 self.get_body_argument("display_name", "").strip(),

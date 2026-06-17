@@ -114,15 +114,23 @@ class AdminDeepHandler(AdminBaseHandler):
         )
 
     async def _run_deep_collect(self, task_id: int, item_ids: list[int]) -> None:
-        """Run deep collection in background."""
+        """Run deep collection in background.
+
+        Shares a single crawl4ai browser instance across all items for
+        efficiency, falling back to per-item crawler creation if the
+        shared instance fails to initialise.
+        """
         model = DeepRepository.get_default_model()
         completed = 0
         failed = 0
 
-        for item_id in item_ids:
+        async def _process_one(item_id: int, crawler=None) -> None:
+            nonlocal completed, failed
             try:
                 DeepRepository.add_task_log(task_id, f"正在采集条目 #{item_id}...")
-                result = await DeepRepository.collect_single_item(item_id, model)
+                result = await DeepRepository.collect_single_item(
+                    item_id, model, crawler
+                )
                 if result["ok"]:
                     DeepRepository.save_deep_result(item_id, task_id, result)
                     completed += 1
@@ -141,10 +149,24 @@ class AdminDeepHandler(AdminBaseHandler):
                 DeepRepository.add_task_log(
                     task_id, f"条目 #{item_id} 异常: {str(e)[:100]}"
                 )
-
             DeepRepository.update_task_progress(task_id, completed, failed)
-            # Small delay between items
             await asyncio.sleep(1)
+
+        # Primary: shared crawl4ai browser for all items
+        try:
+            from crawl4ai import AsyncWebCrawler
+
+            async with AsyncWebCrawler(verbose=False) as crawler:
+                for item_id in item_ids:
+                    await _process_one(item_id, crawler)
+        except Exception as crawler_err:
+            # Fallback: per-item crawler creation inside collect_single_item
+            DeepRepository.add_task_log(
+                task_id,
+                f"共享爬虫初始化失败，降级为独立模式: {str(crawler_err)[:100]}",
+            )
+            for item_id in item_ids:
+                await _process_one(item_id)
 
         if failed == 0:
             DeepRepository.complete_task(task_id)

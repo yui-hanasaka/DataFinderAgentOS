@@ -31,6 +31,9 @@ _ALLOWED_TABLES: set[str] = {
     "skills",
 }
 
+# Public export — single source of truth for table allowlist
+ALLOWED_TABLES: set[str] = _ALLOWED_TABLES.copy()
+
 
 def validate_select_sql(sql: str) -> tuple[bool, str]:
     stripped = sql.strip()

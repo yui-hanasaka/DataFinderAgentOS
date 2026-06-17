@@ -55,12 +55,18 @@
             class="nav-icon">🤖</span>数字员工</a>
         <a href="/admin/watchtower" class="{% if current == '/admin/watchtower' %}active{% end %}"><span
             class="nav-icon">📡</span>瞭望管理</a>
+        <a href="/admin/watchtower/collect" class="{% if current == '/admin/watchtower/collect' %}active{% end %}"><span
+            class="nav-icon">🔍</span>立即采集</a>
         <a href="/admin/warehouse" class="{% if current == '/admin/warehouse' %}active{% end %}"><span
             class="nav-icon">🗄</span>数据仓库</a>
         <a href="/admin/deep" class="{% if current == '/admin/deep' %}active{% end %}"><span
             class="nav-icon">🔍</span>深度采集</a>
+        <a href="/ask" class="{% if current == '/ask' %}active{% end %}"><span
+            class="nav-icon">⌕</span>智能问数</a>
         <a href="/admin/apis" class="{% if current == '/admin/apis' %}active{% end %}"><span
             class="nav-icon">🔌</span>接口管理</a>
+        <a href="/admin/digital-twin" class="{% if current == '/admin/digital-twin' or current.startswith('/admin/digital-twin/scenes') %}active{% end %}"><span
+            class="nav-icon">🌐</span>数字孪生</a>
       </nav>
 
       <div class="adm-nav-label">监控</div>

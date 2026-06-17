@@ -9,7 +9,7 @@
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索采集源名称">
 		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
 			href="/admin/watchtower">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#sourceModal"><i
-				class="fa-solid fa-plus"></i> 新增采集源</button>
+				class="fa-solid fa-plus"></i> 新增采集源</button><a class="adm-btn adm-btn-ghost" href="/admin/watchtower/collect" style="margin-left:6px"><i class="fa-solid fa-rocket"></i> 立即采集</a>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
@@ -17,7 +17,7 @@
 	<div class="table-title"><strong>采集源列表</strong><span>共 {{ src_total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
 		<thead><tr><th>ID</th><th>名称</th><th>类型</th><th>URL</th><th>采集间隔</th><th>状态</th><th>最后采集</th><th>条目数</th><th>操作</th></tr></thead>
-		<tbody>{% for src in sources %}<tr><td>{{ src['id'] }}</td><td>{{ src['name'] }}</td><td>{{ src['source_type'] }}</td><td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="{{ src['url'] }}">{{ src['url'] }}</td><td>{{ src['fetch_interval'] }}s</td><td>{{ src['status'] }}</td><td>{{ src['last_fetched'] or '-' }}</td><td>{{ src['item_count'] }}</td><td class="table-actions"><a href="/admin/watchtower?edit={{ src['id'] }}">修改</a><form method="post" action="/admin/watchtower" data-confirm="确认删除该采集源？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ src['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<tbody>{% for src in sources %}<tr><td>{{ src['id'] }}</td><td>{{ src['name'] }}</td><td>{{ src['source_type'] }}</td><td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="{{ src['url'] }}">{{ src['url'] }}</td><td>{{ src['fetch_interval'] }}s</td><td>{{ src['status'] }}</td><td>{{ src['last_fetched'] or '-' }}</td><td>{{ src['item_count'] }}</td><td class="table-actions"><a href="/admin/watchtower?edit={{ src['id'] }}">修改</a><form method="post" action="/admin/watchtower/fetch/{{ src['id'] }}" data-confirm="确认立即采集该源？">{% module xsrf_form_html() %}<button type="submit">立即采集</button></form><form method="post" action="/admin/watchtower" data-confirm="确认删除该采集源？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ src['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
 	</table>
 	<div class="admin-pagination">{% if src_page > 1 %}<a
 			href="/admin/watchtower?page={{ src_page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ src_page }} 页</span>{% if src_page * per_page < src_total %}<a

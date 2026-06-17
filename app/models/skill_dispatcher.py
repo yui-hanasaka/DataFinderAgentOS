@@ -12,7 +12,7 @@ DispatchResult = dict[str, Any]
 async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> DispatchResult:
     keys = api_keys or {}
 
-    m = re.match(r"^@weather\s+(.+)", text.strip(), re.IGNORECASE)
+    m = re.match(r"^@(?:weather|天气)\s+(.+)", text.strip(), re.IGNORECASE)
     if m:
         city = m.group(1).strip()
         result = await _weather(city, keys.get("weather"))
@@ -23,7 +23,7 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
             "skill_meta": {"city": city},
         }
 
-    if re.match(r"^@music\b", text.strip(), re.IGNORECASE):
+    if re.match(r"^@(?:music|音乐)\b", text.strip(), re.IGNORECASE):
         return {
             "type": "skill",
             "skill_code": "music",
@@ -43,7 +43,7 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
             },
         }
 
-    m = re.match(r"^\\search\w*\s+(.*)", text.strip(), re.IGNORECASE)
+    m = re.match(r"^\\(?:search|搜索)\w*\s+(.*)", text.strip(), re.IGNORECASE)
     if m:
         query = m.group(1).strip()
         snippets = await _web_search(query, keys.get("websearch"))
@@ -88,9 +88,82 @@ async def _weather(city: str, api_key: str | None = None) -> str:
 
 
 def _music_html() -> str:
-    return (
-        "🎵 **音乐播放器**\n请输入歌曲名称搜索（功能开发中，可在接口管理配置音乐API）。"
-    )
+    """音乐搜索 — 从接口管理读取音乐 API 密钥并生成搜索卡片。
+
+    支持两层来源：
+    1. 外置源 — 管理员在接口管理中配置的第三方音乐 API（QQ音乐、网易云等）
+    2. 内置源 — 无需配置即可使用的免费音乐数据 API（iTunes、MusicBrainz）
+    """
+    try:
+        from app.models.db import get_connection
+
+        # Query all enabled music-related API keys
+        music_api_types = ("music", "music_qq", "music_netease")
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT name, api_type, endpoint FROM api_keys"
+                " WHERE api_type IN (?,?,?) AND status='enabled'",
+                music_api_types,
+            ).fetchall()
+
+        external_sources: list[dict[str, str]] = []
+        for row in rows:
+            external_sources.append(
+                {
+                    "name": row["name"],
+                    "api_type": row["api_type"],
+                    "endpoint": row["endpoint"] or "",
+                }
+            )
+
+        builtin_list = (
+            "<li><strong>iTunes Search</strong> — Apple Music 全球曲库（免费，无需密钥）</li>"
+            "<li><strong>MusicBrainz</strong> — 开源音乐元数据库（免费，无需密钥）</li>"
+            "<li><strong>DuckDuckGo</strong> — 网络音乐搜索（免费，无需密钥）</li>"
+        )
+
+        external_html = ""
+        if external_sources:
+            items = "".join(
+                f"<li><strong>{s['name']}</strong> ({s['api_type']})</li>"
+                for s in external_sources
+            )
+            external_html = (
+                "<p>🔌 <strong>已配置外置源：</strong></p><ul>" + items + "</ul>"
+            )
+        else:
+            external_html = (
+                "<p>💡 管理员可在 <strong>接口管理</strong> 中配置第三方音乐 API"
+                "（支持 QQ音乐、网易云音乐 及自定义接口）。</p>"
+            )
+
+        # Note: the musicSearch() JavaScript function is defined in
+        # chat.html's main <script> block so it survives innerHTML
+        # insertion (browsers do not execute <script> in innerHTML).
+
+        return (
+            "\U0001f3b5 **音乐搜索**\n\n"
+            "请输入歌曲名称或歌手名进行搜索：\n\n"
+            '<form onsubmit="return musicSearch(this)" style="display:flex;gap:8px;margin:12px 0">'
+            '<input type="text" name="q" placeholder="输入歌曲名或歌手..." '
+            'style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);'
+            'background:var(--bg-card);color:var(--text)" />'
+            '<button type="submit" style="padding:8px 16px;border-radius:8px;'
+            'background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:#fff;border:none;cursor:pointer">'
+            "\U0001f50d 搜索</button></form>"
+            '<div id="musicResults" style="margin-top:8px"></div>'
+            '<details style="margin-top:10px;font-size:0.85em;opacity:0.8">'
+            "<summary>\U0001f4e1 数据源说明</summary>"
+            + external_html
+            + "<p>\U0001f193 <strong>内置源（始终可用）：</strong></p><ul>"
+            + builtin_list
+            + "</ul></details>"
+        )
+    except Exception as exc:
+        from app.models.errors import log_error
+
+        log_error("music skill init failed", exc)
+        return "🎵 **音乐搜索**\n\n⚠️ 音乐服务初始化失败，请检查 API 配置。"
 
 
 async def _web_search(query: str, _api_key: str | None = None) -> str:

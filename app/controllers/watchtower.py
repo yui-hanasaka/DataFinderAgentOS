@@ -1,7 +1,9 @@
 from app.controllers.admin import AdminBaseHandler
+from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
 from app.models.validators import parse_int
 from app.models.watchtower import ItemRepository, SourceRepository
+from app.models.watchtower_scraper import WatchtowerScraper
 
 PER_PAGE = 20
 
@@ -82,3 +84,48 @@ class AdminWatchtowerHandler(AdminBaseHandler):
             config_json,
         )
         self._redirect_with_message("/admin/watchtower", msg or "已新增" if ok else msg)
+
+
+class WatchtowerFetchHandler(AdminBaseHandler):
+    async def post(self, source_id: str) -> None:
+        if not check_rate_limit(f"wt_fetch:{self.current_user}", 10, 60):
+            self.set_status(429)
+            return self._redirect_with_message(
+                "/admin/watchtower", "采集请求过于频繁，请稍后再试"
+            )
+
+        src_id = parse_int(source_id)
+        source = SourceRepository.get_source(src_id)
+        if not source:
+            return self._redirect_with_message("/admin/watchtower", "采集源不存在")
+
+        try:
+            items = await WatchtowerScraper.scrape_source_async(
+                src_id, keyword="", pages=1, limit=15
+            )
+        except Exception as e:
+            log_error(f"WatchtowerFetchHandler src={src_id}", e)
+            return self._redirect_with_message("/admin/watchtower", f"采集失败: {e}")
+
+        db_items: list[dict[str, object]] = []
+        for item in items:
+            db_items.append(
+                {
+                    "source_id": src_id,
+                    "title": item.get("title", ""),
+                    "content": item.get("snippet", ""),
+                    "url": item.get("url", ""),
+                    "published_at": item.get("published_time", ""),
+                    "keywords": "[]",
+                    "raw_json": "{}",
+                }
+            )
+
+        saved = 0
+        if db_items:
+            saved, _new_ids = ItemRepository.batch_add_items(db_items)
+
+        SourceRepository.mark_fetched(src_id)
+
+        msg = f"采集完成: 抓取 {len(items)} 条, 保存 {saved} 条"
+        self._redirect_with_message("/admin/watchtower", msg)

@@ -31,6 +31,7 @@
 				<td>{{ q['category'] or '-' }}</td>
 				<td>{{ q['description'] or '-' }}</td>
 				<td class="table-actions"><a href="/admin/warehouse?edit={{ q['id'] }}">查看/修改</a>
+					<button type="button" class="exec-saved-btn" data-id="{{ q['id'] }}">执行</button>
 					<form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
 							value="{{ q['id'] }}"><button type="submit">删除</button></form>
 				</td>
@@ -40,6 +41,26 @@
 			href="/admin/warehouse?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
 			页</span>{% if page * per_page < total %}<a
 			href="/admin/warehouse?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+</section>
+<section class="admin-table-card" style="margin-top:20px">
+	<div class="table-title"><strong>执行查询</strong><span>输入 SQL 语句或点击列表中的"执行"按钮运行已保存的查询</span></div>
+	<div style="padding:16px">
+		<textarea id="execSql" rows="6" style="width:100%;font-family:monospace;font-size:13px;padding:10px;border:1px solid rgba(99,102,241,0.12);border-radius:10px;background:rgba(255,255,255,0.6);resize:vertical" placeholder="SELECT ..."></textarea>
+		<div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+			<button id="execBtn" type="button" class="adm-btn-ghost" style="height:38px;padding:0 24px;border-radius:10px"><i class="fa-solid fa-play"></i> 执行查询</button>
+			<span id="execLoading" style="display:none;color:#6366f1;font-size:13px">执行中...</span>
+		</div>
+		<div id="execError" class="adm-message" style="display:none;margin-top:12px"></div>
+		<div id="execResults" style="display:none;margin-top:16px">
+			<div style="overflow-x:auto;border:1px solid rgba(99,102,241,0.08);border-radius:10px;background:rgba(255,255,255,0.45)">
+				<table style="width:100%;border-collapse:collapse;font-size:13px">
+					<thead id="execCols"></thead>
+					<tbody id="execRows"></tbody>
+				</table>
+			</div>
+			<div id="execCount" style="margin-top:8px;font-size:12px;color:#6366f1"></div>
+		</div>
+	</div>
 </section>
 <div class="modal fade admin-edit-modal" id="queryModal" tabindex="-1" {% if edit_query %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered modal-lg">
@@ -79,4 +100,72 @@
 		</div>
 	</div>
 </div>
+<script>
+(function () {
+	var execBtn = document.getElementById("execBtn");
+	var execSql = document.getElementById("execSql");
+	var execLoading = document.getElementById("execLoading");
+	var execError = document.getElementById("execError");
+	var execResults = document.getElementById("execResults");
+	var execCols = document.getElementById("execCols");
+	var execRows = document.getElementById("execRows");
+	var execCount = document.getElementById("execCount");
+
+	function hideResults() {
+		execError.style.display = "none";
+		execResults.style.display = "none";
+		execLoading.style.display = "inline";
+	}
+
+	function showError(msg) {
+		execLoading.style.display = "none";
+		execError.textContent = msg;
+		execError.style.display = "block";
+		execResults.style.display = "none";
+	}
+
+	function showTable(columns, rows) {
+		execLoading.style.display = "none";
+		execError.style.display = "none";
+		var colHtml = "<tr>" + columns.map(function (c) { return "<th style='padding:8px 12px;text-align:left;border-bottom:2px solid rgba(99,102,241,0.15);font-weight:600;color:#4c1d95'>" + escapeHtml(String(c)) + "</th>"; }).join("") + "</tr>";
+		execCols.innerHTML = colHtml;
+		var rowHtml = rows.map(function (r) {
+			return "<tr>" + r.map(function (v) { return "<td style='padding:6px 12px;border-bottom:1px solid rgba(99,102,241,0.06)'>" + (v === null ? "<em style='color:#aaa'>NULL</em>" : escapeHtml(String(v))) + "</td>"; }).join("") + "</tr>";
+		}).join("");
+		execRows.innerHTML = rowHtml || "<tr><td colspan='" + columns.length + "' style='padding:24px;text-align:center;color:#999'>无数据</td></tr>";
+		execCount.textContent = "共 " + rows.length + " 条记录";
+		execResults.style.display = "block";
+	}
+
+	function execute(bodyParams) {
+		hideResults();
+		fetch("/admin/warehouse", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: new URLSearchParams(bodyParams).toString()
+		}).then(function (res) { return res.json(); }).then(function (data) {
+			if (data.error) { showError(data.error); return; }
+			var cols = data.columns || [];
+			var rows = data.rows || [];
+			showTable(cols, rows);
+		}).catch(function () {
+			showError("网络请求失败，请检查连接后重试");
+		});
+	}
+
+	execBtn.addEventListener("click", function () {
+		var sql = execSql.value.trim();
+		if (!sql) { showError("请输入 SQL 语句"); return; }
+		execute({ action: "execute", query: sql });
+	});
+
+	var savedBtns = document.querySelectorAll(".exec-saved-btn");
+	for (var i = 0; i < savedBtns.length; i++) {
+		savedBtns[i].addEventListener("click", function () {
+			var id = this.getAttribute("data-id");
+			execute({ action: "execute", id: id });
+		});
+	}
+})();
+</script>
 {% end %}

@@ -94,6 +94,23 @@ class ChatRepository:
             return cur.rowcount
 
     @staticmethod
+    def delete_sessions_admin(session_ids: list[int]) -> int:
+        """Batch delete sessions without user_id filtering (admin use)."""
+        if not session_ids:
+            return 0
+        with get_connection() as conn:
+            placeholders = ",".join("?" for _ in session_ids)
+            conn.execute(
+                f"DELETE FROM chat_messages WHERE session_id IN ({placeholders})",
+                session_ids,
+            )
+            cur = conn.execute(
+                f"DELETE FROM chat_sessions WHERE id IN ({placeholders})",
+                session_ids,
+            )
+            return cur.rowcount
+
+    @staticmethod
     def add_message(
         session_id: int, role: str, content: str, skill_meta: str | None = None
     ) -> int | None:
@@ -119,6 +136,14 @@ class ChatRepository:
     @staticmethod
     def count_all_sessions(keyword: str = "") -> int:
         with get_connection() as conn:
+            if keyword.strip():
+                like = f"%{keyword.strip()}%"
+                return conn.execute(
+                    """SELECT COUNT(*) FROM chat_sessions s
+                       LEFT JOIN users u ON s.user_id = u.id
+                       WHERE s.title LIKE ? OR u.username LIKE ?""",
+                    (like, like),
+                ).fetchone()[0]
             return conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
 
     @staticmethod
@@ -132,15 +157,35 @@ class ChatRepository:
     ) -> tuple[list[sqlite3.Row], int]:
         offset = (page - 1) * per_page
         with get_connection() as conn:
-            total = conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
-            rows = conn.execute(
-                """SELECT s.*, u.username,
-                   COALESCE(e.name, '-') AS employee_name,
-                   (SELECT COUNT(*) FROM chat_messages m WHERE m.session_id = s.id) AS msg_count
-                   FROM chat_sessions s
-                   LEFT JOIN users u ON s.user_id = u.id
-                   LEFT JOIN digital_employees e ON s.employee_id = e.id
-                   ORDER BY s.id DESC LIMIT ? OFFSET ?""",
-                (per_page, offset),
-            ).fetchall()
+            if keyword.strip():
+                like = f"%{keyword.strip()}%"
+                total = conn.execute(
+                    """SELECT COUNT(*) FROM chat_sessions s
+                       LEFT JOIN users u ON s.user_id = u.id
+                       WHERE s.title LIKE ? OR u.username LIKE ?""",
+                    (like, like),
+                ).fetchone()[0]
+                rows = conn.execute(
+                    """SELECT s.*, u.username,
+                       COALESCE(e.name, '-') AS employee_name,
+                       (SELECT COUNT(*) FROM chat_messages m WHERE m.session_id = s.id) AS msg_count
+                       FROM chat_sessions s
+                       LEFT JOIN users u ON s.user_id = u.id
+                       LEFT JOIN digital_employees e ON s.employee_id = e.id
+                       WHERE s.title LIKE ? OR u.username LIKE ?
+                       ORDER BY s.id DESC LIMIT ? OFFSET ?""",
+                    (like, like, per_page, offset),
+                ).fetchall()
+            else:
+                total = conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
+                rows = conn.execute(
+                    """SELECT s.*, u.username,
+                       COALESCE(e.name, '-') AS employee_name,
+                       (SELECT COUNT(*) FROM chat_messages m WHERE m.session_id = s.id) AS msg_count
+                       FROM chat_sessions s
+                       LEFT JOIN users u ON s.user_id = u.id
+                       LEFT JOIN digital_employees e ON s.employee_id = e.id
+                       ORDER BY s.id DESC LIMIT ? OFFSET ?""",
+                    (per_page, offset),
+                ).fetchall()
         return rows, total

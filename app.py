@@ -6,6 +6,7 @@ import tornado.web
 from tornado.httpserver import HTTPServer
 
 from app.controllers.admin import (
+    AdminChangePasswordHandler,
     AdminHomeHandler,
     AdminLoginHandler,
     AdminLogoutHandler,
@@ -31,6 +32,7 @@ from app.controllers.chat import (
     ChatNewHandler,
     ChatSendHandler,
     ChatSessionHandler,
+    MusicSearchHandler,
 )
 from app.controllers.deep import AdminDeepHandler
 from app.controllers.digital_twin import (
@@ -45,7 +47,12 @@ from app.controllers.model_engine import (
     AdminModelTestHandler,
 )
 from app.controllers.permissions import AdminPermissionHandler
-from app.controllers.screen import AdminScreenHandler, ScreenDataApiHandler
+from app.controllers.screen import (
+    AdminScreenHandler,
+    ScreenDataApiHandler,
+    ScreenGlobeDataHandler,
+    ScreenWordCloudDataHandler,
+)
 from app.controllers.session_mgr import (
     AdminConversationDetailHandler,
     AdminSessionMgrHandler,
@@ -53,7 +60,7 @@ from app.controllers.session_mgr import (
 from app.controllers.settings import AdminSettingsHandler
 from app.controllers.skill import AdminSkillHandler
 from app.controllers.warehouse import AdminWarehouseHandler
-from app.controllers.watchtower import AdminWatchtowerHandler
+from app.controllers.watchtower import AdminWatchtowerHandler, WatchtowerFetchHandler
 from app.controllers.watchtower_collect import WatchtowerCollectHandler
 from app.models.db import init_db
 from app.models.errors import setup_logging
@@ -103,12 +110,14 @@ def app() -> tornado.web.Application:
         (r"/chat/employee", ChatEmployeeHandler),
         (r"/chat/model", ChatModelHandler),
         (r"/chat/export/(\d+)", ChatExportHandler),
+        (r"/chat/music/search", MusicSearchHandler),
         # user ask
         (r"/ask", AskHomeHandler),
         (r"/ask/query", AskQueryHandler),
         # admin auth
         (r"/admin/login", AdminLoginHandler),
         (r"/admin/logout", AdminLogoutHandler),
+        (r"/admin/change-password", AdminChangePasswordHandler),
         # admin core
         (r"/admin/home", AdminHomeHandler),
         (r"/admin/users", AdminUserHandler),
@@ -124,6 +133,7 @@ def app() -> tornado.web.Application:
         (r"/admin/skills", AdminSkillHandler),
         (r"/admin/watchtower", AdminWatchtowerHandler),
         (r"/admin/watchtower/collect", WatchtowerCollectHandler),
+        (r"/admin/watchtower/fetch/(\d+)", WatchtowerFetchHandler),
         (r"/admin/warehouse", AdminWarehouseHandler),
         (r"/admin/deep", AdminDeepHandler),
         (r"/admin/apis", AdminApiKeyHandler),
@@ -135,6 +145,8 @@ def app() -> tornado.web.Application:
         (r"/admin/digital-twin/scenes/(\d+)", AdminDigitalTwinSceneHandler),
         # api
         (r"/api/screen/data", ScreenDataApiHandler),
+        (r"/admin/screen/data/globe", ScreenGlobeDataHandler),
+        (r"/admin/screen/data/wordcloud", ScreenWordCloudDataHandler),
     ]
 
     return tornado.web.Application(

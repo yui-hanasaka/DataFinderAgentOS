@@ -8,7 +8,9 @@ class AdminSessionMgrHandler(AdminBaseHandler):
     def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
-        sessions, total = ChatRepository.list_all_sessions(page, PER_PAGE)
+        sessions, total = ChatRepository.list_all_sessions(
+            page, PER_PAGE, keyword=keyword
+        )
         self.render(
             "admin/sessions.html",
             title="会话管理",
@@ -27,6 +29,15 @@ class AdminSessionMgrHandler(AdminBaseHandler):
         if action == "delete" and sess_id.isdigit():
             ChatRepository.delete_session(int(sess_id))
             return self._redirect_with_message("/admin/sessions", "会话已删除")
+        if action == "batch_delete":
+            ids = self.get_body_arguments("ids")
+            numeric_ids = [int(i) for i in ids if i.isdigit()]
+            if numeric_ids:
+                count = ChatRepository.delete_sessions_admin(numeric_ids)
+                return self._redirect_with_message(
+                    "/admin/sessions", f"已删除 {count} 个会话"
+                )
+            return self._redirect_with_message("/admin/sessions", "请选择要删除的会话")
         self._redirect_with_message("/admin/sessions", "")
 
 

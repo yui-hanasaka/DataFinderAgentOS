@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -6,11 +7,82 @@ from app.agents.tool_executor import execute as tool_execute
 from app.agents.tool_registry import TOOLS
 from app.agents.tool_reviewer import review as tool_review
 from app.models.errors import log_error
-from app.models.model_client import chat_complete, parse_chat_response, parse_tool_calls
+from app.models.model_client import chat_complete, iter_sse_chunks
+from app.models.model_engine import ModelRepository
 
 MAX_TOOL_TURNS = 8
 
 StreamCallback = Callable[[str, Any], Awaitable[None]]
+
+
+async def _stream_chat_once(
+    api_key: str,
+    messages: list[dict[str, Any]],
+    model_row: dict[str, Any],
+    stream_cb: StreamCallback,
+) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
+    """Call chat_complete with streaming, accumulate text and tool_calls.
+
+    Returns (full_text_content, tool_calls_list, usage_dict).
+    """
+    resp = await chat_complete(
+        str(model_row["base_url"]),
+        api_key,
+        str(model_row["model_id"]),
+        messages,
+        temperature=float(model_row.get("temperature") or 0.7),
+        max_tokens=int(model_row.get("max_tokens") or 1024),
+        stream=True,
+        tools=TOOLS,
+    )
+
+    full_content = ""
+    tool_calls_list: list[dict[str, Any]] = []
+    usage: dict[str, int] = {}
+
+    try:
+        async for chunk in iter_sse_chunks(resp):
+            if "usage" in chunk:
+                usage = {
+                    "prompt_tokens": int(chunk["usage"].get("prompt_tokens") or 0),
+                    "completion_tokens": int(
+                        chunk["usage"].get("completion_tokens") or 0
+                    ),
+                    "total_tokens": int(chunk["usage"].get("total_tokens") or 0),
+                }
+            delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
+            text = delta.get("content") or ""
+            if text:
+                full_content += text
+                await stream_cb("text", text)
+
+            # Accumulate tool calls from streaming delta
+            tc_deltas = delta.get("tool_calls") or []
+            for tc in tc_deltas:
+                idx: int = tc.get("index", 0)
+                while len(tool_calls_list) <= idx:
+                    tool_calls_list.append(
+                        {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        }
+                    )
+                entry = tool_calls_list[idx]
+                if "id" in tc:
+                    entry["id"] = tc["id"]
+                fn_delta = tc.get("function") or {}
+                if fn_delta.get("name"):
+                    entry["function"]["name"] = fn_delta["name"]
+                if fn_delta.get("arguments"):
+                    entry["function"]["arguments"] += fn_delta["arguments"]
+    finally:
+        await resp.aclose()
+
+    # Filter out any empty tool call placeholders (no name = never filled)
+    tool_calls_list = [tc for tc in tool_calls_list if tc["function"]["name"]]
+
+    return full_content, tool_calls_list, usage
 
 
 async def run(
@@ -24,48 +96,52 @@ async def run(
 
     stream_cb(event_type, data):
         "text"        -> str  (text chunk to show user)
-        "tool_call"   -> dict {name, args, id}
-        "tool_review" -> dict {name, approved, reason}
-        "tool_result" -> dict {name, result, id}
+        "tool_call"   -> dict {name, args, call_id}
+        "tool_review" -> dict {name, approved, reason, call_id}
+        "tool_result" -> dict {name, content, call_id}
 
     Returns the full text reply.
     """
-    from app.models.secrets_store import decrypt
-
-    api_key: str = decrypt(str(model_row["api_key"]))
+    # model_row["api_key"] is already decrypted by ModelRepository
+    api_key: str = str(model_row["api_key"])
+    if not api_key:
+        err = "模型 API Key 未设置或已失效（服务器重启后加密密钥可能变更）。请联系管理员更新模型配置。"
+        await stream_cb("text", err)
+        return err
 
     for _turn in range(MAX_TOOL_TURNS):
-        try:
-            resp = await chat_complete(
-                str(model_row["base_url"]),
-                api_key,
-                str(model_row["model_id"]),
-                messages,
-                temperature=float(model_row.get("temperature") or 0.7),
-                max_tokens=int(model_row.get("max_tokens") or 1024),
-                stream=False,
-                tools=TOOLS,
-            )
-        except Exception as exc:
-            log_error("agent_loop chat_complete", exc)
-            err = "模型调用失败，请稍后重试"
-            await stream_cb("text", err)
-            return err
+        full_content = ""
+        calls: list[dict[str, Any]] = []
 
-        calls = parse_tool_calls(resp.content)
-        parsed = parse_chat_response(resp.content)
+        for attempt in range(2):
+            try:
+                full_content, calls, usage = await _stream_chat_once(
+                    api_key, messages, model_row, stream_cb
+                )
+                if usage.get("total_tokens"):
+                    ModelRepository.record_usage(
+                        int(model_row["id"]),
+                        int(usage.get("prompt_tokens") or 0),
+                        int(usage.get("completion_tokens") or 0),
+                    )
+                break
+            except Exception as exc:
+                if attempt == 0:
+                    log_error("agent_loop chat_complete (attempt 1, will retry)", exc)
+                    await asyncio.sleep(1.0)
+                else:
+                    log_error("agent_loop chat_complete (attempt 2, giving up)", exc)
+                    err = "模型调用失败，请稍后重试"
+                    await stream_cb("text", err)
+                    return err
 
         if not calls:
-            text = str(parsed.get("content") or "")
-            chunk_size = 60
-            for i in range(0, max(len(text), 1), chunk_size):
-                await stream_cb("text", text[i : i + chunk_size])
-            return text
+            return full_content
 
         messages.append(
             {
                 "role": "assistant",
-                "content": parsed.get("content") or None,
+                "content": full_content or None,
                 "tool_calls": calls,
             }
         )
@@ -79,12 +155,19 @@ async def run(
             except json.JSONDecodeError:
                 args = {}
 
-            await stream_cb("tool_call", {"name": name, "args": args, "id": call_id})
+            await stream_cb(
+                "tool_call", {"name": name, "args": args, "call_id": call_id}
+            )
 
             rev = await tool_review(user_text, name, args, api_key, model_row)
             await stream_cb(
                 "tool_review",
-                {"name": name, "approved": rev.approved, "reason": rev.reason},
+                {
+                    "name": name,
+                    "approved": rev.approved,
+                    "reason": rev.reason,
+                    "call_id": call_id,
+                },
             )
 
             if rev.approved:
@@ -97,7 +180,8 @@ async def run(
                 result = f"工具调用已拒绝: {rev.reason}"
 
             await stream_cb(
-                "tool_result", {"name": name, "result": result, "id": call_id}
+                "tool_result",
+                {"name": name, "content": result, "call_id": call_id},
             )
             messages.append(
                 {"role": "tool", "tool_call_id": call_id, "content": result}

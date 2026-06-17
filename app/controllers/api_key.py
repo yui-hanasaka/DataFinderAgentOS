@@ -1,7 +1,7 @@
 from app.controllers.admin import AdminBaseHandler
-from app.models.db import get_connection
+from app.models.api_key import ApiKeyRepository
 from app.models.rate_limit import check_rate_limit
-from app.models.secrets_store import encrypt, mask
+from app.models.secrets_store import mask
 
 PER_PAGE = 20
 
@@ -10,24 +10,11 @@ class AdminApiKeyHandler(AdminBaseHandler):
     def get(self) -> None:
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
-        where = "WHERE name LIKE ? OR api_type LIKE ?" if keyword else ""
-        params = [f"%{keyword}%", f"%{keyword}%"] if keyword else []
-        with get_connection() as conn:
-            total = conn.execute(
-                f"SELECT COUNT(*) FROM api_keys {where}", params
-            ).fetchone()[0]
-            offset = (max(page, 1) - 1) * PER_PAGE
-            api_keys = conn.execute(
-                f"SELECT * FROM api_keys {where} ORDER BY id DESC LIMIT ? OFFSET ?",
-                params + [PER_PAGE, offset],
-            ).fetchall()
+        api_keys, total = ApiKeyRepository.list_keys(keyword, page)
         edit_id = self.get_query_argument("edit", "")
         edit_api = None
         if edit_id.isdigit():
-            with get_connection() as conn:
-                row = conn.execute(
-                    "SELECT * FROM api_keys WHERE id=?", (int(edit_id),)
-                ).fetchone()
+            row = ApiKeyRepository.get_key(int(edit_id))
             if row:
                 edit_api = dict(row)
                 edit_api["api_key"] = mask(edit_api.get("api_key") or "")
@@ -53,37 +40,22 @@ class AdminApiKeyHandler(AdminBaseHandler):
         action = self.get_body_argument("action", "")
         api_id = self.get_body_argument("id", "")
         if action == "delete" and api_id.isdigit():
-            with get_connection() as conn:
-                conn.execute("DELETE FROM api_keys WHERE id=?", (int(api_id),))
+            ApiKeyRepository.delete_key(int(api_id))
             return self._redirect_with_message("/admin/apis", "已删除")
         name = self.get_body_argument("name", "").strip()
         api_type = self.get_body_argument("api_type", "other")
         endpoint = self.get_body_argument("endpoint", "").strip()
         api_key_val = self.get_body_argument("api_key", "").strip()
         status = self.get_body_argument("status", "enabled")
+        data: dict[str, object] = {
+            "name": name,
+            "api_type": api_type,
+            "endpoint": endpoint,
+            "api_key": api_key_val,
+            "status": status,
+        }
         if api_id.isdigit():
-            api_key_save = encrypt(api_key_val) if api_key_val else ""
-            if not api_key_val:
-                with get_connection() as conn:
-                    existing = conn.execute(
-                        "SELECT api_key FROM api_keys WHERE id=?", (int(api_id),)
-                    ).fetchone()
-                    api_key_save = existing["api_key"] if existing else ""
-            with get_connection() as conn:
-                conn.execute(
-                    "UPDATE api_keys SET name=?,api_type=?,endpoint=?,api_key=?,status=?,updated_at=datetime('now') WHERE id=?",
-                    (name, api_type, endpoint, api_key_save, status, int(api_id)),
-                )
+            ApiKeyRepository.update_key(int(api_id), data)
             return self._redirect_with_message("/admin/apis", "已更新")
-        with get_connection() as conn:
-            conn.execute(
-                "INSERT INTO api_keys(name, api_type, endpoint, api_key, status) VALUES(?,?,?,?,?)",
-                (
-                    name,
-                    api_type,
-                    endpoint,
-                    encrypt(api_key_val) if api_key_val else "",
-                    status,
-                ),
-            )
+        ApiKeyRepository.create_key(data)
         self._redirect_with_message("/admin/apis", "已新增")
