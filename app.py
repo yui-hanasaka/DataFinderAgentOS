@@ -6,8 +6,10 @@ import tornado.web
 import tornado.ioloop
 from tornado.httpserver import HTTPServer
 
+from app.controllers.admin import AdminHomeHandler, AdminLoginHandler, AdminLogoutHandler, AdminMenuHandler, AdminRoleHandler, AdminUserHandler
 from app.controllers.auth import LoginHandler,LogoutHandler
 from app.controllers.home import HomeHandler
+from app.controllers.model_engine import AdminModelChatHandler, AdminModelEngineHandler, AdminModelTestHandler
 from app.models.db import init_db
 
 
@@ -31,7 +33,16 @@ def app():
 			("/",LoginHandler), #get
 			("/home",HomeHandler),
 			("/user/login",LoginHandler),#post
-			("/user/logout",LogoutHandler)
+			("/user/logout",LogoutHandler),
+			("/admin/login",AdminLoginHandler),
+			("/admin/home",AdminHomeHandler),
+			("/admin/roles",AdminRoleHandler),
+			("/admin/users",AdminUserHandler),
+			("/admin/menus",AdminMenuHandler),
+			("/admin/models",AdminModelEngineHandler),
+			(r"/admin/models/(\d+)/test", AdminModelTestHandler),
+			(r"/admin/models/(\d+)/chat", AdminModelChatHandler),
+			("/admin/logout",AdminLogoutHandler)
 		],
 		**settings
 	)

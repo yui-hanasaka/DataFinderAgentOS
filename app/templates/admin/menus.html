@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-page-head">
+	<div><p>功能中台</p><h1>功能管理</h1><span>将后台菜单功能数据化，支撑角色授权和后续二级联动权限设置。</span></div>
+	<form class="admin-search" method="get" action="/admin/menus">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索功能编码/名称/地址">
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/menus">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#menuModal"><i class="fa-solid fa-plus"></i> 新增功能</button>
+	</form>
+</section>
+{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>功能列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
+	<table class="admin-table">
+		<thead><tr><th>ID</th><th>图标</th><th>编码</th><th>名称</th><th>地址</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+		<tbody>{% for menu in menus %}<tr><td>{{ menu['id'] }}</td><td>{{ menu['icon'] or '▦' }}</td><td>{{ menu['menu_code'] }}</td><td>{{ menu['menu_name'] }}</td><td>{{ menu['url'] or '-' }}</td><td>{{ menu['sort_order'] }}</td><td>{{ menu['status'] }}</td><td class="table-actions"><a href="/admin/menus?edit={{ menu['id'] }}">查看/修改</a><form method="post" action="/admin/menus" data-confirm="确认删除该功能？删除后会同步移除角色授权。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ menu['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+	</table>
+	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/menus?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/menus?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+</section>
+<div class="modal fade admin-edit-modal" id="menuModal" tabindex="-1" {% if edit_menu %}data-auto-open="true"{% end %}>
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div>
+					<h5 class="modal-title">{% if edit_menu %}修改功能{% else %}新增功能{% end %}</h5>
+					<small class="field-hint">维护后台菜单功能基础信息与交互属性，支撑角色授权和后台导航。<span class="required-tip">* 为必填项</span></small>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+			<form method="post" action="/admin/menus" data-confirm="确认保存功能信息？">
+				<div class="modal-body">
+					{% module xsrf_form_html() %}
+					{% if edit_menu %}<input type="hidden" name="id" value="{{ edit_menu['id'] }}">{% end %}
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">基础信息<small>功能编码用于代码识别，创建后不可修改</small></div>
+						<div class="admin-grid-form">
+							<label class="required"><span>功能编码</span><input type="text" name="menu_code" value="{{ edit_menu['menu_code'] if edit_menu else '' }}" {% if edit_menu %}readonly{% end %} placeholder="如：user_manage" required></label>
+							<label class="required"><span>功能名称</span><input type="text" name="menu_name" value="{{ edit_menu['menu_name'] if edit_menu else '' }}" placeholder="如：用户管理" required></label>
+							<label><span>父级功能</span><select name="parent_id"><option value="0">顶级功能</option>{% for menu in all_menus %}<option value="{{ menu['id'] }}" {% if edit_menu and edit_menu['parent_id'] == menu['id'] %}selected{% end %}>{{ menu['menu_name'] }}</option>{% end %}</select></label>
+							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_menu or edit_menu['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_menu and edit_menu['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+						</div>
+					</section>
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">交互属性<small>访问地址与图标用于后台菜单导航展示</small></div>
+						<div class="admin-grid-form">
+							<label><span>访问地址</span><input type="text" name="url" value="{{ edit_menu['url'] if edit_menu and edit_menu['url'] else '' }}" placeholder="如：/admin/users"></label>
+							<label><span>图标</span><input type="text" name="icon" value="{{ edit_menu['icon'] if edit_menu and edit_menu['icon'] else '' }}" placeholder="如：fa-house"></label>
+							<label><span>排序</span><input type="number" name="sort_order" value="{{ edit_menu['sort_order'] if edit_menu else 0 }}" placeholder="数值越小越靠前"></label>
+							<label><span class="field-hint">提示：图标可填写 FontAwesome 类名或简单符号字符。</span></label>
+						</div>
+					</section>
+				</div>
+				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+			</form>
+		</div>
+	</div>
+</div>
+{% end %}

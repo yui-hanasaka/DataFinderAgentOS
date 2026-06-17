@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ title }}</title>
+	<link rel="stylesheet" href="{{ static_url('bootstrap/bootstrap-5.3.8-dist/css/bootstrap.min.css') }}">
+	<link rel="stylesheet" href="{{ static_url('zui/zui/zui.css') }}">
+	<link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
+	<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+</head>
+<body class="admin-layout-page">
+	<div class="admin-layout">
+		<header class="admin-topbar">
+			<div class="admin-brand">
+				<div class="admin-logo">D</div>
+				<div>
+					<strong>智能数据瞭望与智能问数系统</strong>
+					<span>DataFinder AgentOS</span>
+				</div>
+			</div>
+			<div class="admin-userbar">
+				<span class="admin-user-badge">管理员</span>
+				<span>{{ username }}</span>
+				<form method="post" action="/admin/logout">
+					{% module xsrf_form_html() %}
+					<button type="submit">退出</button>
+				</form>
+			</div>
+		</header>
+		<aside class="admin-sidebar">
+			<nav class="admin-menu">
+				<a class="{% if request.path == '/admin/home' %}active{% end %}" href="/admin/home"><span><i class="fa-solid fa-house"></i></span>后台主页</a>
+				<a class="{% if request.path == '/admin/users' %}active{% end %}" href="/admin/users"><span><i class="fa-solid fa-users"></i></span>用户管理</a>
+				<a class="{% if request.path == '/admin/roles' %}active{% end %}" href="/admin/roles"><span><i class="fa-solid fa-user-shield"></i></span>角色管理</a>
+				<a class="{% if request.path == '/admin/menus' %}active{% end %}" href="/admin/menus"><span><i class="fa-solid fa-table-cells-large"></i></span>功能管理</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-microchip"></i></span>模型引擎</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-toolbox"></i></span>技能仓库</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-robot"></i></span>数字员工</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-satellite-dish"></i></span>瞭望采集</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-database"></i></span>数据仓库</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-magnifying-glass-chart"></i></span>深度采集</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-comments"></i></span>智能问数</a>
+				<a href="javascript:void(0)"><span><i class="fa-solid fa-chart-line"></i></span>智能大屏</a>
+			</nav>
+		</aside>
+		<main class="admin-workspace">
+			{% block body %}{% end %}
+		</main>
+	</div>
+	<div class="modal fade" id="adminConfirmModal" tabindex="-1">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content admin-confirm-modal">
+				<div class="modal-header"><h5 class="modal-title">操作确认</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+				<div class="modal-body" id="adminConfirmText">确认执行该操作？</div>
+				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" id="adminConfirmSubmit">确认执行</button></div>
+			</div>
+		</div>
+	</div>
+	<script src="{{ static_url('bootstrap/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js') }}"></script>
+	<script src="{{ static_url('zui/zui/zui.js') }}"></script>
+	<script>
+		document.querySelectorAll('.modal, .toast-container').forEach(function (item) {
+			document.body.appendChild(item);
+		});
+		document.querySelectorAll('.admin-toast').forEach(function (item) {
+			new bootstrap.Toast(item, { delay: 2600 }).show();
+		});
+		document.querySelectorAll('.admin-edit-modal[data-auto-open="true"]').forEach(function (item) {
+			new bootstrap.Modal(item).show();
+		});
+		var pendingConfirmForm = null;
+		var confirmModalEl = document.getElementById('adminConfirmModal');
+		var confirmTextEl = document.getElementById('adminConfirmText');
+		var confirmSubmitEl = document.getElementById('adminConfirmSubmit');
+		var confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
+		document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+			form.addEventListener('submit', function (event) {
+				if (form.dataset.confirmed === 'true') {
+					return;
+				}
+				event.preventDefault();
+				pendingConfirmForm = form;
+				confirmTextEl.textContent = form.dataset.confirm || '确认执行该操作？';
+				confirmModal.show();
+			});
+		});
+		confirmSubmitEl.addEventListener('click', function () {
+			if (!pendingConfirmForm) {
+				return;
+			}
+			pendingConfirmForm.dataset.confirmed = 'true';
+			confirmModal.hide();
+			pendingConfirmForm.submit();
+		});
+	</script>
+</body>
+</html>

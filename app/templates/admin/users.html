@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-page-head">
+	<div><p>组织权限</p><h1>用户管理</h1><span>维护后台管理用户，admin 超级管理员不允许删除或禁用。</span></div>
+	<form class="admin-search" method="get" action="/admin/users">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索用户名/姓名/角色">
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/users">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#userModal"><i class="fa-solid fa-plus"></i> 新增用户</button>
+	</form>
+</section>
+{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>用户列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
+	<table class="admin-table">
+		<thead><tr><th>ID</th><th>用户名</th><th>显示名称</th><th>角色</th><th>超级管理员</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+		<tbody>{% for user in users %}<tr><td>{{ user['id'] }}</td><td>{{ user['username'] }}</td><td>{{ user['display_name'] }}</td><td>{{ user['role_name'] or '-' }}</td><td>{{ '是' if user['is_super'] else '否' }}</td><td>{{ user['status'] }}</td><td>{{ user['created_at'] }}</td><td class="table-actions"><a href="/admin/users?edit={{ user['id'] }}">查看/修改</a><form method="post" action="/admin/users" data-confirm="确认删除该用户？删除后不可恢复。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ user['id'] }}"><button type="submit" {% if user['username'] == 'admin' %}disabled{% end %}>删除</button></form></td></tr>{% end %}</tbody>
+	</table>
+	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/users?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/users?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+</section>
+<div class="modal fade admin-edit-modal" id="userModal" tabindex="-1" {% if edit_user %}data-auto-open="true"{% end %}>
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div>
+					<h5 class="modal-title">{% if edit_user %}修改用户{% else %}新增用户{% end %}</h5>
+					<small class="field-hint">维护后台管理用户的基础信息与账号设置。<span class="required-tip">* 为必填项</span></small>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+			<form method="post" action="/admin/users" data-confirm="确认保存用户信息？">
+				<div class="modal-body">
+					{% module xsrf_form_html() %}
+					{% if edit_user %}<input type="hidden" name="id" value="{{ edit_user['id'] }}">{% end %}
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">基础信息<small>展示在后台用户列表中的核心信息</small></div>
+						<div class="admin-grid-form">
+							<label class="required"><span>用户名</span><input type="text" name="username" value="{{ edit_user['username'] if edit_user else '' }}" {% if edit_user %}readonly{% end %} placeholder="登录用账号，仅允许字母数字" required></label>
+							<label class="required"><span>显示名称</span><input type="text" name="display_name" value="{{ edit_user['display_name'] if edit_user else '' }}" placeholder="例如：张运营" required></label>
+							<label class="required"><span>所属角色</span><select name="role_id">{% for role in roles %}<option value="{{ role['id'] }}" {% if edit_user and edit_user['role_id'] == role['id'] %}selected{% end %}>{{ role['role_name'] }}</option>{% end %}</select></label>
+							<label class="required"><span>账号状态</span><select name="status"><option value="enabled" {% if not edit_user or edit_user['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_user and edit_user['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+						</div>
+					</section>
+					<section class="admin-form-section">
+						<div class="admin-form-section-title">账号安全<small>{% if edit_user %}留空表示不修改当前密码{% else %}首次创建必须设置密码{% end %}</small></div>
+						<div class="admin-grid-form">
+							<label {% if not edit_user %}class="required"{% end %}><span>登录密码</span><input type="password" name="password" placeholder="{% if edit_user %}留空不修改{% else %}建议8位以上，包含字母数字{% end %}" {% if not edit_user %}required{% end %}></label>
+							<label class="form-wide"><span class="field-hint">提示：admin 超级管理员账号不允许删除或禁用，可在此修改密码。</span></label>
+						</div>
+					</section>
+				</div>
+				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+			</form>
+		</div>
+	</div>
+</div>
+{% end %}

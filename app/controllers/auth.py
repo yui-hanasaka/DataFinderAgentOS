@@ -1,5 +1,6 @@
 import tornado.web
 from app.controllers.base import BaseHandler
+from app.models.admin import AdminRepository
 from app.models.user import UserRepository
 
 class LoginHandler(BaseHandler):
@@ -7,11 +8,15 @@ class LoginHandler(BaseHandler):
 		self.render("web\\login.html",title="登录",error=None)
 
 	def post(self):
-		username = self.get_body_argument("username","")
-		password = self.get_body_argument("password","")
+		username = self.get_body_argument("username","").strip()
+		password = self.get_body_argument("password","").strip()
 		if not username or not password:
 			self.set_status(400)
 			return self.render("web\\login.html",title="登录",error="请输入用户名或密码")
+
+		if AdminRepository.verify_admin(username, password):
+			self.set_secure_cookie("admin_username", username)
+			return self.redirect("/admin/home")
 
 		if not UserRepository.verify_user(username,password):
 			self.set_status(401)

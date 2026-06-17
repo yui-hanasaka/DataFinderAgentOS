@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="admin-welcome-card">
+	<p>后台主页</p>
+	<h1>欢迎进入后台管理中心</h1>
+	<span>当前版本已接入角色管理、用户管理和功能管理，后续业务模块可在统一后台工作区中继续扩展。</span>
+</section>
+<section class="admin-module-grid">
+	<a href="/admin/users"><strong>用户管理</strong><span>新增、修改、删除、搜索后台管理用户</span></a>
+	<a href="/admin/roles"><strong>角色管理</strong><span>维护角色并通过功能授权设置菜单权限</span></a>
+	<a href="/admin/menus"><strong>功能管理</strong><span>维护后台菜单功能、图标、地址和排序</span></a>
+	<div><strong>智能业务</strong><span>模型引擎、技能仓库、数字员工等模块待接入</span></div>
+</section>
+{% end %}

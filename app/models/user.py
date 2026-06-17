@@ -14,7 +14,6 @@ class UserRepository:
 	@staticmethod
 	def create_user(username:str,password:str) -> bool:
 		salt = secrets.token_bytes(16)
-		print(salt)
 		password_hash = _hash_password(password,salt)
 
 		try:
