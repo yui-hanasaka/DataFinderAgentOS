@@ -9,19 +9,22 @@ async def chat_complete(
     base_url: str,
     api_key: str,
     model_id: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     temperature: float = 0.7,
     max_tokens: int = 1024,
     stream: bool = False,
+    tools: list[dict[str, Any]] | None = None,
 ) -> httpx.Response:
     url = base_url.rstrip("/") + "/chat/completions"
-    body = {
+    body: dict[str, Any] = {
         "model": model_id,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": stream,
     }
+    if tools is not None:
+        body["tools"] = tools
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
@@ -68,6 +71,13 @@ def parse_chat_response(raw_bytes: bytes) -> dict[str, str | int]:
         "completion_tokens": int(usage.get("completion_tokens") or 0),
         "total_tokens": int(usage.get("total_tokens") or 0),
     }
+
+
+def parse_tool_calls(raw_bytes: bytes) -> list[dict[str, Any]]:
+    payload = json.loads(raw_bytes.decode("utf-8"))
+    choice = (payload.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    return list(message.get("tool_calls") or [])
 
 
 async def parse_chat_response_async(resp: httpx.Response) -> dict[str, str | int]:

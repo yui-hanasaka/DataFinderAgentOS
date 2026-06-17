@@ -649,6 +649,21 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         conn.execute(sql)
 
 
+def _init_agent_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS agent_decisions (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            source     TEXT NOT NULL DEFAULT 'agent',
+            action     TEXT NOT NULL,
+            outcome    TEXT NOT NULL DEFAULT 'pending',
+            reason     TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+
+
 def init_db() -> None:
     with get_connection() as conn:
         _init_users_table(conn)
@@ -657,4 +672,5 @@ def init_db() -> None:
         _init_model_tables(conn)
         _init_business_tables(conn)
         _seed_business_data(conn)
+        _init_agent_tables(conn)
         _run_migrations(conn)

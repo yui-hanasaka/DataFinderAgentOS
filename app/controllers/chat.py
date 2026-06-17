@@ -1,13 +1,14 @@
 import json
+from typing import Any
 
 from loguru import logger
 
+from app.agents import agent_loop
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
 from app.models.employee import EmployeeRepository
 from app.models.errors import log_error
-from app.models.model_client import chat_complete, iter_sse_chunks
 from app.models.model_engine import ModelRepository
 from app.models.rate_limit import check_rate_limit
 from app.models.skill_dispatcher import dispatch
@@ -337,57 +338,34 @@ class ChatSendHandler(ChatBaseHandler):
         self.set_header("Cache-Control", "no-cache")
         self.set_header("X-Accel-Buffering", "no")
 
-        full_reply = []
-        try:
-            resp = await chat_complete(
-                model_row["base_url"],
-                model_row["api_key"],
-                model_row["model_id"],
-                messages,
-                temperature=model_row["temperature"],
-                max_tokens=model_row["max_tokens"],
-                stream=True,
-            )
-            prompt_tokens = completion_tokens = 0
+        full_reply_list: list[str] = []
+
+        async def _sse(event_type: str, data: Any) -> None:
+            if event_type == "text":
+                payload = json.dumps({"type": "text", "content": str(data)})
+                full_reply_list.append(str(data))
+            elif isinstance(data, dict):
+                payload = json.dumps({"type": event_type, **data})
+            else:
+                payload = json.dumps({"type": event_type, "data": str(data)})
             try:
-                async for chunk in iter_sse_chunks(resp):
-                    usage = chunk.get("usage") or {}
-                    if usage:
-                        prompt_tokens = max(
-                            prompt_tokens, int(usage.get("prompt_tokens") or 0)
-                        )
-                        completion_tokens = max(
-                            completion_tokens, int(usage.get("completion_tokens") or 0)
-                        )
-                    delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
-                    text = delta.get("content") or ""
-                    if text:
-                        full_reply.append(text)
-                        try:
-                            self.write(f"data: {json.dumps({'content': text})}\n\n")
-                            await self.flush()
-                        except Exception:
-                            break
-            except Exception as e:
-                log_error("ChatSendHandler SSE loop", e)
+                self.write(f"data: {payload}\n\n")
+                await self.flush()
+            except Exception:
                 pass
-            finally:
-                _client = getattr(resp, "_client", None)
-                if _client is not None:
-                    await _client.aclose()
-            ModelRepository.record_usage(
-                model_row["id"], prompt_tokens, completion_tokens
-            )
+
+        try:
+            await agent_loop.run(user_text, messages, model_row, _sse)
         except Exception as e:
-            log_error("ChatSendHandler", e)
+            log_error("ChatSendHandler agent_loop", e)
             err_msg = "模型调用失败，请稍后重试"
-            full_reply.append(err_msg)
-            self.write(f"data: {json.dumps({'content': err_msg})}\n\n")
+            full_reply_list.append(err_msg)
+            self.write(f"data: {json.dumps({'type': 'text', 'content': err_msg})}\n\n")
 
         ChatRepository.add_message(
             int(session_id),
             "assistant",
-            "".join(full_reply),
+            "".join(full_reply_list),
             skill_meta=json.dumps(dispatched["skill_meta"])
             if dispatched["skill_meta"]
             else None,

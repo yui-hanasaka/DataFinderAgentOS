@@ -161,4 +161,8 @@ if __name__ == "__main__":
     )
     server.listen(10086)
     print("Server Started: http://localhost:10086/", flush=True)
+    from app.agents.watchtower_agent import WatchtowerAgent
+
+    _watchtower = WatchtowerAgent()
+    tornado.ioloop.PeriodicCallback(_watchtower.tick, 30 * 60 * 1000).start()
     tornado.ioloop.IOLoop.current().start()
