@@ -380,14 +380,20 @@ def _migrate_watchtower_items():
         cursor.execute("PRAGMA table_info(watchtower_items)")
         existing_columns = [row[1] for row in cursor.fetchall()]
 
-        if 'is_deep_collected' not in existing_columns:
-            cursor.execute("ALTER TABLE watchtower_items ADD COLUMN is_deep_collected INTEGER DEFAULT 0")
+        if "is_deep_collected" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE watchtower_items ADD COLUMN is_deep_collected INTEGER DEFAULT 0"
+            )
 
-        if 'deep_task_id' not in existing_columns:
-            cursor.execute("ALTER TABLE watchtower_items ADD COLUMN deep_task_id INTEGER DEFAULT NULL")
+        if "deep_task_id" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE watchtower_items ADD COLUMN deep_task_id INTEGER DEFAULT NULL"
+            )
 
-        if 'deep_collected_at' not in existing_columns:
-            cursor.execute("ALTER TABLE watchtower_items ADD COLUMN deep_collected_at TEXT DEFAULT NULL")
+        if "deep_collected_at" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE watchtower_items ADD COLUMN deep_collected_at TEXT DEFAULT NULL"
+            )
 
         conn.commit()
 
@@ -400,19 +406,27 @@ def _migrate_deep_tasks():
         cursor.execute("PRAGMA table_info(deep_tasks)")
         existing_columns = [row[1] for row in cursor.fetchall()]
 
-        if 'progress' not in existing_columns:
-            cursor.execute("ALTER TABLE deep_tasks ADD COLUMN progress INTEGER DEFAULT 0")
+        if "progress" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE deep_tasks ADD COLUMN progress INTEGER DEFAULT 0"
+            )
 
-        if 'total_items' not in existing_columns:
-            cursor.execute("ALTER TABLE deep_tasks ADD COLUMN total_items INTEGER DEFAULT 0")
+        if "total_items" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE deep_tasks ADD COLUMN total_items INTEGER DEFAULT 0"
+            )
 
-        if 'completed_items' not in existing_columns:
-            cursor.execute("ALTER TABLE deep_tasks ADD COLUMN completed_items INTEGER DEFAULT 0")
+        if "completed_items" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE deep_tasks ADD COLUMN completed_items INTEGER DEFAULT 0"
+            )
 
-        if 'failed_items' not in existing_columns:
-            cursor.execute("ALTER TABLE deep_tasks ADD COLUMN failed_items INTEGER DEFAULT 0")
+        if "failed_items" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE deep_tasks ADD COLUMN failed_items INTEGER DEFAULT 0"
+            )
 
-        if 'logs' not in existing_columns:
+        if "logs" not in existing_columns:
             cursor.execute("ALTER TABLE deep_tasks ADD COLUMN logs TEXT DEFAULT '[]'")
 
         conn.commit()

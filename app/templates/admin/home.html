@@ -1,64 +1,71 @@
 {% extends "base.html" %}
 {% block body %}
-<section class="admin-welcome-card">
-	<p>后台主页</p>
-	<h1>欢迎进入后台管理中心</h1>
-</section>
-<div class="row g-3 mb-4" style="margin-top:0">
-	<div class="col-6 col-md-3">
-		<div class="card text-center p-3">
-			<div class="fs-2 fw-bold text-primary">{{ user_count }}</div>
-			<div class="text-muted small">前台用户</div>
-		</div>
-	</div>
-	<div class="col-6 col-md-3">
-		<div class="card text-center p-3">
-			<div class="fs-2 fw-bold text-success">{{ session_count }}</div>
-			<div class="text-muted small">会话总数</div>
-		</div>
-	</div>
-	<div class="col-6 col-md-3">
-		<div class="card text-center p-3">
-			<div class="fs-2 fw-bold text-warning">{{ item_count }}</div>
-			<div class="text-muted small">瞭望条目</div>
-		</div>
-	</div>
-	<div class="col-6 col-md-3">
-		<div class="card text-center p-3">
-			<div class="fs-2 fw-bold text-info">{{ total_calls }}</div>
-			<div class="text-muted small">模型调用</div>
-		</div>
-	</div>
+<style>
+@keyframes statIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.adm-stat-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; margin-bottom:20px; }
+.adm-stat-card {
+  padding:22px 24px; border-radius:18px; text-decoration:none;
+  background:rgba(255,255,255,.55); backdrop-filter:blur(16px) saturate(120%);
+  border:1px solid rgba(99,102,241,.05); box-shadow:0 6px 20px rgba(99,102,241,.03);
+  transition:all var(--spring) .3s;
+}
+.adm-stat-card:nth-child(1){animation:statIn .4s .05s var(--ease-out-expo) both}
+.adm-stat-card:nth-child(2){animation:statIn .4s .1s var(--ease-out-expo) both}
+.adm-stat-card:nth-child(3){animation:statIn .4s .15s var(--ease-out-expo) both}
+.adm-stat-card:nth-child(4){animation:statIn .4s .2s var(--ease-out-expo) both}
+.adm-stat-card:hover { transform:translateY(-3px); border-color:rgba(99,102,241,.15); box-shadow:0 12px 32px rgba(99,102,241,.08); }
+.adm-stat-value { font-size:30px; font-weight:800; }
+.adm-stat-label { font-size:12px; color:#8a86c0; margin-top:4px; letter-spacing:.04em; }
+.s-c1{color:#6366f1}.s-c2{color:#10b981}.s-c3{color:#f59e0b}.s-c4{color:#3b82f6}
+
+[data-theme="dark"] .adm-stat-card { background:rgba(20,18,48,.45); border-color:rgba(139,130,255,.05); box-shadow:0 6px 20px rgba(0,0,0,.15); }
+[data-theme="dark"] .adm-stat-card:hover { background:rgba(25,23,50,.6); border-color:rgba(139,130,255,.15); }
+[data-theme="dark"] .adm-stat-label { color:#6b6b9e; }
+</style>
+
+<div class="adm-welcome-card">
+  <p>后台主页</p>
+  <h1>欢迎进入后台管理中心</h1>
+  <span>用户端共 {{ user_count }} 位用户 · 管理端 {{ admin_count }} 位管理员</span>
 </div>
-<section class="admin-module-grid">
-	<a href="/admin/users"><strong>用户管理</strong><span>新增、修改、删除、搜索后台管理用户</span></a>
-	<a href="/admin/roles"><strong>角色管理</strong><span>维护角色并通过功能授权设置菜单权限</span></a>
-	<a href="/admin/permissions"><strong>权限管理</strong><span>角色-菜单权限矩阵批量配置</span></a>
-	<a href="/admin/employees"><strong>数字员工</strong><span>配置AI助理人设、绑定模型与技能</span></a>
-	<a href="/admin/skills"><strong>技能管理</strong><span>内置与外部API技能注册管理</span></a>
-	<a href="/admin/watchtower"><strong>瞭望管理</strong><span>配置RSS/URL采集源与监控条目</span></a>
-	<a href="/admin/warehouse"><strong>数据仓库</strong><span>预定义SQL查询，支持问数功能</span></a>
-	<a href="/admin/models"><strong>模型引擎</strong><span>多模型接入、测试与调用统计</span></a>
-	<a href="/admin/sessions"><strong>会话管理</strong><span>查看和管理用户对话会话</span></a>
-	<a href="/admin/screen"><strong>数智大屏</strong><span>数据可视化、3D舆情大屏</span></a>
-	<a href="/admin/settings"><strong>系统设置</strong><span>站点配置、数据库切换</span></a>
-</section>
+
+<div class="adm-stat-grid">
+  <div class="adm-stat-card"><div class="adm-stat-value s-c1">{{ user_count }}</div><div class="adm-stat-label">前台用户</div></div>
+  <div class="adm-stat-card"><div class="adm-stat-value s-c2">{{ session_count }}</div><div class="adm-stat-label">会话总数</div></div>
+  <div class="adm-stat-card"><div class="adm-stat-value s-c3">{{ item_count }}</div><div class="adm-stat-label">瞭望条目</div></div>
+  <div class="adm-stat-card"><div class="adm-stat-value s-c4">{{ total_calls }}</div><div class="adm-stat-label">模型调用次数</div></div>
+</div>
+
+<div class="adm-module-grid">
+  <a href="/admin/users"><span class="mod-icon">👥</span><strong>用户管理</strong><span>新增、修改、删除、搜索后台管理用户</span></a>
+  <a href="/admin/roles"><span class="mod-icon">🛡</span><strong>角色管理</strong><span>维护角色并通过功能授权设置菜单权限</span></a>
+  <a href="/admin/permissions"><span class="mod-icon">🔐</span><strong>权限管理</strong><span>角色-菜单权限矩阵批量配置</span></a>
+  <a href="/admin/employees"><span class="mod-icon">🤖</span><strong>数字员工</strong><span>配置 AI 助理人设、绑定模型与技能</span></a>
+  <a href="/admin/skills"><span class="mod-icon">⚡</span><strong>技能管理</strong><span>内置与外部 API 技能注册管理</span></a>
+  <a href="/admin/watchtower"><span class="mod-icon">📡</span><strong>瞭望管理</strong><span>配置 RSS/URL 采集源与监控条目</span></a>
+  <a href="/admin/warehouse"><span class="mod-icon">🗄</span><strong>数据仓库</strong><span>预定义 SQL 查询，支持问数功能</span></a>
+  <a href="/admin/models"><span class="mod-icon">🧠</span><strong>模型引擎</strong><span>多模型接入、测试与调用统计</span></a>
+  <a href="/admin/sessions"><span class="mod-icon">💬</span><strong>会话管理</strong><span>查看和管理用户对话会话</span></a>
+  <a href="/admin/screen"><span class="mod-icon">📊</span><strong>数智大屏</strong><span>数据可视化、3D 舆情大屏</span></a>
+  <a href="/admin/settings"><span class="mod-icon">⚙</span><strong>系统设置</strong><span>站点配置、数据库切换</span></a>
+</div>
+
 {% if recent_sessions %}
-<div class="card mt-3">
-	<div class="card-header">最近会话</div>
-	<table class="table table-sm mb-0">
-		<thead><tr><th>ID</th><th>用户</th><th>标题</th><th>时间</th></tr></thead>
-		<tbody>
-		{% for s in recent_sessions %}
-		<tr>
-			<td>{{ s['id'] }}</td>
-			<td>{{ s['username'] or '-' }}</td>
-			<td><a href="/admin/conversations/{{ s['id'] }}">{{ s['title'] }}</a></td>
-			<td>{{ s['created_at'] }}</td>
-		</tr>
-		{% end %}
-		</tbody>
-	</table>
+<div class="adm-table-card" style="margin-top:20px">
+  <div class="table-title"><strong>最近会话</strong><span>共 {{ session_count }} 条</span></div>
+  <table class="adm-table">
+    <thead><tr><th>ID</th><th>用户</th><th>标题</th><th>时间</th></tr></thead>
+    <tbody>
+    {% for s in recent_sessions %}
+    <tr>
+      <td>{{ s['id'] }}</td>
+      <td>{{ s['username'] or '-' }}</td>
+      <td><a href="/admin/conversations/{{ s['id'] }}" style="color:#6366f1;text-decoration:none">{{ s['title'] }}</a></td>
+      <td style="color:#8a86c0;font-size:12px">{{ s['created_at'] }}</td>
+    </tr>
+    {% end %}
+    </tbody>
+  </table>
 </div>
 {% end %}
 {% end %}

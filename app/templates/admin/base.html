@@ -1,101 +1,173 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>{{ title }}</title>
-	<link rel="stylesheet" href="{{ static_url('bootstrap/bootstrap-5.3.8-dist/css/bootstrap.min.css') }}">
-	<link rel="stylesheet" href="{{ static_url('zui/zui/zui.css') }}">
-	<link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
-	<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · AgentOS 管理</title>
+<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+{% block head_extra %}{% end %}
+<script>
+(function(){
+  var t = localStorage.getItem('theme');
+  if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<script src="{{ static_url('js/base.js') }}"></script>
 </head>
-<body class="admin-layout-page">
-	<div class="admin-layout">
-		<header class="admin-topbar">
-			<div class="admin-brand">
-				<div class="admin-logo">D</div>
-				<div>
-					<strong>智能数据瞭望与智能问数系统</strong>
-					<span>DataFinder AgentOS</span>
-				</div>
-			</div>
-			<div class="admin-userbar">
-				<span class="admin-user-badge">管理员</span>
-				<span>{{ username }}</span>
-				<form method="post" action="/admin/logout">
-					{% module xsrf_form_html() %}
-					<button type="submit">退出</button>
-				</form>
-			</div>
-		</header>
-		<aside class="admin-sidebar">
-			<nav class="admin-menu">
-				<a class="{% if request.path == '/admin/home' %}active{% end %}" href="/admin/home"><span><i class="fa-solid fa-house"></i></span>后台主页</a>
-				<a class="{% if request.path == '/admin/users' %}active{% end %}" href="/admin/users"><span><i class="fa-solid fa-users"></i></span>用户管理</a>
-				<a class="{% if request.path == '/admin/roles' %}active{% end %}" href="/admin/roles"><span><i class="fa-solid fa-user-shield"></i></span>角色管理</a>
-				<a class="{% if request.path == '/admin/menus' %}active{% end %}" href="/admin/menus"><span><i class="fa-solid fa-table-cells-large"></i></span>功能管理</a>
-				<a class="{% if request.path == '/admin/models' %}active{% end %}" href="/admin/models"><span><i class="fa-solid fa-microchip"></i></span>模型引擎</a>
-				<a class="{% if request.path == '/admin/skills' %}active{% end %}" href="/admin/skills"><span><i class="fa-solid fa-toolbox"></i></span>技能管理</a>
-				<a class="{% if request.path == '/admin/employees' %}active{% end %}" href="/admin/employees"><span><i class="fa-solid fa-robot"></i></span>数字员工</a>
-				<a class="{% if request.path == '/admin/watchtower' %}active{% end %}" href="/admin/watchtower"><span><i class="fa-solid fa-satellite-dish"></i></span>瞭望管理</a>
-				<a class="{% if request.path == '/admin/warehouse' %}active{% end %}" href="/admin/warehouse"><span><i class="fa-solid fa-database"></i></span>数据仓库</a>
-				<a class="{% if request.path == '/admin/deep' %}active{% end %}" href="/admin/deep"><span><i class="fa-solid fa-magnifying-glass-chart"></i></span>深度采集</a>
-				<a class="{% if request.path == '/admin/apis' %}active{% end %}" href="/admin/apis"><span><i class="fa-solid fa-plug"></i></span>接口管理</a>
-				<a class="{% if request.path == '/admin/sessions' %}active{% end %}" href="/admin/sessions"><span><i class="fa-solid fa-comments"></i></span>会话管理</a>
-				<a class="{% if request.path == '/admin/permissions' %}active{% end %}" href="/admin/permissions"><span><i class="fa-solid fa-lock"></i></span>权限管理</a>
-				<a class="{% if request.path == '/admin/screen' %}active{% end %}" href="/admin/screen"><span><i class="fa-solid fa-chart-line"></i></span>数智大屏</a>
-				<a class="{% if request.path == '/admin/settings' %}active{% end %}" href="/admin/settings"><span><i class="fa-solid fa-gear"></i></span>系统设置</a>
-			</nav>
-		</aside>
-		<main class="admin-workspace">
-			{% block body %}{% end %}
-		</main>
-	</div>
-	<div class="modal fade" id="adminConfirmModal" tabindex="-1">
-		<div class="modal-dialog modal-dialog-centered">
-			<div class="modal-content admin-confirm-modal">
-				<div class="modal-header"><h5 class="modal-title">操作确认</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-				<div class="modal-body" id="adminConfirmText">确认执行该操作？</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" id="adminConfirmSubmit">确认执行</button></div>
-			</div>
-		</div>
-	</div>
-	<script src="{{ static_url('bootstrap/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js') }}"></script>
-	<script src="{{ static_url('zui/zui/zui.js') }}"></script>
-	<script>
-		document.querySelectorAll('.modal, .toast-container').forEach(function (item) {
-			document.body.appendChild(item);
-		});
-		document.querySelectorAll('.admin-toast').forEach(function (item) {
-			new bootstrap.Toast(item, { delay: 2600 }).show();
-		});
-		document.querySelectorAll('.admin-edit-modal[data-auto-open="true"]').forEach(function (item) {
-			new bootstrap.Modal(item).show();
-		});
-		var pendingConfirmForm = null;
-		var confirmModalEl = document.getElementById('adminConfirmModal');
-		var confirmTextEl = document.getElementById('adminConfirmText');
-		var confirmSubmitEl = document.getElementById('adminConfirmSubmit');
-		var confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
-		document.querySelectorAll('form[data-confirm]').forEach(function (form) {
-			form.addEventListener('submit', function (event) {
-				if (form.dataset.confirmed === 'true') {
-					return;
-				}
-				event.preventDefault();
-				pendingConfirmForm = form;
-				confirmTextEl.textContent = form.dataset.confirm || '确认执行该操作？';
-				confirmModal.show();
-			});
-		});
-		confirmSubmitEl.addEventListener('click', function () {
-			if (!pendingConfirmForm) {
-				return;
-			}
-			pendingConfirmForm.dataset.confirmed = 'true';
-			confirmModal.hide();
-			pendingConfirmForm.submit();
-		});
-	</script>
+<body class="adm-shell">
+<div class="adm-layout">
+  <!-- Sidebar -->
+  <aside class="adm-sidebar" id="admSidebar">
+    <a class="adm-brand" href="/home" title="返回用户端">
+      <div class="adm-brand-dot">D</div>
+      <div>
+        <strong>AgentOS</strong>
+        <span>后台管理</span>
+      </div>
+    </a>
+
+    <div class="adm-nav-label">主菜单</div>
+    <nav class="adm-nav">
+      {% set current = request.path %}
+      <a href="/admin/home" class="{% if current == '/admin/home' %}active{% end %}"><span class="nav-icon">🏠</span>后台主页</a>
+      <a href="/admin/users" class="{% if current == '/admin/users' %}active{% end %}"><span class="nav-icon">👥</span>用户管理</a>
+      <a href="/admin/roles" class="{% if current == '/admin/roles' %}active{% end %}"><span class="nav-icon">🛡</span>角色管理</a>
+      <a href="/admin/menus" class="{% if current == '/admin/menus' %}active{% end %}"><span class="nav-icon">📋</span>功能管理</a>
+      <a href="/admin/permissions" class="{% if current == '/admin/permissions' %}active{% end %}"><span class="nav-icon">🔐</span>权限管理</a>
+    </nav>
+
+    <div class="adm-nav-label">业务模块</div>
+    <nav class="adm-nav">
+      <a href="/admin/models" class="{% if current == '/admin/models' %}active{% end %}"><span class="nav-icon">🧠</span>模型引擎</a>
+      <a href="/admin/skills" class="{% if current == '/admin/skills' %}active{% end %}"><span class="nav-icon">⚡</span>技能管理</a>
+      <a href="/admin/employees" class="{% if current == '/admin/employees' %}active{% end %}"><span class="nav-icon">🤖</span>数字员工</a>
+      <a href="/admin/watchtower" class="{% if current == '/admin/watchtower' %}active{% end %}"><span class="nav-icon">📡</span>瞭望管理</a>
+      <a href="/admin/warehouse" class="{% if current == '/admin/warehouse' %}active{% end %}"><span class="nav-icon">🗄</span>数据仓库</a>
+      <a href="/admin/deep" class="{% if current == '/admin/deep' %}active{% end %}"><span class="nav-icon">🔍</span>深度采集</a>
+      <a href="/admin/apis" class="{% if current == '/admin/apis' %}active{% end %}"><span class="nav-icon">🔌</span>接口管理</a>
+    </nav>
+
+    <div class="adm-nav-label">监控</div>
+    <nav class="adm-nav">
+      <a href="/admin/sessions" class="{% if current == '/admin/sessions' %}active{% end %}"><span class="nav-icon">💬</span>会话管理</a>
+      <a href="/admin/screen" class="{% if current == '/admin/screen' %}active{% end %}"><span class="nav-icon">📊</span>数智大屏</a>
+      <a href="/admin/settings" class="{% if current == '/admin/settings' %}active{% end %}"><span class="nav-icon">⚙</span>系统设置</a>
+    </nav>
+
+    <div class="adm-sidebar-footer">
+      <button class="adm-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
+      <span class="adm-user">{{ username }}</span>
+      <form method="post" action="/admin/logout">
+        {% module xsrf_form_html() %}
+        <button type="submit" class="adm-logout-btn">退出</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="adm-main">
+    <!-- Mobile menu toggle -->
+    <button class="adm-menu-toggle" onclick="document.getElementById('admSidebar').classList.toggle('open')">☰</button>
+    <main class="adm-workspace">
+      {% block body %}{% end %}
+    </main>
+  </div>
+</div>
+
+<!-- Glass Toast Container -->
+<div class="adm-toast-container" id="admToastContainer"></div>
+
+<!-- Glass Modal -->
+<div class="adm-modal-mask" id="admModalMask" onclick="closeAdmModal()"></div>
+<div class="adm-modal" id="admModal">
+  <div class="adm-modal-header">
+    <h5 id="admModalTitle">操作确认</h5>
+    <button class="adm-modal-close" onclick="closeAdmModal()">✕</button>
+  </div>
+  <div class="adm-modal-body" id="admModalBody">确认执行该操作？</div>
+  <div class="adm-modal-footer">
+    <button class="adm-btn adm-btn-ghost" onclick="closeAdmModal()">取消</button>
+    <button class="adm-btn adm-btn-primary" id="admModalSubmit">确认执行</button>
+  </div>
+</div>
+
+<script>
+/* ── Bootstrap-modal compatibility for CRUD pages ── */
+document.querySelectorAll('.admin-edit-modal').forEach(function(modal){
+  modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function(btn){
+    btn.onclick = function(){ modal.classList.remove('show'); };
+  });
+  if (modal.dataset.autoOpen === 'true') { modal.classList.add('show'); }
+});
+
+/* ── Toast ── */
+function showAdmToast(msg) {
+  var container = document.getElementById('admToastContainer');
+  var toast = document.createElement('div');
+  toast.className = 'adm-toast';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(function(){ toast.classList.add('show'); });
+  setTimeout(function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 400); }, 2800);
+}
+
+/* ── Modal ── */
+var admModalCb = null;
+function openAdmModal(title, body, cb) {
+  document.getElementById('admModalTitle').textContent = title;
+  document.getElementById('admModalBody').textContent = body;
+  document.getElementById('admModalMask').classList.add('show');
+  document.getElementById('admModal').classList.add('show');
+  admModalCb = cb;
+}
+function closeAdmModal() {
+  document.getElementById('admModalMask').classList.remove('show');
+  document.getElementById('admModal').classList.remove('show');
+  admModalCb = null;
+}
+document.getElementById('admModalSubmit').addEventListener('click', function(){
+  if (admModalCb) admModalCb();
+  closeAdmModal();
+});
+
+/* ── Confirm forms ── */
+document.querySelectorAll('form[data-confirm]').forEach(function(form){
+  form.addEventListener('submit', function(e){
+    if (form.dataset.confirmed === 'true') return;
+    e.preventDefault();
+    openAdmModal('操作确认', form.dataset.confirm || '确认执行该操作？', function(){
+      form.dataset.confirmed = 'true';
+      form.submit();
+    });
+  });
+});
+
+/* ── Auto-open modals (for edit pages) ── */
+document.querySelectorAll('[data-modal-open]').forEach(function(el){
+  var modalEl = document.getElementById(el.dataset.modalOpen);
+  if (modalEl) { modalEl.classList.add('show'); document.getElementById('admModalMask').classList.add('show'); }
+});
+
+/* ── Auto-show toasts ── */
+document.querySelectorAll('.adm-toast-auto').forEach(function(el){
+  showAdmToast(el.textContent.trim());
+  el.remove();
+});
+
+/* ── Theme ── */
+initThemeIcon('themeIcon');
+
+/* ── Sticky page-head scroll shadow ── */
+(function(){
+  var head = document.querySelector('.adm-page-head');
+  if (!head) return;
+  var ws = document.querySelector('.adm-workspace');
+  if (!ws) return;
+  ws.addEventListener('scroll', function(){
+    head.classList.toggle('scrolled', ws.scrollTop > 8);
+  });
+})();
+</script>
 </body>
 </html>
