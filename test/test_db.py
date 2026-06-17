@@ -159,3 +159,34 @@ def test_cursor_proxy_lastrowid(tmp_db: None) -> None:
     assert new_id == 1
     assert row is not None
     assert row["id"] == 1
+
+
+def test_init_db_sets_active_to_sqlite(tmp_db: None) -> None:
+    """After init_db(), _active_db_type should be 'sqlite' by default."""
+    assert db_module._active_db_type == "sqlite"
+
+
+def test_mysql_unreachable_falls_back_to_sqlite(tmp_db: None) -> None:
+    """If sys_settings says mysql but MySQL is unreachable, fall back to sqlite."""
+    with db_module._sqlite_raw_connect() as conn:
+        conn.execute("UPDATE sys_settings SET value='mysql' WHERE key='db_type'")
+        conn.execute(
+            "INSERT OR IGNORE INTO sys_settings(key,value) VALUES('mysql_host','192.0.2.1')"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO sys_settings(key,value) VALUES('mysql_port','3306')"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO sys_settings(key,value) VALUES('mysql_user','root')"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO sys_settings(key,value) VALUES('mysql_password','')"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO sys_settings(key,value) VALUES('mysql_database','test')"
+        )
+
+    # Re-run init to trigger the fallback path
+    db_module.init_db()
+    # Should still be sqlite — MySQL at 192.0.2.1 is unreachable
+    assert db_module._active_db_type == "sqlite"

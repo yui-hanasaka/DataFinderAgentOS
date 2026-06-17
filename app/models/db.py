@@ -1,6 +1,8 @@
+import logging
 import os
 import re
 import sqlite3
+import threading
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -20,12 +22,80 @@ DB_PATH = os.environ.get(
 )
 
 
-def get_connection() -> sqlite3.Connection:
+_logger = logging.getLogger(__name__)
+
+# Active database type — set at startup, updated on switch
+_active_db_type: str = "sqlite"
+
+# Lock held during switch; normal get_connection() acquires+releases instantly
+_switch_lock = threading.Lock()
+
+# Cached MySQL connection params (loaded from sys_settings at startup / on switch)
+_mysql_params: dict[str, str | int] = {}
+
+
+def _load_mysql_params() -> dict[str, str | int]:
+    """Read MySQL connection params from sys_settings (SQLite)."""
+    import app.models.secrets_store as secrets_store
+
+    with _sqlite_raw_connect() as conn:
+        rows = conn.execute("SELECT key, value FROM sys_settings").fetchall()
+        settings = {r["key"]: r["value"] for r in rows}
+    password = settings.get("mysql_password", "")
+    if password:
+        password = secrets_store.decrypt(password)
+    return {
+        "host": settings.get("mysql_host", "127.0.0.1"),
+        "port": int(settings.get("mysql_port", "3306")),
+        "user": settings.get("mysql_user", ""),
+        "password": password,
+        "database": settings.get("mysql_database", ""),
+    }
+
+
+def _sqlite_raw_connect() -> sqlite3.Connection:
+    """Return a raw sqlite3.Connection (for bootstrap / settings reads)."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _sqlite_connect() -> "DatabaseConnection":
+    conn = _sqlite_raw_connect()
+    return DatabaseConnection(conn, "sqlite")
+
+
+def _mysql_connect() -> "DatabaseConnection":
+    import pymysql
+
+    conn = pymysql.connect(
+        host=str(_mysql_params["host"]),
+        port=int(_mysql_params["port"]),
+        user=str(_mysql_params["user"]),
+        password=str(_mysql_params["password"]),
+        database=str(_mysql_params["database"]),
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+        connect_timeout=5,
+    )
+    return DatabaseConnection(conn, "mysql")
+
+
+def get_connection() -> "DatabaseConnection":
+    """Return a connection to the currently-active database.
+
+    During a switch, blocks briefly (≤5s) while migration completes.
+    """
+    acquired = _switch_lock.acquire(timeout=5)
+    if not acquired:
+        raise RuntimeError("Database switch in progress — please retry shortly")
+    _switch_lock.release()
+
+    if _active_db_type == "mysql":
+        return _mysql_connect()
+    return _sqlite_connect()
 
 
 # ── DatabaseConnection wrapper ────────────────────────────────────
@@ -596,8 +666,8 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
         (
             "百度新闻搜索",
             "baidu_news",
-            "https://news.baidu.com/ns",
-            "https://news.baidu.com/ns?word={关键词}&pn={分页步进}&tn=news",
+            "https://www.baidu.com/s",
+            "https://www.baidu.com/s?wd={关键词}&pn={分页步进}&tn=news",
             120,
             "",
             "{}",
@@ -605,8 +675,8 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
         (
             "Bing 新闻搜索",
             "bing_news",
-            "https://www.bing.com/news/search",
-            "https://www.bing.com/news/search?q={关键词}&first={分页步进}&FORM=YFNR",
+            "https://cn.bing.com/news/search",
+            "https://cn.bing.com/news/search?q={关键词}&first={分页步进}&FORM=YFNR",
             60,
             "",
             "{}",
@@ -614,8 +684,8 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
         (
             "Bing 网页搜索",
             "bing_web",
-            "https://www.bing.com/search",
-            "https://www.bing.com/search?q={关键词}&first={分页步进}&setlang=zh-cn",
+            "https://cn.bing.com/search",
+            "https://cn.bing.com/search?q={关键词}&first={分页步进}&setlang=zh-cn&cc=cn",
             60,
             "",
             "{}",
@@ -623,38 +693,50 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
         (
             "DuckDuckGo 搜索",
             "duckduckgo",
-            "https://html.duckduckgo.com/html/",
-            "https://html.duckduckgo.com/html/?q={关键词}&s={分页步进}",
+            "https://lite.duckduckgo.com/lite/",
+            "https://lite.duckduckgo.com/lite/?q={关键词}&s={分页步进}",
             60,
             "",
             "{}",
         ),
         (
-            "中国教育在线新闻",
+            "360新闻搜索",
             "generic",
-            "https://news.eol.cn/",
-            "",
+            "https://news.so.com/ns",
+            "https://news.so.com/ns?q={关键词}&pn={分页步进}",
             120,
-            "",
             (
-                '{"container_selector":"div.news-list li, .article-list .item, .news-item",'
-                '"title_selector":"a, h3 a, .title a",'
-                '"snippet_selector":"p, .desc, .summary",'
-                '"date_selector":"span.date, .time, time"}'
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
+                "Accept: text/html,application/xhtml+xml\n"
+                "Accept-Language: zh-CN,zh;q=0.9"
+            ),
+            (
+                '{"container_selector":".result, .res-list, .news-item",'
+                '"title_selector":"h3 a, .title a, a.title",'
+                '"snippet_selector":"p, .desc, .summary, .abstract",'
+                '"source_selector":".source, .site, .from",'
+                '"date_selector":".date, .time, span.time"}'
             ),
         ),
         (
-            "新浪教育新闻",
+            "360网页搜索",
             "generic",
-            "https://edu.sina.com.cn/",
-            "",
-            180,
-            "",
+            "https://www.so.com/s",
+            "https://www.so.com/s?q={关键词}&pn={分页步进}",
+            120,
             (
-                '{"container_selector":".feed-card-item, .news-item, .article-item",'
-                '"title_selector":"h2 a, .title a, a.title",'
-                '"snippet_selector":"p, .desc, .abstract",'
-                '"date_selector":"time, .date, .time"}'
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36\n"
+                "Accept: text/html,application/xhtml+xml\n"
+                "Accept-Language: zh-CN,zh;q=0.9"
+            ),
+            (
+                '{"container_selector":".result, .res-list, li.res-list",'
+                '"title_selector":"h3 a, .res-title a, a.res-title",'
+                '"snippet_selector":".res-desc, .res-summary, p",'
+                '"source_selector":".res-source, .source, cite",'
+                '"date_selector":".res-date, .date, time"}'
             ),
         ),
         (
@@ -681,7 +763,7 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
             "百度搜索(综合)",
             "generic",
             "https://www.baidu.com/s",
-            "https://www.baidu.com/s?wd={关键词}&pn={分页步进}&tn=baiduwb",
+            "https://www.baidu.com/s?wd={关键词}&pn={分页步进}",
             120,
             (
                 "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -692,7 +774,7 @@ def _seed_business_data(conn: sqlite3.Connection) -> None:
             (
                 '{"container_selector":".result, .c-container, div.result-op",'
                 '"title_selector":"h3 a, .t a, a.t",'
-                '"snippet_selector":".c-abstract, .c-span-last p, .content-right_2s-H4",'
+                '"snippet_selector":".c-abstract, .c-span-last p",'
                 '"source_selector":".c-showurl, .source_1Vdff",'
                 '"date_selector":".c-color-gray2, .c-time"}'
             ),
@@ -908,7 +990,10 @@ def _init_agent_tables(conn: sqlite3.Connection) -> None:
 
 
 def init_db() -> None:
-    with get_connection() as conn:
+    """Bootstrap database: create SQLite tables, seed data, then check
+    if MySQL is configured and initialize it as well."""
+    # Always init SQLite first (it holds sys_settings)
+    with _sqlite_raw_connect() as conn:
         _init_users_table(conn)
         _init_admin_tables(conn)
         _seed_admin_data(conn)
@@ -917,3 +1002,385 @@ def init_db() -> None:
         _seed_business_data(conn)
         _init_agent_tables(conn)
         _run_migrations(conn)
+
+    # Check if MySQL is configured
+    row = None
+    with _sqlite_raw_connect() as conn:
+        row = conn.execute(
+            "SELECT value FROM sys_settings WHERE key='db_type'"
+        ).fetchone()
+
+    if row and row["value"] == "mysql":
+        global _mysql_params
+        _mysql_params = _load_mysql_params()
+        try:
+            _init_mysql_tables()
+            global _active_db_type
+            _active_db_type = "mysql"
+            _logger.info(
+                "Database: using MySQL (%s:%s/%s)",
+                _mysql_params["host"],
+                _mysql_params["port"],
+                _mysql_params["database"],
+            )
+        except Exception as e:
+            _logger.warning(
+                "MySQL configured but unreachable — falling back to SQLite: %s", e
+            )
+            _active_db_type = "sqlite"
+    else:
+        _active_db_type = "sqlite"
+        _logger.info("Database: using SQLite (%s)", DB_PATH)
+
+
+def _init_mysql_tables() -> None:
+    """Create all tables + seed data in MySQL (if they don't exist)."""
+    from app.models.db_ddl import to_mysql_ddl
+
+    _TABLES = [
+        "CREATE TABLE IF NOT EXISTS users("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "username TEXT NOT NULL UNIQUE,"
+        "password_hash TEXT NOT NULL,"
+        "salt TEXT NOT NULL,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS admin_roles("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "role_code TEXT NOT NULL UNIQUE,"
+        "role_name TEXT NOT NULL,"
+        "role_type TEXT NOT NULL DEFAULT 'manager',"
+        "description TEXT,"
+        "is_system INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS admin_users("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "username TEXT NOT NULL UNIQUE,"
+        "password_hash TEXT NOT NULL,"
+        "salt TEXT NOT NULL,"
+        "display_name TEXT NOT NULL,"
+        "role_id INTEGER NOT NULL,"
+        "is_super INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "must_change_password INTEGER NOT NULL DEFAULT 0,"
+        "last_login_at TEXT,"
+        "failed_login_count INTEGER NOT NULL DEFAULT 0,"
+        "locked_until TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT,"
+        "FOREIGN KEY(role_id) REFERENCES admin_roles(id))",
+        "CREATE TABLE IF NOT EXISTS admin_menus("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "parent_id INTEGER NOT NULL DEFAULT 0,"
+        "menu_code TEXT NOT NULL UNIQUE,"
+        "menu_name TEXT NOT NULL,"
+        "icon TEXT,"
+        "url TEXT,"
+        "sort_order INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS admin_role_menus("
+        "role_id INTEGER NOT NULL,"
+        "menu_id INTEGER NOT NULL,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "PRIMARY KEY(role_id, menu_id),"
+        "FOREIGN KEY(role_id) REFERENCES admin_roles(id),"
+        "FOREIGN KEY(menu_id) REFERENCES admin_menus(id))",
+        "CREATE TABLE IF NOT EXISTS ai_models("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL UNIQUE,"
+        "model_id TEXT NOT NULL,"
+        "model_type TEXT NOT NULL DEFAULT 'text',"
+        "base_url TEXT NOT NULL,"
+        "api_key TEXT NOT NULL,"
+        "temperature REAL NOT NULL DEFAULT 0.7,"
+        "max_tokens INTEGER NOT NULL DEFAULT 1024,"
+        "system_prompt TEXT,"
+        "support_stream INTEGER NOT NULL DEFAULT 1,"
+        "support_think INTEGER NOT NULL DEFAULT 0,"
+        "is_default INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS ai_model_usage("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "model_id INTEGER NOT NULL,"
+        "prompt_tokens INTEGER NOT NULL DEFAULT 0,"
+        "completion_tokens INTEGER NOT NULL DEFAULT 0,"
+        "total_tokens INTEGER NOT NULL DEFAULT 0,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "FOREIGN KEY(model_id) REFERENCES ai_models(id))",
+        # Business tables
+        "CREATE TABLE IF NOT EXISTS digital_employees("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL UNIQUE,"
+        "avatar TEXT NOT NULL DEFAULT '🤖',"
+        "model_id INTEGER NOT NULL DEFAULT 0,"
+        "system_prompt TEXT,"
+        "skills TEXT NOT NULL DEFAULT '[]',"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS skills("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "code TEXT NOT NULL UNIQUE,"
+        "name TEXT NOT NULL,"
+        "skill_type TEXT NOT NULL DEFAULT 'builtin',"
+        "config_json TEXT NOT NULL DEFAULT '{}',"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS chat_sessions("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "user_id INTEGER NOT NULL DEFAULT 0,"
+        "employee_id INTEGER NOT NULL DEFAULT 0,"
+        "model_id INTEGER DEFAULT 0,"
+        "title TEXT NOT NULL DEFAULT '新对话',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS chat_messages("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "session_id INTEGER NOT NULL,"
+        "role TEXT NOT NULL DEFAULT 'user',"
+        "content TEXT NOT NULL,"
+        "skill_meta TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "FOREIGN KEY(session_id) REFERENCES chat_sessions(id))",
+        "CREATE TABLE IF NOT EXISTS watchtower_sources("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "source_type TEXT NOT NULL DEFAULT 'rss',"
+        "url TEXT NOT NULL,"
+        "url_template TEXT,"
+        "request_headers TEXT NOT NULL DEFAULT '',"
+        "config_json TEXT NOT NULL DEFAULT '{}',"
+        "fetch_interval INTEGER NOT NULL DEFAULT 60,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "last_fetched TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS watchtower_items("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "source_id INTEGER NOT NULL,"
+        "title TEXT NOT NULL,"
+        "content TEXT,"
+        "url TEXT,"
+        "sentiment TEXT,"
+        "risk INTEGER NOT NULL DEFAULT 0,"
+        "published_at TEXT,"
+        "is_deep_collected INTEGER NOT NULL DEFAULT 0,"
+        "deep_task_id INTEGER DEFAULT NULL,"
+        "deep_collected_at TEXT DEFAULT NULL,"
+        "summary TEXT,"
+        "keywords TEXT NOT NULL DEFAULT '[]',"
+        "raw_json TEXT NOT NULL DEFAULT '{}',"
+        "collected_at TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT,"
+        "FOREIGN KEY(source_id) REFERENCES watchtower_sources(id))",
+        "CREATE TABLE IF NOT EXISTS deep_tasks("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "target_url TEXT NOT NULL,"
+        "depth INTEGER NOT NULL DEFAULT 1,"
+        "schedule TEXT,"
+        "status TEXT NOT NULL DEFAULT 'idle',"
+        "target_item_ids TEXT NOT NULL DEFAULT '[]',"
+        "progress INTEGER NOT NULL DEFAULT 0,"
+        "total_items INTEGER NOT NULL DEFAULT 0,"
+        "completed_items INTEGER NOT NULL DEFAULT 0,"
+        "failed_items INTEGER NOT NULL DEFAULT 0,"
+        "logs TEXT NOT NULL DEFAULT '[]',"
+        "started_at TEXT,"
+        "finished_at TEXT,"
+        "error_message TEXT,"
+        "last_run TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS deep_contents("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "item_id INTEGER NOT NULL,"
+        "task_id INTEGER,"
+        "title TEXT,"
+        "url TEXT,"
+        "markdown TEXT NOT NULL DEFAULT '',"
+        "plain_text TEXT NOT NULL DEFAULT '',"
+        "summary TEXT,"
+        "keywords TEXT NOT NULL DEFAULT '[]',"
+        "sentiment TEXT,"
+        "risk INTEGER NOT NULL DEFAULT 0,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "FOREIGN KEY(item_id) REFERENCES watchtower_items(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(task_id) REFERENCES deep_tasks(id) ON DELETE SET NULL)",
+        "CREATE TABLE IF NOT EXISTS ask_history("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "user_id INTEGER NOT NULL,"
+        "query TEXT NOT NULL,"
+        "generated_sql TEXT,"
+        "result_count INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'ok',"
+        "error_code TEXT,"
+        "model_id INTEGER,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS api_keys("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "api_type TEXT NOT NULL DEFAULT 'weather',"
+        "endpoint TEXT,"
+        "api_key TEXT,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS data_warehouse("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "sql_query TEXT NOT NULL,"
+        "description TEXT,"
+        "category TEXT NOT NULL DEFAULT '默认',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS sys_settings("
+        "key TEXT PRIMARY KEY,"
+        "value TEXT NOT NULL DEFAULT '',"
+        "updated_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS screen_configs("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "screen_type TEXT NOT NULL DEFAULT 'smart',"
+        "layout_json TEXT NOT NULL DEFAULT '{}',"
+        "is_public INTEGER NOT NULL DEFAULT 0,"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS screen_widgets("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "config_id INTEGER NOT NULL,"
+        "widget_type TEXT NOT NULL,"
+        "title TEXT NOT NULL,"
+        "data_query TEXT,"
+        "settings_json TEXT NOT NULL DEFAULT '{}',"
+        "sort_order INTEGER NOT NULL DEFAULT 0,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT,"
+        "FOREIGN KEY(config_id) REFERENCES screen_configs(id) ON DELETE CASCADE)",
+        "CREATE TABLE IF NOT EXISTS digital_twin_scenes("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT NOT NULL,"
+        "description TEXT,"
+        "scene_json TEXT NOT NULL DEFAULT '{}',"
+        "status TEXT NOT NULL DEFAULT 'enabled',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
+        "CREATE TABLE IF NOT EXISTS digital_twin_models("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "scene_id INTEGER NOT NULL,"
+        "name TEXT NOT NULL,"
+        "model_type TEXT NOT NULL DEFAULT 'primitive',"
+        "asset_url TEXT,"
+        "transform_json TEXT NOT NULL DEFAULT '{}',"
+        "metadata_json TEXT NOT NULL DEFAULT '{}',"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT,"
+        "FOREIGN KEY(scene_id) REFERENCES digital_twin_scenes(id) ON DELETE CASCADE)",
+        "CREATE TABLE IF NOT EXISTS schema_migrations("
+        "version TEXT PRIMARY KEY,"
+        "applied_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS agent_decisions("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "source TEXT NOT NULL DEFAULT 'agent',"
+        "action TEXT NOT NULL,"
+        "outcome TEXT NOT NULL DEFAULT 'pending',"
+        "reason TEXT,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+    ]
+
+    with _mysql_connect() as conn:
+        for ddl in _TABLES:
+            conn.execute(to_mysql_ddl(ddl))
+        _seed_mysql_data(conn)
+
+
+def _seed_mysql_data(conn: "DatabaseConnection") -> None:
+    """Seed minimum data into MySQL so the app is usable."""
+    from app.models.crypto import hash_password, new_salt
+    from app.models.db_ddl import to_mysql_dml
+
+    # admin_roles
+    cur = conn.execute("SELECT COUNT(*) AS cnt FROM admin_roles")
+    if cur.fetchone()["cnt"] == 0:
+        roles = [
+            ("super_admin", "超级管理员", "manager", "系统内置超级管理员角色", 1),
+            ("manager", "管理用户", "manager", "后台管理侧普通管理角色", 0),
+            ("web_user", "普通用户", "web_user", "前台用户侧访问角色", 1),
+        ]
+        conn.executemany(
+            to_mysql_dml(
+                "INSERT OR IGNORE INTO admin_roles(role_code, role_name, role_type, description, is_system) "
+                "VALUES(?,?,?,?,?)"
+            ),
+            roles,
+        )
+
+    # admin user (admin / admin888)
+    cur = conn.execute("SELECT COUNT(*) AS cnt FROM admin_users WHERE username='admin'")
+    if cur.fetchone()["cnt"] == 0:
+        role = conn.execute(
+            "SELECT id FROM admin_roles WHERE role_code='super_admin'"
+        ).fetchone()
+        if role:
+            salt = new_salt()
+            pw = hash_password("admin888", salt)
+            conn.execute(
+                to_mysql_dml(
+                    "INSERT OR IGNORE INTO admin_users"
+                    "(username, password_hash, salt, display_name, role_id, is_super, must_change_password) "
+                    "VALUES(?,?,?,?,?,?,?)"
+                ),
+                ("admin", pw, salt.hex(), "超级管理员", role["id"], 1, 1),
+            )
+
+    # skills
+    cur = conn.execute("SELECT COUNT(*) AS cnt FROM skills")
+    if cur.fetchone()["cnt"] == 0:
+        skills = [
+            ("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
+            ("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
+            ("campus", "西师妹校园助手", "builtin", '{"prefix": "@西师妹"}'),
+            ("websearch", "网络搜索", "builtin", '{"prefix": "\\\\search"}'),
+        ]
+        conn.executemany(
+            to_mysql_dml(
+                "INSERT OR IGNORE INTO skills(code, name, skill_type, config_json) VALUES(?,?,?,?)"
+            ),
+            skills,
+        )
+
+    # sys_settings
+    cur = conn.execute("SELECT COUNT(*) AS cnt FROM sys_settings")
+    if cur.fetchone()["cnt"] == 0:
+        conn.execute(
+            to_mysql_dml("INSERT OR IGNORE INTO sys_settings(key, value) VALUES(?,?)"),
+            ("db_type", "mysql"),
+        )
+        conn.execute(
+            to_mysql_dml("INSERT OR IGNORE INTO sys_settings(key, value) VALUES(?,?)"),
+            ("site_name", "DataFinder AgentOS"),
+        )
+
+    # digital_employees (default)
+    cur = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM digital_employees WHERE name='智能助手'"
+    )
+    if cur.fetchone()["cnt"] == 0:
+        conn.execute(
+            to_mysql_dml(
+                "INSERT OR IGNORE INTO digital_employees(name, avatar, system_prompt, skills) "
+                "VALUES(?,?,?,?)"
+            ),
+            (
+                "智能助手",
+                "🤖",
+                "你是一个智能助手，请以专业、友善的方式回答用户问题。",
+                '["weather","music","campus","websearch"]',
+            ),
+        )
