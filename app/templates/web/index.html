@@ -31,7 +31,7 @@
     {% if recent_sessions %}
     <ul class="session-list">
       {% for s in recent_sessions %}
-      <li><a href="/chat?session={{ s.id }}">{{ s.title or '无标题对话' }}</a></li>
+      <li><a href="/chat/session/{{ s["id"] }}">{{ s["title"] or '无标题对话' }}</a></li>
       {% end %}
     </ul>
     {% else %}
