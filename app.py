@@ -61,11 +61,13 @@ def _resolve_cookie_secret() -> str:
     dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
     if env_val and len(env_val) >= 32:
         return env_val
+    if not env_val and not dev:
+        dev = True  # auto-dev: no COOKIE_SECRET set
     if dev:
         fallback = secrets.token_hex(32)
         print(
-            "[DEV] COOKIE_SECRET is missing or too short — using ephemeral fallback."
-            " Sessions will be invalidated on restart.",
+            "[DEV] COOKIE_SECRET not set — using ephemeral key (sessions reset on restart).\n"
+            "      Set COOKIE_SECRET (>=32 chars) for production. Set DEV=1 for dev mode.",
             flush=True,
         )
         return fallback

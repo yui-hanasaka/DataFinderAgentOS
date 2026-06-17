@@ -1,7 +1,7 @@
 import asyncio
+
 import requests
 from bs4 import BeautifulSoup
-from tornado.ioloop import IOLoop
 
 from app.models.watchtower import SourceRepository as WatchtowerRepository
 
@@ -65,18 +65,24 @@ class WatchtowerScraper:
         """异步抓取数据源（多页）"""
         # 获取数据源配置
         source = WatchtowerRepository.get_source(source_id)
-        headers = WatchtowerScraper.parse_headers(source.get("request_headers", ""))
+        if not source:
+            return []
+        headers = WatchtowerScraper.parse_headers(
+            source["request_headers"] if source["request_headers"] else ""
+        )
 
         all_items = []
         for page in range(pages):
             url_template = (
-                source.get("url_template")
-                if source.get("url_template")
+                source["url_template"]
+                if source["url_template"]
                 else source["url"]
             )
             url = WatchtowerScraper.build_url(url_template, keyword, page)
 
             # 在线程池中执行阻塞操作
+            from tornado.ioloop import IOLoop
+
             items = await IOLoop.current().run_in_executor(
                 None, WatchtowerScraper.scrape_page, url, headers
             )
