@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }} · AgentOS 管理</title>
 <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+<link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
 {% block head_extra %}{% end %}
 <script>
 (function(){
@@ -67,7 +68,6 @@
 
   <!-- Main -->
   <div class="adm-main">
-    <!-- Mobile menu toggle -->
     <button class="adm-menu-toggle" onclick="document.getElementById('admSidebar').classList.toggle('open')">☰</button>
     <main class="adm-workspace">
       {% block body %}{% end %}
@@ -78,8 +78,8 @@
 <!-- Glass Toast Container -->
 <div class="adm-toast-container" id="admToastContainer"></div>
 
-<!-- Glass Modal -->
-<div class="adm-modal-mask" id="admModalMask" onclick="closeAllAdmModals()"></div>
+<!-- Glass Confirmation Modal (for form confirmations only) -->
+<div class="adm-modal-mask" id="admModalMask" onclick="closeAdmModal()"></div>
 <div class="adm-modal" id="admModal">
   <div class="adm-modal-header">
     <h5 id="admModalTitle">操作确认</h5>
@@ -93,31 +93,60 @@
 </div>
 
 <script>
-/* ── Bootstrap data-bs-toggle="modal" compat ── */
+/* ═══════════════════ Modal System ═══════════════════
+ *
+ * Two independent modal systems coexist:
+ *
+ * 1. Glass Confirmation Modal (#admModalMask + #admModal)
+ *    - Used by: openAdmModal(), form[data-confirm]
+ *    - Backdrop: #admModalMask (z-1000, backdrop-filter blur)
+ *    - Panel: #admModal (z-1010, centered glass card)
+ *
+ * 2. CRUD Modals (.admin-edit-modal)
+ *    - Used by: data-bs-toggle="modal" buttons in CRUD pages
+ *    - Backdrop: ::before pseudo-element (z-1000 stacking, own blur)
+ *    - Panel: .modal-dialog (z-1 relative, glass card)
+ *
+ * Key rule: CRUD modals use their OWN ::before backdrop.
+ * NEVER show #admModalMask for .admin-edit-modal targets —
+ * that causes double-blur "grey fog" overlay.
+ */
+
+/* ── Bootstrap data-bs-toggle="modal" → CRUD modals ── */
 document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function(el){
   el.addEventListener('click', function(e){
     e.preventDefault();
     var targetSel = el.getAttribute('data-bs-target');
     var target = targetSel ? document.querySelector(targetSel) : null;
-    if (target) {
-      target.classList.add('show');
-      document.getElementById('admModalMask').classList.add('show');
-      // Wire dismiss buttons inside this modal (including btn-close without data-bs-dismiss)
-      target.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(function(btn){
-        btn.onclick = function(){
-          target.classList.remove('show');
-          document.getElementById('admModalMask').classList.remove('show');
-        };
-      });
-    }
+    if (!target) return;
+
+    // CRUD modal: use its own ::before backdrop, do NOT touch #admModalMask
+    target.classList.add('show');
+
+    // Wire dismiss buttons
+    target.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(function(btn){
+      btn.onclick = function(e){
+        e.preventDefault();
+        target.classList.remove('show');
+      };
+    });
   });
 });
 
-/* ── Bootstrap-modal compatibility for CRUD pages ── */
+/* ── Click-outside-to-close for CRUD modals ── */
+document.addEventListener('click', function(e){
+  // If clicking directly on the .admin-edit-modal overlay (not its dialog child)
+  if (e.target.classList.contains('admin-edit-modal') && e.target.classList.contains('show')) {
+    e.target.classList.remove('show');
+  }
+});
+
+/* ── Bootstrap-modal compatibility: dismiss wiring ── */
 document.querySelectorAll('.admin-edit-modal').forEach(function(modal){
   modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function(btn){
     btn.onclick = function(){ modal.classList.remove('show'); };
   });
+  // Auto-open for edit pages (e.g. ?edit=1)
   if (modal.dataset.autoOpen === 'true') { modal.classList.add('show'); }
 });
 
@@ -132,7 +161,7 @@ function showAdmToast(msg) {
   setTimeout(function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 400); }, 2800);
 }
 
-/* ── Modal ── */
+/* ── Glass Confirmation Modal ── */
 var admModalCb = null;
 function openAdmModal(title, body, cb) {
   document.getElementById('admModalTitle').textContent = title;
@@ -151,7 +180,7 @@ document.getElementById('admModalSubmit').addEventListener('click', function(){
   closeAdmModal();
 });
 
-/* ── Confirm forms ── */
+/* ── Confirm forms (use glass confirmation modal) ── */
 document.querySelectorAll('form[data-confirm]').forEach(function(form){
   form.addEventListener('submit', function(e){
     if (form.dataset.confirmed === 'true') return;
@@ -163,24 +192,11 @@ document.querySelectorAll('form[data-confirm]').forEach(function(form){
   });
 });
 
-/* ── Auto-open modals (for edit pages) ── */
+/* ── Auto-open modals (data-modal-open custom attr) ── */
 document.querySelectorAll('[data-modal-open]').forEach(function(el){
   var modalEl = document.getElementById(el.dataset.modalOpen);
-  if (modalEl) { modalEl.classList.add('show'); document.getElementById('admModalMask').classList.add('show'); }
+  if (modalEl) { modalEl.classList.add('show'); }
 });
-
-/* ── Auto-open admin-edit-modal with mask ── */
-document.querySelectorAll('.admin-edit-modal[data-auto-open="true"]').forEach(function(modal){
-  modal.classList.add('show');
-  document.getElementById('admModalMask').classList.add('show');
-});
-
-/* ── closeAllAdmModals: close any open admin-edit-modal too ── */
-function closeAllAdmModals() {
-  closeAdmModal();
-  document.querySelectorAll('.admin-edit-modal.show').forEach(function(m){ m.classList.remove('show'); });
-  document.querySelectorAll('.modal.show').forEach(function(m){ m.classList.remove('show'); });
-}
 
 /* ── Auto-show toasts ── */
 document.querySelectorAll('.adm-toast-auto').forEach(function(el){

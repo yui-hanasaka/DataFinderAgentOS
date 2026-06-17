@@ -67,10 +67,11 @@ class WarehouseRepository:
             return False, str(e)
 
     @staticmethod
-    def execute_query(sql_query, params=None):
-        ok, err = validate_select_sql(sql_query)
-        if not ok:
-            return None, None, err
+    def execute_query(sql_query, params=None, trusted: bool = False):
+        if not trusted:
+            ok, err = validate_select_sql(sql_query)
+            if not ok:
+                return None, None, err
         try:
             with get_connection() as conn:
                 cur = conn.execute(sql_query, params or [])

@@ -13,7 +13,7 @@
 	</table>
 	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/deep?page={{ page - 1 }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/deep?page={{ page + 1 }}">下一页</a>{% end %}</div>
 </section>
-<div class="modal fade" id="taskModal" tabindex="-1">
+<div class="modal fade admin-edit-modal" id="taskModal" tabindex="-1">
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">

@@ -32,6 +32,7 @@ class AskHomeHandler(AskBaseHandler):
 
 
 # Public tables accessible via AI ask — only collected/warehouse data
+# Schema hint exposed to AI model — only public non-sensitive tables
 _PUBLIC_TABLES = {
     "watchtower_items": [
         "id",

@@ -14,6 +14,12 @@ _DENIED_TABLES: set[str] = {
     "sqlite_master",
     "sqlite_schema",
     "schema_migrations",
+    "deep_tasks",
+    "ask_history",
+    "screen_configs",
+    "screen_widgets",
+    "digital_twin_scenes",
+    "digital_twin_models",
 }
 
 # Tables that the AI ask endpoint is allowed to query
@@ -23,9 +29,6 @@ _ALLOWED_TABLES: set[str] = {
     "deep_contents",
     "digital_employees",
     "skills",
-    "data_warehouse",
-    "chat_sessions",
-    "chat_messages",
 }
 
 
@@ -82,10 +85,10 @@ def validate_select_sql(sql: str) -> tuple[bool, str]:
     ):
         table_refs.add(m.group(1).lower())
     for table in table_refs:
-        if table not in _ALLOWED_TABLES and table not in _DENIED_TABLES:
-            # Unknown table — reject
-            pass
         if table in _DENIED_TABLES:
+            return False, "查询包含未授权的数据表"
+        if table not in _ALLOWED_TABLES:
+            # Unknown table — deny by default
             return False, "查询包含未授权的数据表"
 
     return True, ""
