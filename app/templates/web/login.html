@@ -6,30 +6,22 @@
 <title>{{ title }} · DataFinder AgentOS</title>
 <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
 </head>
-<body>
-<div class="admin-login-page">
+<body class="user-login-page">
+  <a class="login-nav-back" href="/">← 返回首页</a>
   <div class="admin-login-shell">
     <div class="admin-login-card">
-      <div class="admin-login-visual">
-        <div class="visual-window">
-          <div class="window-bar"></div>
-          <div class="window-line line-one"></div>
-          <div class="window-line line-two"></div>
-          <div class="window-grid"><span></span><span></span><span></span></div>
+      <div class="admin-login-visual" aria-hidden="true">
+        <div class="user-login-visual-content">
+          <div class="uv-icon">💬</div>
+          <h2>DataFinder<br>AgentOS</h2>
+          <p>智能对话 · 数据洞察 · 知识触手可及</p>
         </div>
-        <div class="visual-person">
-          <div class="person-head"></div>
-          <div class="person-body"></div>
-          <div class="person-chair"></div>
-        </div>
-        <div class="visual-desk"></div>
-        <div class="visual-plant"></div>
       </div>
       <div class="admin-login-panel">
         <div class="admin-login-title">
           <p>DataFinder AgentOS</p>
           <h1>用户登录</h1>
-          <span>智能数据瞭望与智能问数系统</span>
+          <span>登录后即可使用智能对话与数据问数服务</span>
         </div>
         {% if error %}
         <div class="admin-login-error">{{ error }}</div>
@@ -38,7 +30,7 @@
           {% module xsrf_form_html() %}
           <label>
             用户名
-            <input type="text" name="username" placeholder="请输入用户名" autocomplete="username">
+            <input type="text" name="username" placeholder="请输入用户名" autocomplete="username" autofocus>
           </label>
           <label>
             密码
@@ -46,12 +38,11 @@
           </label>
           <button type="submit">登 录</button>
         </form>
-        <p class="admin-login-tip">
-          <a href="/admin/login" style="color:#9aa5b8;font-size:13px">后台管理员入口 →</a>
-        </p>
+        <div class="login-cross-link">
+          <a href="/admin/login">管理员后台入口 →</a>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </body>
 </html>

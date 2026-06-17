@@ -7,6 +7,7 @@
 	<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
 </head>
 <body class="admin-login-page">
+	<a class="login-nav-back" href="/">← 返回首页</a>
 	<main class="admin-login-shell">
 		<section class="admin-login-card">
 			<div class="admin-login-visual" aria-hidden="true">
@@ -29,7 +30,7 @@
 			<div class="admin-login-panel">
 				<div class="admin-login-title">
 					<p>DataFinder AgentOS</p>
-					<h1>欢迎登录</h1>
+					<h1>管理员登录</h1>
 					<span>请使用管理员账号进入后台管理系统</span>
 				</div>
 				{% if error %}
@@ -47,6 +48,9 @@
 					</label>
 					<button type="submit">登录后台</button>
 				</form>
+				<div class="login-cross-link">
+					<a href="/login">用户登录入口 →</a>
+				</div>
 				<div class="admin-login-tip">智能数据瞭望与智能问数系统</div>
 			</div>
 		</section>
