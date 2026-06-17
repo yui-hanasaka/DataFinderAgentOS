@@ -3,7 +3,7 @@
 <section class="admin-page-head">
 	<div><p>组织权限</p><h1>权限管理</h1><span>配置各角色可访问的后台菜单功能，保存后立即生效。</span></div>
 </section>
-{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>角色-菜单权限矩阵</strong><span>勾选后点击行末"保存"按钮</span></div>
 	<div style="overflow-x:auto;">
@@ -29,7 +29,7 @@
 					</td>
 					{% end %}
 					<td class="table-actions">
-						<button type="button" class="btn btn-sm btn-primary" onclick="savePerms({{ role['id'] }})">保存</button>
+						<button type="button" class="adm-btn adm-btn-primary" style="font-size:11px; height:32px; padding:0 12px" onclick="savePerms({{ role['id'] }})">保存</button>
 					</td>
 				</tr>
 				{% end %}

@@ -1,13 +1,13 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
 	<div><p>智能业务</p><h1>会话管理</h1><span>查看所有用户的对话会话，支持关键词搜索与删除操作。</span></div>
 	<form class="admin-search" method="get" action="/admin/sessions">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索用户/员工/标题">
-		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/sessions">重置</a>
+		<button type="submit">🔍 搜索</button><a href="/admin/sessions">重置</a>
 	</form>
 </section>
-{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>会话列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">

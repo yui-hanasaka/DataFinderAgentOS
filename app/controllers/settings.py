@@ -1,12 +1,21 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
+from app.models.secrets_store import decrypt, encrypt, mask
 
 
 class AdminSettingsHandler(AdminBaseHandler):
     def _load_settings(self):
         with get_connection() as conn:
             rows = conn.execute("SELECT key, value FROM sys_settings").fetchall()
-        return {r["key"]: r["value"] for r in rows}
+        settings = {r["key"]: r["value"] for r in rows}
+        # Mask sensitive values for display
+        if "mysql_password" in settings:
+            settings["mysql_password"] = mask(
+                decrypt(settings["mysql_password"])
+                if settings["mysql_password"]
+                else ""
+            )
+        return settings
 
     def _save(self, key, value):
         with get_connection() as conn:
@@ -51,8 +60,8 @@ class AdminSettingsHandler(AdminBaseHandler):
                 )
                 conn.close()
                 return self.write({"ok": True, "msg": "MySQL 连接成功"})
-            except Exception as e:
-                return self.write({"ok": False, "msg": str(e)})
+            except Exception:
+                return self.write({"ok": False, "msg": "MySQL 连接失败"})
 
         site_name = self.get_body_argument("site_name", "DataFinder AgentOS").strip()
         db_type = self.get_body_argument("db_type", "sqlite")
@@ -66,5 +75,10 @@ class AdminSettingsHandler(AdminBaseHandler):
                 "mysql_password",
                 "mysql_database",
             ):
-                self._save(k, self.get_body_argument(k, ""))
+                val = self.get_body_argument(k, "")
+                if k == "mysql_password" and val:
+                    val = encrypt(val)
+                elif k == "mysql_password" and not val:
+                    continue  # keep existing
+                self._save(k, val)
         self._redirect_with_message("/admin/settings", "设置已保存")

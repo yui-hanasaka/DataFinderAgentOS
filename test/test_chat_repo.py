@@ -12,6 +12,12 @@ import app.models.db as db_module
 def db_with_user() -> Generator[int, None, None]:
     path = tempfile.mktemp(suffix=".db")
     db_module.DB_PATH = path
+    import os as _os
+
+    _os.environ.setdefault("COOKIE_SECRET", "test-cookie-secret-for-testing-32chars")
+    _os.environ.setdefault("DATAFINDER_SECRET_KEY", "test-secret-for-encryption-32chr")
+    _os.environ.setdefault("ADMIN_INITIAL_PASSWORD", "admin888")
+    _os.environ.setdefault("DEV", "1")
     db_module.init_db()
     with db_module.get_connection() as conn:
         conn.execute(

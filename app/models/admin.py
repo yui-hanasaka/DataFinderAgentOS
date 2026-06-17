@@ -1,15 +1,10 @@
-import hashlib
 import secrets
 import sqlite3
 
+from app.models.crypto import hash_password
 from app.models.db import get_connection
 
 PER_PAGE = 20
-
-
-def _hash_password(password: str, salt: bytes) -> str:
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
-    return dk.hex()
 
 
 def _page_offset(page: int, per_page: int = PER_PAGE) -> int:
@@ -50,7 +45,7 @@ class AdminRepository:
             return False
 
         salt = bytes.fromhex(row["salt"])
-        return _hash_password(password, salt) == row["password_hash"]
+        return hash_password(password, salt) == row["password_hash"]
 
     @staticmethod
     def list_roles(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):
@@ -309,6 +304,10 @@ class AdminRepository:
     def create_user(
         username: str, password: str, display_name: str, role_id: int, status: str
     ):
+        if not password or len(password) < 8:
+            return False, "密码长度不能少于8位"
+        if username and username.lower() in password.lower():
+            return False, "密码不能包含用户名"
         salt = secrets.token_bytes(16)
         try:
             with get_connection() as conn:
@@ -319,7 +318,7 @@ class AdminRepository:
 					""",
                     (
                         username,
-                        _hash_password(password, salt),
+                        hash_password(password, salt),
                         salt.hex(),
                         display_name,
                         role_id,
@@ -343,6 +342,8 @@ class AdminRepository:
             if user["username"] == "admin" and status != "enabled":
                 return False, "admin 不允许禁用"
             if password:
+                if len(password) < 8:
+                    return False, "密码长度不能少于8位"
                 salt = secrets.token_bytes(16)
                 conn.execute(
                     """
@@ -354,7 +355,7 @@ class AdminRepository:
                         display_name,
                         role_id,
                         status,
-                        _hash_password(password, salt),
+                        hash_password(password, salt),
                         salt.hex(),
                         user_id,
                     ),
@@ -369,6 +370,19 @@ class AdminRepository:
                     (display_name, role_id, status, user_id),
                 )
         return True, None
+
+    @staticmethod
+    def get_admin_allowed_urls(admin_id: int) -> set[str]:
+        with get_connection() as conn:
+            rows = conn.execute(
+                """SELECT DISTINCT am.url
+                   FROM admin_users au
+                   JOIN admin_role_menus arm ON arm.role_id = au.role_id
+                   JOIN admin_menus am ON am.id = arm.menu_id
+                   WHERE au.id = ? AND am.status = 'enabled' AND am.url IS NOT NULL AND am.url <> ''""",
+                (admin_id,),
+            ).fetchall()
+        return {row["url"] for row in rows}
 
     @staticmethod
     def delete_user(user_id: int):

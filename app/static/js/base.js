@@ -1,4 +1,4 @@
-// base.js — shared theme utilities
+// base.js — shared theme utilities and safe rendering helpers
 
 function getTheme() {
   return document.documentElement.getAttribute('data-theme') || 'light';
@@ -24,4 +24,38 @@ function updateThemeIcon(theme, iconId) {
   if (!el) return;
   el.textContent = theme === 'dark' ? '☀' : '🌙';
   el.title = theme === 'dark' ? '切换浅色主题' : '切换暗色主题';
+}
+
+/* ── Safe HTML helpers ── */
+var _escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, function (c) { return _escapeMap[c] || c; });
+}
+
+function sanitizeUrl(url) {
+  var t = String(url).trim();
+  return /^https?:\/\//i.test(t) || /^\//.test(t) ? t : '#';
+}
+
+function renderSafeMarkdown(text) {
+  var out = escapeHtml(text);
+  // fenced code blocks
+  out = out.replace(/```(\w*)\n?([\s\S]*?)```/g, function (_, lang, code) {
+    return '<pre><code>' + code.trim() + '</code></pre>';
+  });
+  // inline code
+  out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // italic
+  out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // unordered lists — lines starting with - or *
+  out = out.replace(/(?:^|\n)[-*]\s+([^\n]+)/g, '\n<li>$1</li>');
+  out = out.replace(/((?:<li>[^<]*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // blockquotes
+  out = out.replace(/(?:^|\n)&gt;\s+([^\n]+)/g, '\n<blockquote>$1</blockquote>');
+  // links [text](url)
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+  return out;
 }

@@ -1,22 +1,16 @@
 # 用户的仓储类，用于管理用户的创建、查询、验证等方法
 
-import hashlib
-import secrets
 import sqlite3
 
+from app.models.crypto import hash_password, new_salt
 from app.models.db import get_connection
-
-
-def _hash_password(password: str, salt: bytes) -> str:
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
-    return dk.hex()
 
 
 class UserRepository:
     @staticmethod
     def create_user(username: str, password: str) -> bool:
-        salt = secrets.token_bytes(16)
-        password_hash = _hash_password(password, salt)
+        salt = new_salt()
+        password_hash = hash_password(password, salt)
 
         try:
             with get_connection() as conn:
@@ -45,4 +39,4 @@ class UserRepository:
             return False
 
         salt = bytes.fromhex(row["salt"])
-        return _hash_password(password, salt) == row["password_hash"]
+        return hash_password(password, salt) == row["password_hash"]

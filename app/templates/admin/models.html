@@ -27,7 +27,7 @@
 		<div class="tech-stat-card"><span>PROMPT / COMPLETION</span><strong>{{ totals['prompt'] }} / {{ totals['completion'] }}</strong><em>输入 / 输出</em></div>
 	</section>
 	<div class="tech-toolbar"><span>· model showcase</span><span>共 {{ total }} 条 · 每页 {{ per_page }} 条 · 三列橱窗</span></div>
-	{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+	{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 	{% if not models %}
 	<div class="tech-empty">尚未登记模型，点击右上角“接入新模型”开始登记 OpenAI 兼容服务。</div>
 	{% else %}

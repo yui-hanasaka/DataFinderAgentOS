@@ -102,8 +102,12 @@ class ChatRepository:
         with get_connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0]
             rows = conn.execute(
-                """SELECT s.*, u.username FROM chat_sessions s
-                   LEFT JOIN users u ON s.user_id=u.id
+                """SELECT s.*, u.username,
+                   COALESCE(e.name, '-') AS employee_name,
+                   (SELECT COUNT(*) FROM chat_messages m WHERE m.session_id = s.id) AS msg_count
+                   FROM chat_sessions s
+                   LEFT JOIN users u ON s.user_id = u.id
+                   LEFT JOIN digital_employees e ON s.employee_id = e.id
                    ORDER BY s.id DESC LIMIT ? OFFSET ?""",
                 (per_page, offset),
             ).fetchall()

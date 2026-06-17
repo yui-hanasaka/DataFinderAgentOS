@@ -39,7 +39,7 @@ tr:hover td{background:#fafafa}
     <div class="result-bar">
       <span id="rowCount" style="color:#666;font-size:.88rem"></span>
       <button class="btn btn-sm" onclick="renderChart()">生成图表</button>
-      <a id="csvLink" href="#" class="btn btn-sm" style="text-decoration:none;display:{% if results %}inline-block{% else %}none{% end %}">导出CSV</a>
+      <a id="csvLink" href="#" class="btn btn-sm" style="text-decoration:none;display:none">导出CSV</a>
     </div>
     <div style="overflow-x:auto">
       <table id="resultTable">
@@ -83,8 +83,8 @@ async function submitQuery() {
     });
     const data = await resp.json();
     document.getElementById('loading').style.display = 'none';
-    if (data.error) {
-      alert('查询失败：' + data.error);
+    if (!data.ok) {
+      alert('查询失败：' + (data.error || '未知错误'));
     } else {
       currentColumns = data.columns || [];
       currentRows = data.rows || [];
@@ -102,16 +102,34 @@ async function submitQuery() {
 function renderTable(cols, rows) {
   const thead = document.getElementById('thead');
   const tbody = document.getElementById('tbody');
-  thead.innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
-  tbody.innerHTML = rows.map(row =>
-    '<tr>' + cols.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>'
-  ).join('');
-  document.getElementById('rowCount').textContent = `共 ${rows.length} 条结果`;
+  // Safe DOM construction — no innerHTML for untrusted data
+  thead.replaceChildren();
+  tbody.replaceChildren();
+  var tr = document.createElement('tr');
+  cols.forEach(function(c) {
+    var th = document.createElement('th');
+    th.textContent = c;
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+  rows.forEach(function(row) {
+    var tr2 = document.createElement('tr');
+    cols.forEach(function(c) {
+      var td = document.createElement('td');
+      td.textContent = row[c] != null ? String(row[c]) : '';
+      tr2.appendChild(td);
+    });
+    tbody.appendChild(tr2);
+  });
+  document.getElementById('rowCount').textContent = '共 ' + rows.length + ' 条结果';
 }
 
 function buildCsvLink(cols, rows) {
   const lines = [cols.join(',')];
-  for (const row of rows) lines.push(cols.map(c => JSON.stringify(row[c] ?? '')).join(','));
+  for (const row of rows) lines.push(cols.map(function(c) {
+    var v = row[c] != null ? String(row[c]) : '';
+    return v.includes(',') || v.includes('"') ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }).join(','));
   const blob = new Blob([lines.join('\n')], {type: 'text/csv;charset=utf-8;'});
   const link = document.getElementById('csvLink');
   link.href = URL.createObjectURL(blob);
@@ -125,22 +143,24 @@ function renderChart() {
   chartEl.style.display = 'block';
   const chart = echarts.init(chartEl);
   const catCol = currentColumns[0];
-  const numCols = currentColumns.slice(1).filter(c =>
-    currentRows.some(r => !isNaN(parseFloat(r[c])))
-  );
-  const series = numCols.map(c => ({
-    name: c,
-    type: 'bar',
-    data: currentRows.map(r => parseFloat(r[c]) || 0)
-  }));
+  const numCols = currentColumns.slice(1).filter(function(c) {
+    return currentRows.some(function(r) { return !isNaN(parseFloat(r[c])); });
+  });
+  const series = numCols.map(function(c) {
+    return {
+      name: c,
+      type: 'bar',
+      data: currentRows.map(function(r) { return parseFloat(r[c]) || 0; })
+    };
+  });
   chart.setOption({
     tooltip: {trigger: 'axis'},
     legend: {data: numCols},
-    xAxis: {type: 'category', data: currentRows.map(r => r[catCol])},
+    xAxis: {type: 'category', data: currentRows.map(function(r) { return r[catCol]; })},
     yAxis: {type: 'value'},
-    series
+    series: series
   });
-  window.addEventListener('resize', () => chart.resize());
+  window.addEventListener('resize', function() { chart.resize(); });
 }
 </script>
 {% end %}

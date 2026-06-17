@@ -6,6 +6,7 @@ from app.models.db import get_connection
 from app.models.employee import EmployeeRepository
 from app.models.model_client import chat_complete, iter_sse_chunks
 from app.models.model_engine import ModelRepository
+from app.models.rate_limit import check_rate_limit
 from app.models.skill_dispatcher import dispatch
 
 
@@ -105,18 +106,22 @@ class ChatBatchDeleteHandler(ChatBaseHandler):
 
 
 class ChatSendHandler(ChatBaseHandler):
-    def check_xsrf_cookie(self):
-        pass
-
     def _get_api_keys(self):
+        from app.models.secrets_store import decrypt
+
         with get_connection() as conn:
             rows = conn.execute(
                 "SELECT api_type, api_key FROM api_keys WHERE status='enabled'"
             ).fetchall()
-        return {r["api_type"]: r["api_key"] for r in rows}
+        return {r["api_type"]: decrypt(r["api_key"]) for r in rows}
 
     async def post(self, session_id):
         user_id = self._user_id()
+        key = f"chat_send:user:{user_id}"
+        if not check_rate_limit(key, 30, 60):
+            self.set_status(429)
+            return self.write({"error": "请求过于频繁，请稍后再试"})
+
         session = ChatRepository.get_session(int(session_id))
         if not session or session["user_id"] != user_id:
             self.set_status(403)
@@ -138,7 +143,7 @@ class ChatSendHandler(ChatBaseHandler):
         if not session["title"] or session["title"] == "新对话":
             ChatRepository.update_session_title(int(session_id), user_text[:20])
 
-        dispatched = dispatch(user_text, self._get_api_keys())
+        dispatched = await dispatch(user_text, self._get_api_keys())
 
         # Non-AI skill response (weather direct answer, music placeholder)
         if dispatched["type"] == "skill" and dispatched["skill_code"] in (
@@ -203,7 +208,7 @@ class ChatSendHandler(ChatBaseHandler):
 
         full_reply = []
         try:
-            resp = chat_complete(
+            resp = await chat_complete(
                 model_row["base_url"],
                 model_row["api_key"],
                 model_row["model_id"],
@@ -213,7 +218,7 @@ class ChatSendHandler(ChatBaseHandler):
                 stream=True,
             )
             prompt_tokens = completion_tokens = 0
-            for chunk in iter_sse_chunks(resp):
+            async for chunk in iter_sse_chunks(resp):
                 usage = chunk.get("usage") or {}
                 if usage:
                     prompt_tokens = max(
@@ -231,8 +236,8 @@ class ChatSendHandler(ChatBaseHandler):
             ModelRepository.record_usage(
                 model_row["id"], prompt_tokens, completion_tokens
             )
-        except Exception as ex:
-            err_msg = f"模型调用失败：{ex}"
+        except Exception:
+            err_msg = "模型调用失败，请稍后重试"
             full_reply.append(err_msg)
             self.write(f"data: {json.dumps({'content': err_msg})}\n\n")
 

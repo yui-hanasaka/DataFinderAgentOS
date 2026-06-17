@@ -1,4 +1,5 @@
 from app.models.db import get_connection
+from app.models.sql_guard import validate_select_sql
 
 
 class WarehouseRepository:
@@ -67,14 +68,14 @@ class WarehouseRepository:
 
     @staticmethod
     def execute_query(sql_query, params=None):
-        stripped = sql_query.strip().upper()
-        if not stripped.startswith("SELECT"):
-            return None, None, "只允许执行 SELECT 查询"
+        ok, err = validate_select_sql(sql_query)
+        if not ok:
+            return None, None, err
         try:
             with get_connection() as conn:
                 cur = conn.execute(sql_query, params or [])
                 rows = cur.fetchall()
                 columns = [d[0] for d in cur.description] if cur.description else []
             return rows, columns, None
-        except Exception as e:
-            return None, None, str(e)
+        except Exception:
+            return None, None, "查询执行失败"

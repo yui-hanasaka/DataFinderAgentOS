@@ -1,8 +1,9 @@
 import json
-import urllib.request
+
+import httpx
 
 
-def chat_complete(
+async def chat_complete(
     base_url: str,
     api_key: str,
     model_id: str,
@@ -19,12 +20,19 @@ def chat_complete(
         "max_tokens": max_tokens,
         "stream": stream,
     }
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, method="POST")
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Authorization", f"Bearer {api_key}")
-    req.add_header("Accept", "text/event-stream" if stream else "application/json")
-    return urllib.request.urlopen(req, timeout=60)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "text/event-stream" if stream else "application/json",
+    }
+    # Use a shared client or create per request — per request is safer for now
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=10)) as client:
+        if stream:
+            return await client.send(
+                client.build_request("POST", url, headers=headers, json=body),
+                stream=True,
+            )
+        return await client.post(url, headers=headers, json=body)
 
 
 def parse_chat_response(raw_bytes: bytes):
@@ -41,9 +49,14 @@ def parse_chat_response(raw_bytes: bytes):
     }
 
 
-def iter_sse_chunks(stream):
-    for raw in stream:
-        line = raw.decode("utf-8", errors="ignore").strip()
+async def parse_chat_response_async(resp):
+    raw = await resp.aread() if hasattr(resp, "aread") else resp.read()
+    return parse_chat_response(raw)
+
+
+async def iter_sse_chunks(stream):
+    async for raw in stream.aiter_lines():
+        line = raw.strip()
         if not line or not line.startswith("data:"):
             continue
         payload = line[5:].strip()

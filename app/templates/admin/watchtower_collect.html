@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="adm-welcome-card">
+  <p>瞭望采集</p>
+  <h1>搜索引擎式采集</h1>
+  <span>选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库</span>
+</div>
+{% if msg %}<div class="adm-toast-auto">{{ msg }}</div>{% end %}
+<div class="adm-table-card">
+  <div class="table-title"><strong>采集界面</strong><span>功能开发中</span></div>
+  <div style="text-align:center;padding:40px;color:#8a86c0">
+    📡 搜索式采集界面即将上线 — 支持关键词搜索、多源切换、结果预览与保存
+  </div>
+</div>
+<a href="/admin/watchtower" class="adm-btn adm-btn-ghost" style="margin:12px 0">← 返回瞭望管理</a>
+{% end %}

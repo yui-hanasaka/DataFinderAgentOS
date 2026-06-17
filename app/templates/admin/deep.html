@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
 	<div><p>智能业务</p><h1>深度采集</h1><span>管理深度爬取任务，支持定时调度与手动触发。</span></div>
-	<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="fa-solid fa-plus"></i> 新增任务</button>
+	<button type="button" class="adm-btn adm-btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal">＋ 新增任务</button>
 </section>
-{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>任务列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
@@ -36,7 +36,7 @@
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="adm-btn adm-btn-ghost" data-bs-dismiss="modal">取消</button><button type="submit" class="adm-btn adm-btn-primary">确认保存</button></div>
 			</form>
 		</div>
 	</div>

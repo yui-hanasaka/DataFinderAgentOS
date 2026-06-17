@@ -23,7 +23,7 @@
 }
 .login-theme-btn:hover{border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.18);transform:rotate(20deg)}
 
-/* ═══════════ Light Theme Login ═══════════ */
+/* ═══════════ Light Theme Register ═══════════ */
 [data-theme="light"] .user-login-page {
   background:
     radial-gradient(circle at 82% 12%, rgba(139,130,255,.18), transparent 38%),
@@ -56,7 +56,7 @@
     <div class="admin-login-card">
       <div class="admin-login-visual" aria-hidden="true">
         <div class="user-login-visual-content">
-          <div class="uv-icon">💬</div>
+          <div class="uv-icon">✨</div>
           <h2>DataFinder<br>AgentOS</h2>
           <p>智能对话 · 数据洞察 · 知识触手可及</p>
         </div>
@@ -64,13 +64,13 @@
       <div class="admin-login-panel">
         <div class="admin-login-title">
           <p>DataFinder AgentOS</p>
-          <h1>用户登录</h1>
-          <span>登录后即可使用智能对话与数据问数服务</span>
+          <h1>用户注册</h1>
+          <span>创建账号即可使用智能对话与数据问数服务</span>
         </div>
         {% if error %}
         <div class="admin-login-error">{{ error }}</div>
         {% end %}
-        <form class="admin-login-form" method="post" action="/login">
+        <form class="admin-login-form" method="post" action="/register">
           {% module xsrf_form_html() %}
           <label>
             用户名
@@ -78,13 +78,16 @@
           </label>
           <label>
             密码
-            <input type="password" name="password" placeholder="请输入密码" autocomplete="current-password">
+            <input type="password" name="password" placeholder="请输入密码（至少6位）" autocomplete="new-password">
           </label>
-          <button type="submit">登 录</button>
+          <label>
+            确认密码
+            <input type="password" name="confirm_password" placeholder="请再次输入密码" autocomplete="new-password">
+          </label>
+          <button type="submit">注 册</button>
         </form>
         <div class="login-cross-link">
-          <a href="/register">注册新账号 →</a>
-          <a href="/admin/login">管理员后台入口 →</a>
+          <a href="/login">已有账号？立即登录 →</a>
         </div>
       </div>
     </div>

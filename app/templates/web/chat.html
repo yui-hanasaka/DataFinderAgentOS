@@ -485,10 +485,8 @@ function getCookie(name) {
 }
 
 function renderContent(text) {
-  text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return text;
+  // Replaced by renderSafeMarkdown from base.js — kept as alias for compat
+  return renderSafeMarkdown(text);
 }
 
 /* ── Skill Panel ── */
@@ -521,7 +519,7 @@ function appendUserMsg(content) {
 function appendAssistantMsg(content) {
   const d = document.createElement('div');
   d.className = 'glass-msg assistant';
-  d.innerHTML = renderContent(content);
+  d.innerHTML = renderSafeMarkdown(content);
   document.getElementById('messages').appendChild(d);
   scrollBottom();
   return d;
@@ -584,7 +582,7 @@ async function send() {
           const data = line.slice(6);
           if (data === '[DONE]') { btn.disabled = false; return; }
           try { accumulated += JSON.parse(data).content; } catch(e) {}
-          msgDiv.innerHTML = renderContent(accumulated);
+          msgDiv.innerHTML = renderSafeMarkdown(accumulated);
           scrollBottom();
         }
       }

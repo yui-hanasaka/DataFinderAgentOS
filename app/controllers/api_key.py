@@ -1,5 +1,6 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
+from app.models.secrets_store import encrypt, mask
 
 PER_PAGE = 20
 
@@ -23,9 +24,12 @@ class AdminApiKeyHandler(AdminBaseHandler):
         edit_api = None
         if edit_id.isdigit():
             with get_connection() as conn:
-                edit_api = conn.execute(
+                row = conn.execute(
                     "SELECT * FROM api_keys WHERE id=?", (int(edit_id),)
                 ).fetchone()
+            if row:
+                edit_api = dict(row)
+                edit_api["api_key"] = mask(edit_api.get("api_key") or "")
         self.render(
             "admin/apis.html",
             title="接口管理",
@@ -52,15 +56,28 @@ class AdminApiKeyHandler(AdminBaseHandler):
         api_key_val = self.get_body_argument("api_key", "").strip()
         status = self.get_body_argument("status", "enabled")
         if api_id.isdigit():
+            api_key_save = encrypt(api_key_val) if api_key_val else ""
+            if not api_key_val:
+                with get_connection() as conn:
+                    existing = conn.execute(
+                        "SELECT api_key FROM api_keys WHERE id=?", (int(api_id),)
+                    ).fetchone()
+                    api_key_save = existing["api_key"] if existing else ""
             with get_connection() as conn:
                 conn.execute(
                     "UPDATE api_keys SET name=?,api_type=?,endpoint=?,api_key=?,status=?,updated_at=datetime('now') WHERE id=?",
-                    (name, api_type, endpoint, api_key_val, status, int(api_id)),
+                    (name, api_type, endpoint, api_key_save, status, int(api_id)),
                 )
             return self._redirect_with_message("/admin/apis", "已更新")
         with get_connection() as conn:
             conn.execute(
                 "INSERT INTO api_keys(name, api_type, endpoint, api_key, status) VALUES(?,?,?,?,?)",
-                (name, api_type, endpoint, api_key_val, status),
+                (
+                    name,
+                    api_type,
+                    endpoint,
+                    encrypt(api_key_val) if api_key_val else "",
+                    status,
+                ),
             )
         self._redirect_with_message("/admin/apis", "已新增")

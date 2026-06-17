@@ -1,5 +1,6 @@
 from app.controllers.base import BaseHandler
 from app.models.admin import PER_PAGE, AdminRepository
+from app.models.rate_limit import check_rate_limit
 
 
 class AdminLoginHandler(BaseHandler):
@@ -9,6 +10,13 @@ class AdminLoginHandler(BaseHandler):
         self.render("admin/login.html", title="后台登录", error=None)
 
     def post(self):
+        ip = self.request.remote_ip
+        if not check_rate_limit(f"admin_login:{ip}", 10, 600):
+            self.set_status(429)
+            return self.render(
+                "admin/login.html", title="后台登录", error="请求过于频繁，请稍后再试"
+            )
+
         username = self.get_body_argument("username", "").strip()
         password = self.get_body_argument("password", "").strip()
         if not AdminRepository.verify_admin(username, password):
@@ -17,7 +25,7 @@ class AdminLoginHandler(BaseHandler):
                 "admin/login.html", title="后台登录", error="用户名或密码错误"
             )
 
-        self.set_secure_cookie("admin_username", username)
+        self.set_auth_cookie("admin_username", username)
         self.redirect("/admin/home")
 
 
@@ -32,6 +40,29 @@ class AdminBaseHandler(BaseHandler):
         if not self.current_user:
             return self.redirect("/admin/login")
 
+        # RBAC: check route permission unless super admin
+        path = self.request.path
+        # Always-allowed routes for authenticated admins
+        allowed_any = {"/admin/home", "/admin/logout"}
+        if path in allowed_any:
+            return
+
+        admin_row = AdminRepository.get_admin_by_username(self.current_user)
+        if not admin_row:
+            return self.redirect("/admin/login")
+
+        # Super admin bypasses all checks
+        if admin_row["is_super"]:
+            return
+
+        # Check if this admin's role has a menu entry for this path
+        allowed_urls = AdminRepository.get_admin_allowed_urls(admin_row["id"])
+        if path not in allowed_urls:
+            self.set_status(403)
+            return self.finish(
+                "<h3>403 · 无权限访问</h3><p>请联系超级管理员分配功能权限。</p>"
+            )
+
     def _page(self):
         try:
             return max(int(self.get_query_argument("page", "1")), 1)
@@ -42,7 +73,10 @@ class AdminBaseHandler(BaseHandler):
         return self.get_query_argument("msg", "")
 
     def _redirect_with_message(self, url, message):
-        self.redirect(f"{url}?msg={message}")
+        import urllib.parse
+
+        encoded = urllib.parse.quote(message, safe="")
+        self.redirect(f"{url}?msg={encoded}")
 
 
 class AdminHomeHandler(AdminBaseHandler):
@@ -81,7 +115,7 @@ class AdminHomeHandler(AdminBaseHandler):
 
 class AdminLogoutHandler(BaseHandler):
     def post(self):
-        self.clear_cookie("admin_username")
+        self.clear_auth_cookie("admin_username")
         self.redirect("/admin/login")
 
 

@@ -3,7 +3,7 @@
 <section class="admin-page-head">
 	<div><p>系统</p><h1>系统设置</h1><span>配置站点基础信息与数据库连接参数。</span></div>
 </section>
-{% if msg %}<div class="toast-container position-fixed top-0 end-0 p-3"><div class="toast admin-toast text-bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body">{{ msg }}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>{% end %}
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid #e8f0fc;padding-bottom:12px">
 		<button type="button" class="stab-btn active" onclick="showTab('tab-basic',this)">基本设置</button>
@@ -41,14 +41,14 @@
 					<label><span>数据库名</span><input type="text" name="mysql_database" value="{{ settings.get('mysql_database','') }}" placeholder="datafinder"></label>
 					<label class="form-wide"><span></span>
 						<div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-							<button type="button" class="btn btn-light" onclick="testDbConn()">测试连接</button>
+							<button type="button" class="adm-btn adm-btn-ghost" onclick="testDbConn()">测试连接</button>
 							<span id="testResult" style="font-size:13px"></span>
 						</div>
 					</label>
 				</div>
 			</section>
 		</div>
-		<div style="padding:8px 0 4px"><button type="submit" class="btn btn-primary">保存设置</button></div>
+		<div style="padding:8px 0 4px"><button type="submit" class="adm-btn adm-btn-primary">保存设置</button></div>
 	</form>
 </section>
 <style>

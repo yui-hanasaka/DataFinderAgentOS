@@ -299,7 +299,7 @@ initThemeIcon('themeIcon');
         textEl.textContent = '「' + data.hitokoto + '」';
         textEl.style.display = '';
         if (data.from || data.from_who) {
-          fromEl.innerHTML = '—— <span>' + [data.from_who, data.from].filter(Boolean).join(' · ') + '</span>';
+          fromEl.textContent = '—— ' + [data.from_who, data.from].filter(Boolean).join(' · ');
           fromEl.style.display = '';
         }
         loading.style.display = 'none';

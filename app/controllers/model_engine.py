@@ -12,7 +12,9 @@ class AdminModelEngineHandler(AdminBaseHandler):
         models, total = ModelRepository.list_models(keyword, page)
         edit_id = self.get_query_argument("edit", "")
         edit_model = (
-            ModelRepository.get_model(int(edit_id)) if edit_id.isdigit() else None
+            ModelRepository.get_model_masked(int(edit_id))
+            if edit_id.isdigit()
+            else None
         )
         usage_rows = ModelRepository.usage_summary()
         totals = {
@@ -93,9 +95,6 @@ class AdminModelTestHandler(AdminBaseHandler):
 
 
 class AdminModelChatHandler(AdminBaseHandler):
-    def check_xsrf_cookie(self):
-        pass
-
     async def post(self, model_id):
         model = ModelRepository.get_model(int(model_id)) if model_id.isdigit() else None
         if not model:
@@ -135,7 +134,7 @@ class AdminModelChatHandler(AdminBaseHandler):
             self.write({"error": f"模型调用失败：{ex}"})
 
     async def _sync_response(self, model, messages):
-        resp = chat_complete(
+        resp = await chat_complete(
             model["base_url"],
             model["api_key"],
             model["model_id"],
@@ -144,7 +143,7 @@ class AdminModelChatHandler(AdminBaseHandler):
             max_tokens=model["max_tokens"],
             stream=False,
         )
-        raw = resp.read()
+        raw = await resp.aread()
         parsed = parse_chat_response(raw)
         ModelRepository.record_usage(
             model["id"], parsed["prompt_tokens"], parsed["completion_tokens"]
@@ -156,7 +155,7 @@ class AdminModelChatHandler(AdminBaseHandler):
         self.set_header("Content-Type", "text/event-stream; charset=utf-8")
         self.set_header("Cache-Control", "no-cache")
         self.set_header("X-Accel-Buffering", "no")
-        resp = chat_complete(
+        resp = await chat_complete(
             model["base_url"],
             model["api_key"],
             model["model_id"],
@@ -167,7 +166,7 @@ class AdminModelChatHandler(AdminBaseHandler):
         )
         prompt_tokens = 0
         completion_tokens = 0
-        for chunk in iter_sse_chunks(resp):
+        async for chunk in iter_sse_chunks(resp):
             usage = chunk.get("usage") or {}
             if usage:
                 prompt_tokens = max(prompt_tokens, int(usage.get("prompt_tokens") or 0))

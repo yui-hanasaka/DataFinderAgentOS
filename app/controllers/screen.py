@@ -17,9 +17,6 @@ class AdminScreenHandler(AdminBaseHandler):
 
 
 class ScreenDataApiHandler(AdminBaseHandler):
-    def check_xsrf_cookie(self):
-        pass
-
     def get(self):
         self.set_header("Content-Type", "application/json")
         self.write(json.dumps(_collect_stats()))

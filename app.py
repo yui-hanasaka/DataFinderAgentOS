@@ -1,4 +1,5 @@
 import os
+import secrets
 
 import tornado.ioloop
 import tornado.web
@@ -14,7 +15,12 @@ from app.controllers.admin import (
 )
 from app.controllers.api_key import AdminApiKeyHandler
 from app.controllers.ask import AskHomeHandler, AskQueryHandler
-from app.controllers.auth import LandingHandler, LoginHandler, LogoutHandler
+from app.controllers.auth import (
+    LandingHandler,
+    LoginHandler,
+    LogoutHandler,
+    RegisterHandler,
+)
 from app.controllers.chat import (
     ChatBatchDeleteHandler,
     ChatDeleteHandler,
@@ -25,6 +31,10 @@ from app.controllers.chat import (
     ChatSessionHandler,
 )
 from app.controllers.deep import AdminDeepHandler
+from app.controllers.digital_twin import (
+    AdminDigitalTwinHandler,
+    AdminDigitalTwinSceneHandler,
+)
 from app.controllers.employee import AdminEmployeeHandler
 from app.controllers.home import HomeHandler
 from app.controllers.model_engine import (
@@ -42,16 +52,39 @@ from app.controllers.settings import AdminSettingsHandler
 from app.controllers.skill import AdminSkillHandler
 from app.controllers.warehouse import AdminWarehouseHandler
 from app.controllers.watchtower import AdminWatchtowerHandler
+from app.controllers.watchtower_collect import WatchtowerCollectHandler
 from app.models.db import init_db
+
+
+def _resolve_cookie_secret() -> str:
+    env_val = os.environ.get("COOKIE_SECRET", "").strip()
+    dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
+    if env_val and len(env_val) >= 32:
+        return env_val
+    if dev:
+        fallback = secrets.token_hex(32)
+        print(
+            "[DEV] COOKIE_SECRET is missing or too short — using ephemeral fallback."
+            " Sessions will be invalidated on restart.",
+            flush=True,
+        )
+        return fallback
+    raise SystemExit(
+        "FATAL: COOKIE_SECRET is missing or too short (>=32 chars required)."
+        " Set the environment variable and restart."
+    )
 
 
 def app():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     dev = os.environ.get("DEV", "").lower() in ("1", "true", "yes")
+    cookie_secret = _resolve_cookie_secret()
     routes: list[tuple[str, object]] = [
         # user auth
         (r"/", LandingHandler),
         (r"/login", LoginHandler),
+        (r"/register", RegisterHandler),
+        (r"/user/register", RegisterHandler),
         (r"/user/login", LoginHandler),
         (r"/user/logout", LogoutHandler),
         (r"/home", HomeHandler),
@@ -83,6 +116,7 @@ def app():
         (r"/admin/employees", AdminEmployeeHandler),
         (r"/admin/skills", AdminSkillHandler),
         (r"/admin/watchtower", AdminWatchtowerHandler),
+        (r"/admin/watchtower/collect", WatchtowerCollectHandler),
         (r"/admin/warehouse", AdminWarehouseHandler),
         (r"/admin/deep", AdminDeepHandler),
         (r"/admin/apis", AdminApiKeyHandler),
@@ -90,6 +124,8 @@ def app():
         (r"/admin/conversations/(\d+)", AdminConversationDetailHandler),
         (r"/admin/screen", AdminScreenHandler),
         (r"/admin/settings", AdminSettingsHandler),
+        (r"/admin/digital-twin", AdminDigitalTwinHandler),
+        (r"/admin/digital-twin/scenes/(\d+)", AdminDigitalTwinSceneHandler),
         # api
         (r"/api/screen/data", ScreenDataApiHandler),
     ]
@@ -98,9 +134,10 @@ def app():
         routes,
         template_path=os.path.join(base_dir, "app", "templates"),
         static_path=os.path.join(base_dir, "app", "static"),
-        cookie_secret="demo-cookie-secret-change-me",
+        cookie_secret=cookie_secret,
         login_url="/",
         xsrf_cookies=True,
+        xsrf_cookie_kwargs={"httponly": False, "samesite": "Lax"},
         debug=dev,
         autoreload=dev,
     )
@@ -109,7 +146,11 @@ def app():
 if __name__ == "__main__":
     init_db()
     application = app()
-    server = HTTPServer(application)
+    server = HTTPServer(
+        application,
+        max_body_size=2 * 1024 * 1024,
+        max_buffer_size=2 * 1024 * 1024,
+    )
     server.listen(10086)
     print("Server Started: http://localhost:10086/", flush=True)
     tornado.ioloop.IOLoop.current().start()
