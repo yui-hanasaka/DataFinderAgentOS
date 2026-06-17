@@ -2,7 +2,7 @@ from app.controllers.admin import AdminBaseHandler
 from app.models.db import get_connection
 from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
-from app.models.secrets_store import decrypt, encrypt, mask
+from app.models.secrets_store import decrypt, mask
 from app.models.validators import parse_int
 
 
@@ -71,27 +71,85 @@ class AdminSettingsHandler(AdminBaseHandler):
                     connect_timeout=3,
                 )
                 conn.close()
-                return self.write({"ok": True, "msg": "MySQL 连接成功"})
+
+                # Also verify DDL can be created
+                from app.models.db_switcher import DatabaseSwitcher
+
+                switcher = DatabaseSwitcher(
+                    "mysql",
+                    {
+                        "host": host,
+                        "port": port,
+                        "user": user,
+                        "password": password,
+                        "database": database,
+                    },
+                )
+                switcher.preflight()
+                return self.write({"ok": True, "msg": "MySQL 连接成功，建表验证通过"})
             except Exception as e:
                 log_error("MySQL 连接测试失败", e)
-                return self.write({"ok": False, "msg": "MySQL 连接失败"})
+                return self.write({"ok": False, "msg": f"MySQL 连接失败: {e}"})
+
+        # ── Save settings (with potential DB switch) ──────────
 
         site_name = self.get_body_argument("site_name", "DataFinder AgentOS").strip()
         db_type = self.get_body_argument("db_type", "sqlite")
+
+        # Save basic settings first (always to current active DB)
         self._save("site_name", site_name)
-        self._save("db_type", db_type)
-        if db_type == "mysql":
-            for k in (
-                "mysql_host",
-                "mysql_port",
-                "mysql_user",
-                "mysql_password",
-                "mysql_database",
-            ):
-                val = self.get_body_argument(k, "")
-                if k == "mysql_password" and val:
-                    val = encrypt(val)
-                elif k == "mysql_password" and not val:
-                    continue  # keep existing
-                self._save(k, val)
+
+        # Check if db_type changed
+        import app.models.db as db_module
+
+        old_db_type = db_module._active_db_type
+        if db_type != old_db_type:
+            # Switching databases
+            from app.models.db_switcher import DatabaseSwitcher, DatabaseSwitchError
+            from app.models.secrets_store import encrypt
+
+            if db_type == "mysql":
+                params = {
+                    "host": self.get_body_argument("mysql_host", "127.0.0.1"),
+                    "port": parse_int(
+                        self.get_body_argument("mysql_port", "3306"),
+                        3306,
+                        min_value=1,
+                        max_value=65535,
+                    ),
+                    "user": self.get_body_argument("mysql_user", ""),
+                    "password": self.get_body_argument("mysql_password", ""),
+                    "database": self.get_body_argument("mysql_database", ""),
+                }
+            else:
+                params = {}
+
+            try:
+                switcher = DatabaseSwitcher(db_type, params)
+                switcher.run()
+            except DatabaseSwitchError as e:
+                log_error("数据库切换失败", e)
+                self._redirect_with_message("/admin/settings", f"数据库切换失败: {e}")
+                return
+        else:
+            # Same db_type — just save MySQL params (don't switch)
+            if db_type == "mysql":
+                from app.models.secrets_store import encrypt
+
+                for k in (
+                    "mysql_host",
+                    "mysql_port",
+                    "mysql_user",
+                    "mysql_password",
+                    "mysql_database",
+                ):
+                    val = self.get_body_argument(k, "")
+                    if k == "mysql_password" and val:
+                        val = encrypt(val)
+                    elif k == "mysql_password" and not val:
+                        continue
+                    self._save(k, val)
+
+            self._save("db_type", db_type)
+
         self._redirect_with_message("/admin/settings", "设置已保存")
