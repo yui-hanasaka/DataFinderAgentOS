@@ -13,7 +13,8 @@
 				<input type="text" name="keyword" value="{{ keyword }}" placeholder="🔍 搜索模型名称 / model id / 类型">
 				<button type="submit" class="tech-btn is-ghost"><i class="fa-solid fa-bolt"></i> 搜索</button>
 			</form>
-			<button type="button" class="tech-btn" data-bs-toggle="modal" data-bs-target="#modelEngineModal"><i class="fa-solid fa-circle-plus"></i> 接入新模型</button>
+			<button type="button" class="tech-btn" data-bs-toggle="modal" data-bs-target="#modelEngineModal"><i
+					class="fa-solid fa-circle-plus"></i> 接入新模型</button>
 		</div>
 	</section>
 	{% set total_calls = sum([row['calls'] for row in usage_rows]) %}
@@ -23,10 +24,13 @@
 	<section class="tech-stats">
 		<div class="tech-stat-card"><span>MODEL COUNT</span><strong>{{ total }}</strong><em>已接入模型</em></div>
 		<div class="tech-stat-card"><span>TOTAL CALLS</span><strong>{{ totals['calls'] }}</strong><em>调用次数</em></div>
-		<div class="tech-stat-card"><span>TOTAL TOKENS</span><strong>{{ totals['total'] }}</strong><em>累计 Token</em></div>
-		<div class="tech-stat-card"><span>PROMPT / COMPLETION</span><strong>{{ totals['prompt'] }} / {{ totals['completion'] }}</strong><em>输入 / 输出</em></div>
+		<div class="tech-stat-card"><span>TOTAL TOKENS</span><strong>{{ totals['total'] }}</strong><em>累计 Token</em>
+		</div>
+		<div class="tech-stat-card"><span>PROMPT / COMPLETION</span><strong>{{ totals['prompt'] }} / {{
+				totals['completion'] }}</strong><em>输入 / 输出</em></div>
 	</section>
-	<div class="tech-toolbar"><span>· model showcase</span><span>共 {{ total }} 条 · 每页 {{ per_page }} 条 · 三列橱窗</span></div>
+	<div class="tech-toolbar"><span>· model showcase</span><span>共 {{ total }} 条 · 每页 {{ per_page }} 条 · 三列橱窗</span>
+	</div>
 	{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 	{% if not models %}
 	<div class="tech-empty">尚未登记模型，点击右上角“接入新模型”开始登记 OpenAI 兼容服务。</div>
@@ -40,7 +44,10 @@
 					<div class="card-meta">{{ model['model_id'] }}</div>
 				</div>
 				<div>
-					{% if model['is_default'] %}<span class="tech-tag is-default">默认模型</span>{% else %}<span class="tech-tag">{{ {'text':'文字','multimodal':'多模态','vision':'视觉','embedding':'向量'}.get(model['model_type'], model['model_type']) }}</span>{% end %}
+					{% if model['is_default'] %}<span class="tech-tag is-default">默认模型</span>{% else %}<span
+						class="tech-tag">{{
+						{'text':'文字','multimodal':'多模态','vision':'视觉','embedding':'向量'}.get(model['model_type'],
+						model['model_type']) }}</span>{% end %}
 					{% if model['status'] != 'enabled' %}<span class="tech-tag is-disabled">已禁用</span>{% end %}
 				</div>
 			</div>
@@ -48,7 +55,8 @@
 				<div>BASE URL<strong>{{ model['base_url'] }}</strong></div>
 				<div>TEMPERATURE<strong>{{ '{:.2f}'.format(model['temperature']) }}</strong></div>
 				<div>MAX TOKENS<strong>{{ model['max_tokens'] }}</strong></div>
-				<div>STREAM / THINK<strong>{{ '开' if model['support_stream'] else '关' }} · {{ '开' if model['support_think'] else '关' }}</strong></div>
+				<div>STREAM / THINK<strong>{{ '开' if model['support_stream'] else '关' }} · {{ '开' if
+						model['support_think'] else '关' }}</strong></div>
 			</div>
 			<div class="card-foot">
 				<span class="tech-tag">{{ model['status'] }}</span>
@@ -56,9 +64,14 @@
 					<a href="/admin/models/{{ model['id'] }}/test"><i class="fa-solid fa-comments"></i> 对话测试</a>
 					<a href="/admin/models?edit={{ model['id'] }}"><i class="fa-solid fa-pen-to-square"></i> 编辑</a>
 					{% if not model['is_default'] %}
-					<form method="post" action="/admin/models" data-confirm="确认将该模型设为默认模型？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="set_default"><input type="hidden" name="id" value="{{ model['id'] }}"><button type="submit"><i class="fa-solid fa-star"></i> 设默认</button></form>
+					<form method="post" action="/admin/models" data-confirm="确认将该模型设为默认模型？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="set_default"><input type="hidden" name="id"
+							value="{{ model['id'] }}"><button type="submit"><i class="fa-solid fa-star"></i>
+							设默认</button></form>
 					{% end %}
-					<form method="post" action="/admin/models" data-confirm="确认删除该模型？删除后调用记录会一并清除。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ model['id'] }}"><button type="submit" class="danger"><i class="fa-solid fa-trash"></i> 删除</button></form>
+					<form method="post" action="/admin/models" data-confirm="确认删除该模型？删除后调用记录会一并清除。">{% module
+						xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden"
+							name="id" value="{{ model['id'] }}"><button type="submit" class="danger"><i
+								class="fa-solid fa-trash"></i> 删除</button></form>
 				</div>
 			</div>
 		</article>
@@ -71,7 +84,7 @@
 	</div>
 	{% end %}
 </div>
-<div class="modal fade admin-edit-modal tech-modal" id="modelEngineModal" tabindex="-1" {% if edit_model %}data-auto-open="true"{% end %}>
+<div class="modal fade admin-edit-modal tech-modal" id="modelEngineModal" tabindex="-1" {% if edit_model %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -88,38 +101,62 @@
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">基础信息<small>用于在橱窗与默认调用中识别模型</small></div>
 						<div class="admin-grid-form">
-							<label class="required"><span>模型名称</span><input type="text" name="name" value="{{ edit_model['name'] if edit_model else '' }}" placeholder="如：Qwen3.5-Flash" required></label>
-							<label class="required"><span>Model ID</span><input type="text" name="model_id_value" value="{{ edit_model['model_id'] if edit_model else '' }}" placeholder="如：qwen3.5-flash" required></label>
+							<label class="required"><span>模型名称</span><input type="text" name="name"
+									value="{{ edit_model['name'] if edit_model else '' }}" placeholder="如：Qwen3.5-Flash"
+									required></label>
+							<label class="required"><span>Model ID</span><input type="text" name="model_id_value"
+									value="{{ edit_model['model_id'] if edit_model else '' }}"
+									placeholder="如：qwen3.5-flash" required></label>
 							<label class="required"><span>模型类型</span><select name="model_type">
-								{% set current_type = edit_model['model_type'] if edit_model else 'text' %}
-								<option value="text" {% if current_type=='text' %}selected{% end %}>文字</option>
-								<option value="multimodal" {% if current_type=='multimodal' %}selected{% end %}>多模态</option>
-								<option value="vision" {% if current_type=='vision' %}selected{% end %}>视觉</option>
-								<option value="embedding" {% if current_type=='embedding' %}selected{% end %}>向量</option>
-							</select></label>
-							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_model or edit_model['status']=='enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_model and edit_model['status']=='disabled' %}selected{% end %}>禁用</option></select></label>
-							<label class="required form-wide"><span>Base URL</span><input type="text" name="base_url" value="{{ edit_model['base_url'] if edit_model else 'https://aigc-api.aitoolcore.com/api/v1' }}" placeholder="OpenAI 兼容服务地址" required></label>
-							<label class="required form-wide"><span>API Key</span><input type="text" name="api_key" value="{{ edit_model['api_key'] if edit_model else '' }}" placeholder="sk-..." required></label>
+									{% set current_type = edit_model['model_type'] if edit_model else 'text' %}
+									<option value="text" {% if current_type=='text' %}selected{% end %}>文字</option>
+									<option value="multimodal" {% if current_type=='multimodal' %}selected{% end %}>多模态
+									</option>
+									<option value="vision" {% if current_type=='vision' %}selected{% end %}>视觉</option>
+									<option value="embedding" {% if current_type=='embedding' %}selected{% end %}>向量
+									</option>
+								</select></label>
+							<label class="required"><span>状态</span><select name="status">
+									<option value="enabled" {% if not edit_model or edit_model['status']=='enabled' %}selected{% end %}>启用</option>
+									<option value="disabled" {% if edit_model and edit_model['status']=='disabled' %}selected{% end %}>禁用</option>
+								</select></label>
+							<label class="required form-wide"><span>Base URL</span><input type="text" name="base_url"
+									value="{{ edit_model['base_url'] if edit_model else 'https://aigc-api.aitoolcore.com/api/v1' }}"
+									placeholder="OpenAI 兼容服务地址" required></label>
+							<label class="required form-wide"><span>API Key</span><input type="text" name="api_key"
+									value="{{ edit_model['api_key'] if edit_model else '' }}" placeholder="sk-..."
+									required></label>
 						</div>
 					</section>
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">调用参数<small>设置模型推理过程中的关键参数</small></div>
 						<div class="admin-grid-form">
-							<label class="required"><span>温度 temperature</span><input type="number" step="0.05" min="0" max="2" name="temperature" value="{{ '{:.2f}'.format(edit_model['temperature']) if edit_model else '0.70' }}" required></label>
-							<label class="required"><span>最大长度 max_tokens</span><input type="number" min="1" name="max_tokens" value="{{ edit_model['max_tokens'] if edit_model else 1024 }}" required></label>
-							<label class="form-wide"><span>系统提示 system_prompt</span><textarea name="system_prompt" placeholder="可选，作为 system 消息注入对话上下文">{{ edit_model['system_prompt'] if edit_model and edit_model['system_prompt'] else '' }}</textarea></label>
+							<label class="required"><span>温度 temperature</span><input type="number" step="0.05" min="0"
+									max="2" name="temperature"
+									value="{{ '{:.2f}'.format(edit_model['temperature']) if edit_model else '0.70' }}"
+									required></label>
+							<label class="required"><span>最大长度 max_tokens</span><input type="number" min="1"
+									name="max_tokens" value="{{ edit_model['max_tokens'] if edit_model else 1024 }}"
+									required></label>
+							<label class="form-wide"><span>系统提示 system_prompt</span><textarea name="system_prompt"
+									placeholder="可选，作为 system 消息注入对话上下文">{{ edit_model['system_prompt'] if edit_model and edit_model['system_prompt'] else '' }}</textarea></label>
 						</div>
 					</section>
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">行为开关<small>控制流式响应、推理思考、默认调度</small></div>
 						<div class="admin-grid-form">
-							<label class="form-wide"><span>SSE 流式响应</span><label class="tech-switch"><input type="checkbox" name="support_stream" value="1" {% if not edit_model or edit_model['support_stream'] %}checked{% end %}>开启 SSE 流</label></label>
-							<label class="form-wide"><span>Think 模式</span><label class="tech-switch"><input type="checkbox" name="support_think" value="1" {% if edit_model and edit_model['support_think'] %}checked{% end %}>开启思考链路</label></label>
-							<label class="form-wide"><span>默认模型</span><label class="tech-switch"><input type="checkbox" name="is_default" value="1" {% if edit_model and edit_model['is_default'] %}checked{% end %}>设为系统默认模型</label></label>
+							<label class="form-wide"><span>SSE 流式响应</span><label class="tech-switch"><input
+										type="checkbox" name="support_stream" value="1" {% if not edit_model or edit_model['support_stream'] %}checked{% end %}>开启 SSE 流</label></label>
+							<label class="form-wide"><span>Think 模式</span><label class="tech-switch"><input
+										type="checkbox" name="support_think" value="1" {% if edit_model and edit_model['support_think'] %}checked{% end %}>开启思考链路</label></label>
+							<label class="form-wide"><span>默认模型</span><label class="tech-switch"><input type="checkbox"
+										name="is_default" value="1" {% if edit_model and edit_model['is_default'] %}checked{% end %}>设为系统默认模型</label></label>
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="btn btn-light"
+						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
+				</div>
 			</form>
 		</div>
 	</div>

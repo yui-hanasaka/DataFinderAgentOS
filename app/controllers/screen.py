@@ -13,6 +13,7 @@ class AdminScreenHandler(AdminBaseHandler):
             title="数智大屏",
             username=self.current_user,
             stats=stats,
+            stats_json=json.dumps(stats, ensure_ascii=False),
         )
 
 

@@ -1,30 +1,115 @@
 {% extends "base.html" %}
 {% block body %}
 <style>
-*{box-sizing:border-box}
-.ask-wrap{max-width:960px;margin:32px auto;padding:0 16px}
-.query-row{display:flex;gap:8px;margin-bottom:20px}
-.query-row input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:6px;font-size:.95rem}
-.query-row input:focus{outline:none;border-color:#4f6ef7}
-.btn{padding:10px 20px;background:#4f6ef7;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.95rem}
-.btn:hover{background:#3a57d4}
-.btn:disabled{background:#aaa;cursor:not-allowed}
-.loading{color:#888;margin:12px 0;display:none}
-.error{color:#c0392b;margin:12px 0;background:#fef2f2;padding:10px;border-radius:6px}
-.result-bar{display:flex;align-items:center;gap:12px;margin:12px 0}
-.result-bar .btn-sm{padding:6px 14px;font-size:.85rem}
-table{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:16px}
-th{background:#f5f5f5;padding:8px 10px;text-align:left;border-bottom:2px solid #e0e0e0}
-td{padding:7px 10px;border-bottom:1px solid #efefef}
-tr:hover td{background:#fafafa}
-#chart{width:100%;height:360px;margin-top:16px;display:none}
+  * {
+    box-sizing: border-box
+  }
+
+  .ask-wrap {
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 16px
+  }
+
+  .query-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px
+  }
+
+  .query-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: .95rem
+  }
+
+  .query-row input:focus {
+    outline: none;
+    border-color: #4f6ef7
+  }
+
+  .btn {
+    padding: 10px 20px;
+    background: #4f6ef7;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .95rem
+  }
+
+  .btn:hover {
+    background: #3a57d4
+  }
+
+  .btn:disabled {
+    background: #aaa;
+    cursor: not-allowed
+  }
+
+  .loading {
+    color: #888;
+    margin: 12px 0;
+    display: none
+  }
+
+  .error {
+    color: #c0392b;
+    margin: 12px 0;
+    background: #fef2f2;
+    padding: 10px;
+    border-radius: 6px
+  }
+
+  .result-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0
+  }
+
+  .result-bar .btn-sm {
+    padding: 6px 14px;
+    font-size: .85rem
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+    margin-bottom: 16px
+  }
+
+  th {
+    background: #f5f5f5;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 2px solid #e0e0e0
+  }
+
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #efefef
+  }
+
+  tr:hover td {
+    background: #fafafa
+  }
+
+  #chart {
+    width: 100%;
+    height: 360px;
+    margin-top: 16px;
+    display: none
+  }
 </style>
 
 <div class="ask-wrap">
   <h2 style="margin-bottom:16px">数据问答</h2>
   <div class="query-row">
-    <input type="text" id="queryInput" placeholder="用自然语言描述你的查询，例如：最近7天销售额趋势"
-      value="{{ query or '' }}"
+    <input type="text" id="queryInput" placeholder="用自然语言描述你的查询，例如：最近7天销售额趋势" value="{{ query or '' }}"
       onkeydown="if(event.key==='Enter') submitQuery()">
     <button class="btn" id="submitBtn" onclick="submitQuery()">问数</button>
   </div>
@@ -35,7 +120,7 @@ tr:hover td{background:#fafafa}
   <div class="error">{{ error }}</div>
   {% end %}
 
-  <div id="resultArea" style="display:{% if results %}block{% else %}none{% end %}">
+  <div id="resultArea"{% if not results %} style="display:none"{% end %}>
     <div class="result-bar">
       <span id="rowCount" style="color:#666;font-size:.88rem"></span>
       <button class="btn btn-sm" onclick="renderChart()">生成图表</button>
@@ -52,115 +137,116 @@ tr:hover td{background:#fafafa}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<div id="ask-init-data" hidden>{% raw ask_init_json %}</div>
 <script>
-let currentColumns = {{ columns or [] }};
-let currentRows = [];
+  var _askInit = JSON.parse(document.getElementById('ask-init-data').textContent);
+  let currentColumns = _askInit.columns || [];
+  let currentRows = _askInit.results || [];
 
-{% if results %}
-currentRows = {{ results }};
-renderTable(currentColumns, currentRows);
-{% end %}
-
-function getCookie(name) {
-  const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
-  return v ? decodeURIComponent(v.split('=')[1]) : '';
-}
-
-async function submitQuery() {
-  const q = document.getElementById('queryInput').value.trim();
-  if (!q) return;
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('resultArea').style.display = 'none';
-  document.getElementById('chart').style.display = 'none';
-
-  try {
-    const resp = await fetch('/ask/query', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-      body: JSON.stringify({query: q})
-    });
-    const data = await resp.json();
-    document.getElementById('loading').style.display = 'none';
-    if (!data.ok) {
-      alert('查询失败：' + (data.error || '未知错误'));
-    } else {
-      currentColumns = data.columns || [];
-      currentRows = data.rows || [];
-      renderTable(currentColumns, currentRows);
-      document.getElementById('resultArea').style.display = 'block';
-      buildCsvLink(currentColumns, currentRows);
-    }
-  } catch(e) {
-    document.getElementById('loading').style.display = 'none';
-    alert('请求失败：' + e.message);
+  if (currentRows.length) {
+    renderTable(currentColumns, currentRows);
   }
-  btn.disabled = false;
-}
 
-function renderTable(cols, rows) {
-  const thead = document.getElementById('thead');
-  const tbody = document.getElementById('tbody');
-  // Safe DOM construction — no innerHTML for untrusted data
-  thead.replaceChildren();
-  tbody.replaceChildren();
-  var tr = document.createElement('tr');
-  cols.forEach(function(c) {
-    var th = document.createElement('th');
-    th.textContent = c;
-    tr.appendChild(th);
-  });
-  thead.appendChild(tr);
-  rows.forEach(function(row) {
-    var tr2 = document.createElement('tr');
-    cols.forEach(function(c) {
-      var td = document.createElement('td');
-      td.textContent = row[c] != null ? String(row[c]) : '';
-      tr2.appendChild(td);
+  function getCookie(name) {
+    const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
+    return v ? decodeURIComponent(v.split('=')[1]) : '';
+  }
+
+  async function submitQuery() {
+    const q = document.getElementById('queryInput').value.trim();
+    if (!q) return;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('resultArea').style.display = 'none';
+    document.getElementById('chart').style.display = 'none';
+
+    try {
+      const resp = await fetch('/ask/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await resp.json();
+      document.getElementById('loading').style.display = 'none';
+      if (!data.ok) {
+        alert('查询失败：' + (data.error || '未知错误'));
+      } else {
+        currentColumns = data.columns || [];
+        currentRows = data.rows || [];
+        renderTable(currentColumns, currentRows);
+        document.getElementById('resultArea').style.display = 'block';
+        buildCsvLink(currentColumns, currentRows);
+      }
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      alert('请求失败：' + e.message);
+    }
+    btn.disabled = false;
+  }
+
+  function renderTable(cols, rows) {
+    const thead = document.getElementById('thead');
+    const tbody = document.getElementById('tbody');
+    // Safe DOM construction — no innerHTML for untrusted data
+    thead.replaceChildren();
+    tbody.replaceChildren();
+    var tr = document.createElement('tr');
+    cols.forEach(function (c) {
+      var th = document.createElement('th');
+      th.textContent = c;
+      tr.appendChild(th);
     });
-    tbody.appendChild(tr2);
-  });
-  document.getElementById('rowCount').textContent = '共 ' + rows.length + ' 条结果';
-}
+    thead.appendChild(tr);
+    rows.forEach(function (row) {
+      var tr2 = document.createElement('tr');
+      cols.forEach(function (c) {
+        var td = document.createElement('td');
+        td.textContent = row[c] != null ? String(row[c]) : '';
+        tr2.appendChild(td);
+      });
+      tbody.appendChild(tr2);
+    });
+    document.getElementById('rowCount').textContent = '共 ' + rows.length + ' 条结果';
+  }
 
-function buildCsvLink(cols, rows) {
-  const lines = [cols.join(',')];
-  for (const row of rows) lines.push(cols.map(function(c) {
-    var v = row[c] != null ? String(row[c]) : '';
-    return v.includes(',') || v.includes('"') ? '"' + v.replace(/"/g, '""') + '"' : v;
-  }).join(','));
-  const blob = new Blob([lines.join('\n')], {type: 'text/csv;charset=utf-8;'});
-  const link = document.getElementById('csvLink');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'result.csv';
-  link.style.display = 'inline-block';
-}
+  function buildCsvLink(cols, rows) {
+    const lines = [cols.join(',')];
+    for (const row of rows) lines.push(cols.map(function (c) {
+      var v = row[c] != null ? String(row[c]) : '';
+      return v.includes(',') || v.includes('"') ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(','));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.getElementById('csvLink');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'result.csv';
+    link.style.display = 'inline-block';
+  }
 
-function renderChart() {
-  if (!currentRows.length || !currentColumns.length) return;
-  const chartEl = document.getElementById('chart');
-  chartEl.style.display = 'block';
-  const chart = echarts.init(chartEl);
-  const catCol = currentColumns[0];
-  const numCols = currentColumns.slice(1).filter(function(c) {
-    return currentRows.some(function(r) { return !isNaN(parseFloat(r[c])); });
-  });
-  const series = numCols.map(function(c) {
-    return {
-      name: c,
-      type: 'bar',
-      data: currentRows.map(function(r) { return parseFloat(r[c]) || 0; })
-    };
-  });
-  chart.setOption({
-    tooltip: {trigger: 'axis'},
-    legend: {data: numCols},
-    xAxis: {type: 'category', data: currentRows.map(function(r) { return r[catCol]; })},
-    yAxis: {type: 'value'},
-    series: series
-  });
-  window.addEventListener('resize', function() { chart.resize(); });
-}
+  function renderChart() {
+    if (!currentRows.length || !currentColumns.length) return;
+    const chartEl = document.getElementById('chart');
+    chartEl.style.display = 'block';
+    const chart = echarts.init(chartEl);
+    const catCol = currentColumns[0];
+    const numCols = currentColumns.slice(1).filter(function (c) {
+      return currentRows.some(function (r) { return !isNaN(parseFloat(r[c])); });
+    });
+    const series = numCols.map(function (c) {
+      return {
+        name: c,
+        type: 'bar',
+        data: currentRows.map(function (r) { return parseFloat(r[c]) || 0; })
+      };
+    });
+    chart.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: numCols },
+      xAxis: { type: 'category', data: currentRows.map(function (r) { return r[catCol]; }) },
+      yAxis: { type: 'value' },
+      series: series
+    });
+    window.addEventListener('resize', function () { chart.resize(); });
+  }
 </script>
 {% end %}

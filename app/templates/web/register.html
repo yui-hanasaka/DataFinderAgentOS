@@ -1,57 +1,138 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{ title }} · DataFinder AgentOS</title>
-<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
-<script>
-(function(){
-  var t = localStorage.getItem('theme');
-  if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
-  else document.documentElement.setAttribute('data-theme', t);
-})();
-</script>
-<script src="{{ static_url('js/base.js') }}"></script>
-<style>
-/* ── Theme Toggle (shared) ── */
-.login-theme-btn {
-  position:absolute; top:28px; right:32px; z-index:10;
-  width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.35);
-  background:rgba(255,255,255,.08);color:#e0d060;cursor:pointer;font-size:18px;
-  display:grid;place-items:center;transition:all .25s;backdrop-filter:blur(8px);
-}
-.login-theme-btn:hover{border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.18);transform:rotate(20deg)}
 
-/* ═══════════ Light Theme Register ═══════════ */
-[data-theme="light"] .user-login-page {
-  background:
-    radial-gradient(circle at 82% 12%, rgba(139,130,255,.18), transparent 38%),
-    radial-gradient(circle at 15% 90%, rgba(255,180,150,.16), transparent 40%),
-    linear-gradient(145deg, #f5f0ff 0%, #ede8f8 50%, #f0ecf8 100%) !important;
-}
-[data-theme="light"] .login-theme-btn{border-color:rgba(99,102,241,.25);background:rgba(99,102,241,.06);color:#b08830}
-[data-theme="light"] .login-theme-btn:hover{border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.12)}
-[data-theme="light"] .user-login-page .admin-login-card{background:rgba(255,255,255,.92);box-shadow:0 30px 80px rgba(80,40,160,.12)}
-[data-theme="light"] .user-login-page .admin-login-visual{background:linear-gradient(145deg, #f5f0ff 0%, #ede4f8 100%)}
-[data-theme="light"] .user-login-visual-content h2{color:#2d2a4a}
-[data-theme="light"] .user-login-visual-content p{color:#6b6098}
-[data-theme="light"] .user-login-page .admin-login-title p{color:#6366f1}
-[data-theme="light"] .user-login-page .admin-login-title h1{color:#4c1d95}
-[data-theme="light"] .user-login-page .admin-login-title span{color:#7c7ca8}
-[data-theme="light"] .user-login-page .admin-login-form label{color:#4d4a70}
-[data-theme="light"] .user-login-page .admin-login-form input{border-color:#d5d0e8;background:#faf8ff}
-[data-theme="light"] .user-login-page .admin-login-form input:focus{border-color:#8b5cf6;box-shadow:0 0 0 4px rgba(139,92,246,.08)}
-[data-theme="light"] .user-login-page .admin-login-panel::after{background:linear-gradient(#8b5cf6,#6366f1);box-shadow:0 116px 0 -8px #7c3aed}
-[data-theme="light"] .login-nav-back{border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#4d4a70}
-[data-theme="light"] .login-nav-back:hover{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.15);color:#2d2a4a}
-[data-theme="light"] .login-cross-link a{color:#7c7ca8}
-[data-theme="light"] .login-cross-link a:hover{color:#6366f1}
-</style>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }} · DataFinder AgentOS</title>
+  <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <script src="{{ static_url('js/base.js') }}"></script>
+  <style>
+    /* ── Theme Toggle (shared) ── */
+    .login-theme-btn {
+      position: absolute;
+      top: 28px;
+      right: 32px;
+      z-index: 10;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .35);
+      background: rgba(255, 255, 255, .08);
+      color: #e0d060;
+      cursor: pointer;
+      font-size: 18px;
+      display: grid;
+      place-items: center;
+      transition: all .25s;
+      backdrop-filter: blur(8px);
+    }
+
+    .login-theme-btn:hover {
+      border-color: rgba(255, 255, 255, .55);
+      background: rgba(255, 255, 255, .18);
+      transform: rotate(20deg)
+    }
+
+    /* ═══════════ Light Theme Register ═══════════ */
+    [data-theme="light"] .user-login-page {
+      background:
+        radial-gradient(circle at 82% 12%, rgba(139, 130, 255, .18), transparent 38%),
+        radial-gradient(circle at 15% 90%, rgba(255, 180, 150, .16), transparent 40%),
+        linear-gradient(145deg, #f5f0ff 0%, #ede8f8 50%, #f0ecf8 100%) !important;
+    }
+
+    [data-theme="light"] .login-theme-btn {
+      border-color: rgba(99, 102, 241, .25);
+      background: rgba(99, 102, 241, .06);
+      color: #b08830
+    }
+
+    [data-theme="light"] .login-theme-btn:hover {
+      border-color: rgba(99, 102, 241, .45);
+      background: rgba(99, 102, 241, .12)
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-card {
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 30px 80px rgba(80, 40, 160, .12)
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-visual {
+      background: linear-gradient(145deg, #f5f0ff 0%, #ede4f8 100%)
+    }
+
+    [data-theme="light"] .user-login-visual-content h2 {
+      color: #2d2a4a
+    }
+
+    [data-theme="light"] .user-login-visual-content p {
+      color: #6b6098
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-title p {
+      color: #6366f1
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-title h1 {
+      color: #4c1d95
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-title span {
+      color: #7c7ca8
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-form label {
+      color: #4d4a70
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-form input {
+      border-color: #d5d0e8;
+      background: #faf8ff
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-form input:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 4px rgba(139, 92, 246, .08)
+    }
+
+    [data-theme="light"] .user-login-page .admin-login-panel::after {
+      background: linear-gradient(#8b5cf6, #6366f1);
+      box-shadow: 0 116px 0 -8px #7c3aed
+    }
+
+    [data-theme="light"] .login-nav-back {
+      border-color: rgba(99, 102, 241, .3);
+      background: rgba(99, 102, 241, .08);
+      color: #4d4a70
+    }
+
+    [data-theme="light"] .login-nav-back:hover {
+      border-color: rgba(99, 102, 241, .5);
+      background: rgba(99, 102, 241, .15);
+      color: #2d2a4a
+    }
+
+    [data-theme="light"] .login-cross-link a {
+      color: #7c7ca8
+    }
+
+    [data-theme="light"] .login-cross-link a:hover {
+      color: #6366f1
+    }
+  </style>
 </head>
+
 <body class="user-login-page">
   <a class="login-nav-back" href="/">← 返回首页</a>
-  <button class="login-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换浅色主题">☀</button>
+  <button class="login-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
   <div class="admin-login-shell">
     <div class="admin-login-card">
       <div class="admin-login-visual" aria-hidden="true">
@@ -92,6 +173,7 @@
       </div>
     </div>
   </div>
-<script>initThemeIcon('themeIcon');</script>
+  <script>initThemeIcon('themeIcon');</script>
 </body>
+
 </html>

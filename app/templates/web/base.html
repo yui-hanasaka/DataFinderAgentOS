@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html data-theme="light">
+
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>{{ title }}</title>
 	<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
 	<script>
-	// Prevent FOUC — must run synchronously before first paint
-	(function(){
-		var t = localStorage.getItem('theme');
-		if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
-		else document.documentElement.setAttribute('data-theme', t);
-	})();
+		// Prevent FOUC — must run synchronously before first paint
+		(function () {
+			var t = localStorage.getItem('theme');
+			if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+			else document.documentElement.setAttribute('data-theme', t);
+		})();
 	</script>
 	<script src="{{ static_url('js/base.js') }}"></script>
 </head>
+
 <body>
 	<div class="base">
 		{% block body %}{% end %}
 	</div>
 </body>
+
 </html>

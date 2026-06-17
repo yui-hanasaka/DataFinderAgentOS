@@ -625,29 +625,14 @@ def _run_migrations(conn):
         "CREATE INDEX IF NOT EXISTS idx_ask_history_user ON ask_history(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_screen_widgets_config ON screen_widgets(config_id, sort_order)",
         "CREATE INDEX IF NOT EXISTS idx_digital_twin_models_scene ON digital_twin_models(scene_id)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_role_menus_menu ON admin_role_menus(menu_id)",
+        "CREATE INDEX IF NOT EXISTS idx_skills_status ON skills(status)",
+        "CREATE INDEX IF NOT EXISTS idx_digital_employees_status ON digital_employees(status)",
+        "CREATE INDEX IF NOT EXISTS idx_chat_sessions_employee ON chat_sessions(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_menus_url ON admin_menus(url)",
     ]
     for sql in indexes:
         conn.execute(sql)
-
-
-def _migrate_watchtower_sources():
-    """扩展watchtower_sources表以支持采集器配置"""
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(watchtower_sources)")
-        existing_columns = [row[1] for row in cursor.fetchall()]
-
-        if "url_template" not in existing_columns:
-            cursor.execute(
-                "ALTER TABLE watchtower_sources ADD COLUMN url_template TEXT"
-            )
-
-        if "request_headers" not in existing_columns:
-            cursor.execute(
-                "ALTER TABLE watchtower_sources ADD COLUMN request_headers TEXT"
-            )
-
-        conn.commit()
 
 
 def init_db():
@@ -659,4 +644,3 @@ def init_db():
         _init_business_tables(conn)
         _seed_business_data(conn)
         _run_migrations(conn)
-    _migrate_watchtower_sources()

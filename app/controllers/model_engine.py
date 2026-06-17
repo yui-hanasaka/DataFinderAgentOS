@@ -3,6 +3,7 @@ import json
 from app.controllers.admin import AdminBaseHandler
 from app.models.model_client import chat_complete, iter_sse_chunks, parse_chat_response
 from app.models.model_engine import PER_PAGE, ModelRepository
+from app.models.rate_limit import check_rate_limit
 
 
 class AdminModelEngineHandler(AdminBaseHandler):
@@ -96,6 +97,9 @@ class AdminModelTestHandler(AdminBaseHandler):
 
 class AdminModelChatHandler(AdminBaseHandler):
     async def post(self, model_id):
+        if not check_rate_limit(f"admin_model_chat:{self.current_user}", 30, 60):
+            self.set_status(429)
+            return self.write({"error": "请求过于频繁，请稍后再试"})
         model = ModelRepository.get_model(int(model_id)) if model_id.isdigit() else None
         if not model:
             self.set_status(404)
@@ -129,9 +133,9 @@ class AdminModelChatHandler(AdminBaseHandler):
             if stream and model["support_stream"]:
                 return await self._stream_response(model, messages)
             return await self._sync_response(model, messages)
-        except Exception as ex:
+        except Exception:
             self.set_status(502)
-            self.write({"error": f"模型调用失败：{ex}"})
+            self.write({"error": "模型调用失败，请稍后重试"})
 
     async def _sync_response(self, model, messages):
         resp = await chat_complete(

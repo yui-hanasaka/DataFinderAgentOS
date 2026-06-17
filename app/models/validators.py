@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any
 
 
@@ -81,17 +79,7 @@ def is_safe_public_url(url: str) -> bool:
 
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
-    blocked = {
-        "localhost",
-        "127.0.0.1",
-        "0.0.0.0",
-        "10.0.0.0",
-        "172.16.0.0",
-        "192.168.0.0",
-        "169.254.0.0",
-        "::1",
-        "[::1]",
-    }
+    blocked = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
     if host in blocked:
         return False
     import ipaddress

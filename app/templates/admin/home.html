@@ -1,40 +1,150 @@
 {% extends "base.html" %}
 {% block body %}
 <style>
-@keyframes statIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-.adm-stat-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; margin-bottom:20px; }
-.adm-stat-card {
-  padding:22px 24px; border-radius:18px; text-decoration:none;
-  background:rgba(255,255,255,.55); backdrop-filter:blur(16px) saturate(120%);
-  border:1px solid rgba(99,102,241,.05); box-shadow:0 6px 20px rgba(99,102,241,.03);
-  transition:all var(--spring) .3s;
-}
-.adm-stat-card:nth-child(1){animation:statIn .4s .05s var(--ease-out-expo) both}
-.adm-stat-card:nth-child(2){animation:statIn .4s .1s var(--ease-out-expo) both}
-.adm-stat-card:nth-child(3){animation:statIn .4s .15s var(--ease-out-expo) both}
-.adm-stat-card:nth-child(4){animation:statIn .4s .2s var(--ease-out-expo) both}
-.adm-stat-card:hover { transform:translateY(-3px); border-color:rgba(99,102,241,.15); box-shadow:0 12px 32px rgba(99,102,241,.08); }
-.adm-stat-value { font-size:30px; font-weight:800; }
-.adm-stat-label { font-size:12px; color:#8a86c0; margin-top:4px; letter-spacing:.04em; }
-.s-c1{color:#6366f1}.s-c2{color:#10b981}.s-c3{color:#f59e0b}.s-c4{color:#3b82f6}
+  @keyframes statIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px)
+    }
 
-[data-theme="dark"] .adm-stat-card { background:rgba(20,18,48,.45); border-color:rgba(139,130,255,.05); box-shadow:0 6px 20px rgba(0,0,0,.15); }
-[data-theme="dark"] .adm-stat-card:hover { background:rgba(25,23,50,.6); border-color:rgba(139,130,255,.15); }
-[data-theme="dark"] .adm-stat-label { color:#6b6b9e; }
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
 
-/* ── Module grid staggered fade-up ── */
-.adm-module-grid a { animation:statIn .45s var(--ease-out-expo) both; }
-.adm-module-grid a:nth-child(1){animation-delay:.08s}
-.adm-module-grid a:nth-child(2){animation-delay:.12s}
-.adm-module-grid a:nth-child(3){animation-delay:.16s}
-.adm-module-grid a:nth-child(4){animation-delay:.20s}
-.adm-module-grid a:nth-child(5){animation-delay:.24s}
-.adm-module-grid a:nth-child(6){animation-delay:.28s}
-.adm-module-grid a:nth-child(7){animation-delay:.32s}
-.adm-module-grid a:nth-child(8){animation-delay:.36s}
-.adm-module-grid a:nth-child(9){animation-delay:.40s}
-.adm-module-grid a:nth-child(10){animation-delay:.44s}
-.adm-module-grid a:nth-child(11){animation-delay:.48s}
+  .adm-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .adm-stat-card {
+    padding: 22px 24px;
+    border-radius: 18px;
+    text-decoration: none;
+    background: rgba(255, 255, 255, .55);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+    border: 1px solid rgba(99, 102, 241, .05);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, .03);
+    transition: all var(--spring) .3s;
+  }
+
+  .adm-stat-card:nth-child(1) {
+    animation: statIn .4s .05s var(--ease-out-expo) both
+  }
+
+  .adm-stat-card:nth-child(2) {
+    animation: statIn .4s .1s var(--ease-out-expo) both
+  }
+
+  .adm-stat-card:nth-child(3) {
+    animation: statIn .4s .15s var(--ease-out-expo) both
+  }
+
+  .adm-stat-card:nth-child(4) {
+    animation: statIn .4s .2s var(--ease-out-expo) both
+  }
+
+  .adm-stat-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(99, 102, 241, .15);
+    box-shadow: 0 12px 32px rgba(99, 102, 241, .08);
+  }
+
+  .adm-stat-value {
+    font-size: 30px;
+    font-weight: 800;
+  }
+
+  .adm-stat-label {
+    font-size: 12px;
+    color: #8a86c0;
+    margin-top: 4px;
+    letter-spacing: .04em;
+  }
+
+  .s-c1 {
+    color: #6366f1
+  }
+
+  .s-c2 {
+    color: #10b981
+  }
+
+  .s-c3 {
+    color: #f59e0b
+  }
+
+  .s-c4 {
+    color: #3b82f6
+  }
+
+  [data-theme="dark"] .adm-stat-card {
+    background: rgba(20, 18, 48, .45);
+    border-color: rgba(139, 130, 255, .05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .15);
+  }
+
+  [data-theme="dark"] .adm-stat-card:hover {
+    background: rgba(25, 23, 50, .6);
+    border-color: rgba(139, 130, 255, .15);
+  }
+
+  [data-theme="dark"] .adm-stat-label {
+    color: #6b6b9e;
+  }
+
+  /* ── Module grid staggered fade-up ── */
+  .adm-module-grid a {
+    animation: statIn .45s var(--ease-out-expo) both;
+  }
+
+  .adm-module-grid a:nth-child(1) {
+    animation-delay: .08s
+  }
+
+  .adm-module-grid a:nth-child(2) {
+    animation-delay: .12s
+  }
+
+  .adm-module-grid a:nth-child(3) {
+    animation-delay: .16s
+  }
+
+  .adm-module-grid a:nth-child(4) {
+    animation-delay: .20s
+  }
+
+  .adm-module-grid a:nth-child(5) {
+    animation-delay: .24s
+  }
+
+  .adm-module-grid a:nth-child(6) {
+    animation-delay: .28s
+  }
+
+  .adm-module-grid a:nth-child(7) {
+    animation-delay: .32s
+  }
+
+  .adm-module-grid a:nth-child(8) {
+    animation-delay: .36s
+  }
+
+  .adm-module-grid a:nth-child(9) {
+    animation-delay: .40s
+  }
+
+  .adm-module-grid a:nth-child(10) {
+    animation-delay: .44s
+  }
+
+  .adm-module-grid a:nth-child(11) {
+    animation-delay: .48s
+  }
 </style>
 
 <div class="adm-welcome-card">
@@ -44,10 +154,22 @@
 </div>
 
 <div class="adm-stat-grid">
-  <div class="adm-stat-card"><div class="adm-stat-value s-c1">{{ user_count }}</div><div class="adm-stat-label">前台用户</div></div>
-  <div class="adm-stat-card"><div class="adm-stat-value s-c2">{{ session_count }}</div><div class="adm-stat-label">会话总数</div></div>
-  <div class="adm-stat-card"><div class="adm-stat-value s-c3">{{ item_count }}</div><div class="adm-stat-label">瞭望条目</div></div>
-  <div class="adm-stat-card"><div class="adm-stat-value s-c4">{{ total_calls }}</div><div class="adm-stat-label">模型调用次数</div></div>
+  <div class="adm-stat-card">
+    <div class="adm-stat-value s-c1">{{ user_count }}</div>
+    <div class="adm-stat-label">前台用户</div>
+  </div>
+  <div class="adm-stat-card">
+    <div class="adm-stat-value s-c2">{{ session_count }}</div>
+    <div class="adm-stat-label">会话总数</div>
+  </div>
+  <div class="adm-stat-card">
+    <div class="adm-stat-value s-c3">{{ item_count }}</div>
+    <div class="adm-stat-label">瞭望条目</div>
+  </div>
+  <div class="adm-stat-card">
+    <div class="adm-stat-value s-c4">{{ total_calls }}</div>
+    <div class="adm-stat-label">模型调用次数</div>
+  </div>
 </div>
 
 <div class="adm-module-grid">
@@ -68,16 +190,24 @@
 <div class="adm-table-card" style="margin-top:20px">
   <div class="table-title"><strong>最近会话</strong><span>共 {{ session_count }} 条</span></div>
   <table class="adm-table">
-    <thead><tr><th>ID</th><th>用户</th><th>标题</th><th>时间</th></tr></thead>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>用户</th>
+        <th>标题</th>
+        <th>时间</th>
+      </tr>
+    </thead>
     <tbody>
-    {% for s in recent_sessions %}
-    <tr>
-      <td>{{ s['id'] }}</td>
-      <td>{{ s['username'] or '-' }}</td>
-      <td><a href="/admin/conversations/{{ s['id'] }}" style="color:#6366f1;text-decoration:none">{{ s['title'] }}</a></td>
-      <td style="color:#8a86c0;font-size:12px">{{ s['created_at'] }}</td>
-    </tr>
-    {% end %}
+      {% for s in recent_sessions %}
+      <tr>
+        <td>{{ s['id'] }}</td>
+        <td>{{ s['username'] or '-' }}</td>
+        <td><a href="/admin/conversations/{{ s['id'] }}" style="color:#6366f1;text-decoration:none">{{ s['title'] }}</a>
+        </td>
+        <td style="color:#8a86c0;font-size:12px">{{ s['created_at'] }}</td>
+      </tr>
+      {% end %}
     </tbody>
   </table>
 </div>

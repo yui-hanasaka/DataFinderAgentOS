@@ -1,22 +1,47 @@
 {% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>智能业务</p><h1>数据仓库</h1><span>管理预置 SQL 查询，供智能问数模块调用。</span></div>
+	<div>
+		<p>智能业务</p>
+		<h1>数据仓库</h1><span>管理预置 SQL 查询，供智能问数模块调用。</span>
+	</div>
 	<form class="admin-search" method="get" action="/admin/warehouse">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索名称/分类">
-		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/warehouse">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i class="fa-solid fa-plus"></i> 新增查询</button>
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
+			href="/admin/warehouse">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i
+				class="fa-solid fa-plus"></i> 新增查询</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>查询列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead><tr><th>ID</th><th>名称</th><th>分类</th><th>说明</th><th>操作</th></tr></thead>
-		<tbody>{% for q in queries %}<tr><td>{{ q['id'] }}</td><td>{{ q['name'] }}</td><td>{{ q['category'] or '-' }}</td><td>{{ q['description'] or '-' }}</td><td class="table-actions"><a href="/admin/warehouse?edit={{ q['id'] }}">查看/修改</a><form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ q['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>名称</th>
+				<th>分类</th>
+				<th>说明</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>{% for q in queries %}<tr>
+				<td>{{ q['id'] }}</td>
+				<td>{{ q['name'] }}</td>
+				<td>{{ q['category'] or '-' }}</td>
+				<td>{{ q['description'] or '-' }}</td>
+				<td class="table-actions"><a href="/admin/warehouse?edit={{ q['id'] }}">查看/修改</a>
+					<form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+							value="{{ q['id'] }}"><button type="submit">删除</button></form>
+				</td>
+			</tr>{% end %}</tbody>
 	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/warehouse?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/warehouse?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+	<div class="admin-pagination">{% if page > 1 %}<a
+			href="/admin/warehouse?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
+			页</span>{% if page * per_page < total %}<a
+			href="/admin/warehouse?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
 </section>
-<div class="modal fade admin-edit-modal" id="queryModal" tabindex="-1" {% if edit_query %}data-auto-open="true"{% end %}>
+<div class="modal fade admin-edit-modal" id="queryModal" tabindex="-1" {% if edit_query %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -32,14 +57,24 @@
 					{% if edit_query %}<input type="hidden" name="id" value="{{ edit_query['id'] }}">{% end %}
 					<section class="admin-form-section">
 						<div class="admin-grid-form">
-							<label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_query['name'] if edit_query else '' }}" placeholder="查询名称" required></label>
-							<label><span>分类</span><input type="text" name="category" value="{{ edit_query['category'] if edit_query else '' }}" placeholder="如：销售、库存"></label>
-							<label class="form-wide"><span>说明</span><input type="text" name="description" value="{{ edit_query['description'] if edit_query else '' }}" placeholder="查询用途描述"></label>
-							<label class="form-wide required"><span>SQL 查询</span><textarea name="sql_query" rows="10" style="font-family:monospace;font-size:13px" placeholder="SELECT ..." required>{{ edit_query['sql_query'] if edit_query else '' }}</textarea></label>
+							<label class="required"><span>名称</span><input type="text" name="name"
+									value="{{ edit_query['name'] if edit_query else '' }}" placeholder="查询名称"
+									required></label>
+							<label><span>分类</span><input type="text" name="category"
+									value="{{ edit_query['category'] if edit_query else '' }}"
+									placeholder="如：销售、库存"></label>
+							<label class="form-wide"><span>说明</span><input type="text" name="description"
+									value="{{ edit_query['description'] if edit_query else '' }}"
+									placeholder="查询用途描述"></label>
+							<label class="form-wide required"><span>SQL 查询</span><textarea name="sql_query" rows="10"
+									style="font-family:monospace;font-size:13px" placeholder="SELECT ..."
+									required>{{ edit_query['sql_query'] if edit_query else '' }}</textarea></label>
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="btn btn-light"
+						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
+				</div>
 			</form>
 		</div>
 	</div>

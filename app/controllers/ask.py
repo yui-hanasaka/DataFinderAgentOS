@@ -27,6 +27,7 @@ class AskHomeHandler(AskBaseHandler):
             query="",
             results=[],
             columns=[],
+            ask_init_json=json.dumps({"columns": [], "results": []}),
             error=None,
         )
 

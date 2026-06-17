@@ -1,222 +1,241 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title }} · AgentOS 管理</title>
-<link rel="stylesheet" href="{{ static_url('css/base.css') }}">
-<link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
-{% block head_extra %}{% end %}
-<script>
-(function(){
-  var t = localStorage.getItem('theme');
-  if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
-  else document.documentElement.setAttribute('data-theme', t);
-})();
-</script>
-<script src="{{ static_url('js/base.js') }}"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · AgentOS 管理</title>
+  <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
+  <link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
+  {% block head_extra %}{% end %}
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (!t || t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <script src="{{ static_url('js/base.js') }}"></script>
 </head>
+
 <body class="adm-shell">
-<div class="adm-layout">
-  <!-- Sidebar -->
-  <aside class="adm-sidebar" id="admSidebar">
-    <a class="adm-brand" href="/home" title="返回用户端">
-      <div class="adm-brand-dot">D</div>
-      <div>
-        <strong>AgentOS</strong>
-        <span>后台管理</span>
+  <div class="adm-layout">
+    <!-- Sidebar -->
+    <aside class="adm-sidebar" id="admSidebar">
+      <a class="adm-brand" href="/home" title="返回用户端">
+        <div class="adm-brand-dot">D</div>
+        <div>
+          <strong>AgentOS</strong>
+          <span>后台管理</span>
+        </div>
+      </a>
+
+      <div class="adm-nav-label">主菜单</div>
+      <nav class="adm-nav">
+        {% set current = request.path %}
+        <a href="/admin/home" class="{% if current == '/admin/home' %}active{% end %}"><span
+            class="nav-icon">🏠</span>后台主页</a>
+        <a href="/admin/users" class="{% if current == '/admin/users' %}active{% end %}"><span
+            class="nav-icon">👥</span>用户管理</a>
+        <a href="/admin/roles" class="{% if current == '/admin/roles' %}active{% end %}"><span
+            class="nav-icon">🛡</span>角色管理</a>
+        <a href="/admin/menus" class="{% if current == '/admin/menus' %}active{% end %}"><span
+            class="nav-icon">📋</span>功能管理</a>
+        <a href="/admin/permissions" class="{% if current == '/admin/permissions' %}active{% end %}"><span
+            class="nav-icon">🔐</span>权限管理</a>
+      </nav>
+
+      <div class="adm-nav-label">业务模块</div>
+      <nav class="adm-nav">
+        <a href="/admin/models" class="{% if current == '/admin/models' %}active{% end %}"><span
+            class="nav-icon">🧠</span>模型引擎</a>
+        <a href="/admin/skills" class="{% if current == '/admin/skills' %}active{% end %}"><span
+            class="nav-icon">⚡</span>技能管理</a>
+        <a href="/admin/employees" class="{% if current == '/admin/employees' %}active{% end %}"><span
+            class="nav-icon">🤖</span>数字员工</a>
+        <a href="/admin/watchtower" class="{% if current == '/admin/watchtower' %}active{% end %}"><span
+            class="nav-icon">📡</span>瞭望管理</a>
+        <a href="/admin/warehouse" class="{% if current == '/admin/warehouse' %}active{% end %}"><span
+            class="nav-icon">🗄</span>数据仓库</a>
+        <a href="/admin/deep" class="{% if current == '/admin/deep' %}active{% end %}"><span
+            class="nav-icon">🔍</span>深度采集</a>
+        <a href="/admin/apis" class="{% if current == '/admin/apis' %}active{% end %}"><span
+            class="nav-icon">🔌</span>接口管理</a>
+      </nav>
+
+      <div class="adm-nav-label">监控</div>
+      <nav class="adm-nav">
+        <a href="/admin/sessions" class="{% if current == '/admin/sessions' %}active{% end %}"><span
+            class="nav-icon">💬</span>会话管理</a>
+        <a href="/admin/screen" class="{% if current == '/admin/screen' %}active{% end %}"><span
+            class="nav-icon">📊</span>数智大屏</a>
+        <a href="/admin/settings" class="{% if current == '/admin/settings' %}active{% end %}"><span
+            class="nav-icon">⚙</span>系统设置</a>
+      </nav>
+
+      <div class="adm-sidebar-footer">
+        <button class="adm-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
+        <span class="adm-user">{{ username }}</span>
+        <form method="post" action="/admin/logout">
+          {% module xsrf_form_html() %}
+          <button type="submit" class="adm-logout-btn">退出</button>
+        </form>
       </div>
-    </a>
+    </aside>
 
-    <div class="adm-nav-label">主菜单</div>
-    <nav class="adm-nav">
-      {% set current = request.path %}
-      <a href="/admin/home" class="{% if current == '/admin/home' %}active{% end %}"><span class="nav-icon">🏠</span>后台主页</a>
-      <a href="/admin/users" class="{% if current == '/admin/users' %}active{% end %}"><span class="nav-icon">👥</span>用户管理</a>
-      <a href="/admin/roles" class="{% if current == '/admin/roles' %}active{% end %}"><span class="nav-icon">🛡</span>角色管理</a>
-      <a href="/admin/menus" class="{% if current == '/admin/menus' %}active{% end %}"><span class="nav-icon">📋</span>功能管理</a>
-      <a href="/admin/permissions" class="{% if current == '/admin/permissions' %}active{% end %}"><span class="nav-icon">🔐</span>权限管理</a>
-    </nav>
-
-    <div class="adm-nav-label">业务模块</div>
-    <nav class="adm-nav">
-      <a href="/admin/models" class="{% if current == '/admin/models' %}active{% end %}"><span class="nav-icon">🧠</span>模型引擎</a>
-      <a href="/admin/skills" class="{% if current == '/admin/skills' %}active{% end %}"><span class="nav-icon">⚡</span>技能管理</a>
-      <a href="/admin/employees" class="{% if current == '/admin/employees' %}active{% end %}"><span class="nav-icon">🤖</span>数字员工</a>
-      <a href="/admin/watchtower" class="{% if current == '/admin/watchtower' %}active{% end %}"><span class="nav-icon">📡</span>瞭望管理</a>
-      <a href="/admin/warehouse" class="{% if current == '/admin/warehouse' %}active{% end %}"><span class="nav-icon">🗄</span>数据仓库</a>
-      <a href="/admin/deep" class="{% if current == '/admin/deep' %}active{% end %}"><span class="nav-icon">🔍</span>深度采集</a>
-      <a href="/admin/apis" class="{% if current == '/admin/apis' %}active{% end %}"><span class="nav-icon">🔌</span>接口管理</a>
-    </nav>
-
-    <div class="adm-nav-label">监控</div>
-    <nav class="adm-nav">
-      <a href="/admin/sessions" class="{% if current == '/admin/sessions' %}active{% end %}"><span class="nav-icon">💬</span>会话管理</a>
-      <a href="/admin/screen" class="{% if current == '/admin/screen' %}active{% end %}"><span class="nav-icon">📊</span>数智大屏</a>
-      <a href="/admin/settings" class="{% if current == '/admin/settings' %}active{% end %}"><span class="nav-icon">⚙</span>系统设置</a>
-    </nav>
-
-    <div class="adm-sidebar-footer">
-      <button class="adm-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
-      <span class="adm-user">{{ username }}</span>
-      <form method="post" action="/admin/logout">
-        {% module xsrf_form_html() %}
-        <button type="submit" class="adm-logout-btn">退出</button>
-      </form>
+    <!-- Main -->
+    <div class="adm-main">
+      <button class="adm-menu-toggle"
+        onclick="document.getElementById('admSidebar').classList.toggle('open')">☰</button>
+      <main class="adm-workspace">
+        {% block body %}{% end %}
+      </main>
     </div>
-  </aside>
-
-  <!-- Main -->
-  <div class="adm-main">
-    <button class="adm-menu-toggle" onclick="document.getElementById('admSidebar').classList.toggle('open')">☰</button>
-    <main class="adm-workspace">
-      {% block body %}{% end %}
-    </main>
   </div>
-</div>
 
-<!-- Glass Toast Container -->
-<div class="adm-toast-container" id="admToastContainer"></div>
+  <!-- Glass Toast Container -->
+  <div class="adm-toast-container" id="admToastContainer"></div>
 
-<!-- Glass Confirmation Modal (for form confirmations only) -->
-<div class="adm-modal-mask" id="admModalMask" onclick="closeAdmModal()"></div>
-<div class="adm-modal" id="admModal">
-  <div class="adm-modal-header">
-    <h5 id="admModalTitle">操作确认</h5>
-    <button class="adm-modal-close" onclick="closeAdmModal()">✕</button>
+  <!-- Glass Confirmation Modal (for form confirmations only) -->
+  <div class="adm-modal-mask" id="admModalMask" onclick="closeAdmModal()"></div>
+  <div class="adm-modal" id="admModal">
+    <div class="adm-modal-header">
+      <h5 id="admModalTitle">操作确认</h5>
+      <button class="adm-modal-close" onclick="closeAdmModal()">✕</button>
+    </div>
+    <div class="adm-modal-body" id="admModalBody">确认执行该操作？</div>
+    <div class="adm-modal-footer">
+      <button class="adm-btn adm-btn-ghost" onclick="closeAdmModal()">取消</button>
+      <button class="adm-btn adm-btn-primary" id="admModalSubmit">确认执行</button>
+    </div>
   </div>
-  <div class="adm-modal-body" id="admModalBody">确认执行该操作？</div>
-  <div class="adm-modal-footer">
-    <button class="adm-btn adm-btn-ghost" onclick="closeAdmModal()">取消</button>
-    <button class="adm-btn adm-btn-primary" id="admModalSubmit">确认执行</button>
-  </div>
-</div>
 
-<script>
-/* ═══════════════════ Modal System ═══════════════════
- *
- * Two independent modal systems coexist:
- *
- * 1. Glass Confirmation Modal (#admModalMask + #admModal)
- *    - Used by: openAdmModal(), form[data-confirm]
- *    - Backdrop: #admModalMask (z-1000, backdrop-filter blur)
- *    - Panel: #admModal (z-1010, centered glass card)
- *
- * 2. CRUD Modals (.admin-edit-modal)
- *    - Used by: data-bs-toggle="modal" buttons in CRUD pages
- *    - Backdrop: ::before pseudo-element (z-1000 stacking, own blur)
- *    - Panel: .modal-dialog (z-1 relative, glass card)
- *
- * Key rule: CRUD modals use their OWN ::before backdrop.
- * NEVER show #admModalMask for .admin-edit-modal targets —
- * that causes double-blur "grey fog" overlay.
- */
+  <script>
+    /* ═══════════════════ Modal System ═══════════════════
+     *
+     * Two independent modal systems coexist:
+     *
+     * 1. Glass Confirmation Modal (#admModalMask + #admModal)
+     *    - Used by: openAdmModal(), form[data-confirm]
+     *    - Backdrop: #admModalMask (z-1000, backdrop-filter blur)
+     *    - Panel: #admModal (z-1010, centered glass card)
+     *
+     * 2. CRUD Modals (.admin-edit-modal)
+     *    - Used by: data-bs-toggle="modal" buttons in CRUD pages
+     *    - Backdrop: ::before pseudo-element (z-1000 stacking, own blur)
+     *    - Panel: .modal-dialog (z-1 relative, glass card)
+     *
+     * Key rule: CRUD modals use their OWN ::before backdrop.
+     * NEVER show #admModalMask for .admin-edit-modal targets —
+     * that causes double-blur "grey fog" overlay.
+     */
 
-/* ── Bootstrap data-bs-toggle="modal" → CRUD modals ── */
-document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function(el){
-  el.addEventListener('click', function(e){
-    e.preventDefault();
-    var targetSel = el.getAttribute('data-bs-target');
-    var target = targetSel ? document.querySelector(targetSel) : null;
-    if (!target) return;
-
-    // CRUD modal: use its own ::before backdrop, do NOT touch #admModalMask
-    target.classList.add('show');
-
-    // Wire dismiss buttons
-    target.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(function(btn){
-      btn.onclick = function(e){
+    /* ── Bootstrap data-bs-toggle="modal" → CRUD modals ── */
+    document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
         e.preventDefault();
-        target.classList.remove('show');
-      };
+        var targetSel = el.getAttribute('data-bs-target');
+        var target = targetSel ? document.querySelector(targetSel) : null;
+        if (!target) return;
+
+        // CRUD modal: use its own ::before backdrop, do NOT touch #admModalMask
+        target.classList.add('show');
+
+        // Wire dismiss buttons
+        target.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(function (btn) {
+          btn.onclick = function (e) {
+            e.preventDefault();
+            target.classList.remove('show');
+          };
+        });
+      });
     });
-  });
-});
 
-/* ── Click-outside-to-close for CRUD modals ── */
-document.addEventListener('click', function(e){
-  // If clicking directly on the .admin-edit-modal overlay (not its dialog child)
-  if (e.target.classList.contains('admin-edit-modal') && e.target.classList.contains('show')) {
-    e.target.classList.remove('show');
-  }
-});
-
-/* ── Bootstrap-modal compatibility: dismiss wiring ── */
-document.querySelectorAll('.admin-edit-modal').forEach(function(modal){
-  modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function(btn){
-    btn.onclick = function(){ modal.classList.remove('show'); };
-  });
-  // Auto-open for edit pages (e.g. ?edit=1)
-  if (modal.dataset.autoOpen === 'true') { modal.classList.add('show'); }
-});
-
-/* ── Toast ── */
-function showAdmToast(msg) {
-  var container = document.getElementById('admToastContainer');
-  var toast = document.createElement('div');
-  toast.className = 'adm-toast';
-  toast.textContent = msg;
-  container.appendChild(toast);
-  requestAnimationFrame(function(){ toast.classList.add('show'); });
-  setTimeout(function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 400); }, 2800);
-}
-
-/* ── Glass Confirmation Modal ── */
-var admModalCb = null;
-function openAdmModal(title, body, cb) {
-  document.getElementById('admModalTitle').textContent = title;
-  document.getElementById('admModalBody').textContent = body;
-  document.getElementById('admModalMask').classList.add('show');
-  document.getElementById('admModal').classList.add('show');
-  admModalCb = cb;
-}
-function closeAdmModal() {
-  document.getElementById('admModalMask').classList.remove('show');
-  document.getElementById('admModal').classList.remove('show');
-  admModalCb = null;
-}
-document.getElementById('admModalSubmit').addEventListener('click', function(){
-  if (admModalCb) admModalCb();
-  closeAdmModal();
-});
-
-/* ── Confirm forms (use glass confirmation modal) ── */
-document.querySelectorAll('form[data-confirm]').forEach(function(form){
-  form.addEventListener('submit', function(e){
-    if (form.dataset.confirmed === 'true') return;
-    e.preventDefault();
-    openAdmModal('操作确认', form.dataset.confirm || '确认执行该操作？', function(){
-      form.dataset.confirmed = 'true';
-      form.submit();
+    /* ── Click-outside-to-close for CRUD modals ── */
+    document.addEventListener('click', function (e) {
+      // If clicking directly on the .admin-edit-modal overlay (not its dialog child)
+      if (e.target.classList.contains('admin-edit-modal') && e.target.classList.contains('show')) {
+        e.target.classList.remove('show');
+      }
     });
-  });
-});
 
-/* ── Auto-open modals (data-modal-open custom attr) ── */
-document.querySelectorAll('[data-modal-open]').forEach(function(el){
-  var modalEl = document.getElementById(el.dataset.modalOpen);
-  if (modalEl) { modalEl.classList.add('show'); }
-});
+    /* ── Bootstrap-modal compatibility: dismiss wiring ── */
+    document.querySelectorAll('.admin-edit-modal').forEach(function (modal) {
+      modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function (btn) {
+        btn.onclick = function () { modal.classList.remove('show'); };
+      });
+      // Auto-open for edit pages (e.g. ?edit=1)
+      if (modal.dataset.autoOpen === 'true') { modal.classList.add('show'); }
+    });
 
-/* ── Auto-show toasts ── */
-document.querySelectorAll('.adm-toast-auto').forEach(function(el){
-  showAdmToast(el.textContent.trim());
-  el.remove();
-});
+    /* ── Toast ── */
+    function showAdmToast(msg) {
+      var container = document.getElementById('admToastContainer');
+      var toast = document.createElement('div');
+      toast.className = 'adm-toast';
+      toast.textContent = msg;
+      container.appendChild(toast);
+      requestAnimationFrame(function () { toast.classList.add('show'); });
+      setTimeout(function () { toast.classList.remove('show'); setTimeout(function () { toast.remove(); }, 400); }, 2800);
+    }
 
-/* ── Theme ── */
-initThemeIcon('themeIcon');
+    /* ── Glass Confirmation Modal ── */
+    var admModalCb = null;
+    function openAdmModal(title, body, cb) {
+      document.getElementById('admModalTitle').textContent = title;
+      document.getElementById('admModalBody').textContent = body;
+      document.getElementById('admModalMask').classList.add('show');
+      document.getElementById('admModal').classList.add('show');
+      admModalCb = cb;
+    }
+    function closeAdmModal() {
+      document.getElementById('admModalMask').classList.remove('show');
+      document.getElementById('admModal').classList.remove('show');
+      admModalCb = null;
+    }
+    document.getElementById('admModalSubmit').addEventListener('click', function () {
+      if (admModalCb) admModalCb();
+      closeAdmModal();
+    });
 
-/* ── Sticky page-head scroll shadow ── */
-(function(){
-  var head = document.querySelector('.adm-page-head');
-  if (!head) return;
-  var ws = document.querySelector('.adm-workspace');
-  if (!ws) return;
-  ws.addEventListener('scroll', function(){
-    head.classList.toggle('scrolled', ws.scrollTop > 8);
-  });
-})();
-</script>
+    /* ── Confirm forms (use glass confirmation modal) ── */
+    document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (form.dataset.confirmed === 'true') return;
+        e.preventDefault();
+        openAdmModal('操作确认', form.dataset.confirm || '确认执行该操作？', function () {
+          form.dataset.confirmed = 'true';
+          form.submit();
+        });
+      });
+    });
+
+    /* ── Auto-open modals (data-modal-open custom attr) ── */
+    document.querySelectorAll('[data-modal-open]').forEach(function (el) {
+      var modalEl = document.getElementById(el.dataset.modalOpen);
+      if (modalEl) { modalEl.classList.add('show'); }
+    });
+
+    /* ── Auto-show toasts ── */
+    document.querySelectorAll('.adm-toast-auto').forEach(function (el) {
+      showAdmToast(el.textContent.trim());
+      el.remove();
+    });
+
+    /* ── Theme ── */
+    initThemeIcon('themeIcon');
+
+    /* ── Sticky page-head scroll shadow ── */
+    (function () {
+      var head = document.querySelector('.adm-page-head');
+      if (!head) return;
+      var ws = document.querySelector('.adm-workspace');
+      if (!ws) return;
+      ws.addEventListener('scroll', function () {
+        head.classList.toggle('scrolled', ws.scrollTop > 8);
+      });
+    })();
+  </script>
 </body>
+
 </html>

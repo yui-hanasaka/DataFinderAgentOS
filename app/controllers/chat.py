@@ -74,6 +74,9 @@ class ChatNewHandler(ChatBaseHandler):
 
     def post(self):
         user_id = self._user_id()
+        if not check_rate_limit(f"chat_new:user:{user_id}", 10, 60):
+            self.set_status(429)
+            return self.finish("请求过于频繁，请稍后再试")
         employee_id = int(self.get_body_argument("employee_id", "0") or 0)
         sess_id, _ = ChatRepository.create_session(user_id, employee_id, "新对话")
         self.redirect(f"/chat/session/{sess_id}")

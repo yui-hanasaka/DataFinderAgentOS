@@ -1,22 +1,52 @@
 {% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>智能业务</p><h1>接口管理</h1><span>管理外部 API 密钥，供技能模块调用天气、音乐、搜索等服务。</span></div>
+	<div>
+		<p>智能业务</p>
+		<h1>接口管理</h1><span>管理外部 API 密钥，供技能模块调用天气、音乐、搜索等服务。</span>
+	</div>
 	<form class="admin-search" method="get" action="/admin/apis">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索接口名称">
-		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/apis">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#apiModal"><i class="fa-solid fa-plus"></i> 新增接口</button>
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
+			href="/admin/apis">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#apiModal"><i
+				class="fa-solid fa-plus"></i> 新增接口</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>接口列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead><tr><th>ID</th><th>名称</th><th>类型</th><th>Endpoint</th><th>Key</th><th>状态</th><th>操作</th></tr></thead>
-		<tbody>{% for api in api_keys %}<tr><td>{{ api['id'] }}</td><td>{{ api['name'] }}</td><td>{{ api['api_type'] }}</td><td class="text-truncate" style="max-width:140px" title="{{ api['endpoint'] }}">{{ api['endpoint'] or '-' }}</td><td>{{ api['api_key'][:4] + '****' if api['api_key'] else '-' }}</td><td>{{ api['status'] }}</td><td class="table-actions"><a href="/admin/apis?edit={{ api['id'] }}">查看/修改</a><form method="post" action="/admin/apis" data-confirm="确认删除该接口配置？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ api['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>名称</th>
+				<th>类型</th>
+				<th>Endpoint</th>
+				<th>Key</th>
+				<th>状态</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>{% for api in api_keys %}<tr>
+				<td>{{ api['id'] }}</td>
+				<td>{{ api['name'] }}</td>
+				<td>{{ api['api_type'] }}</td>
+				<td class="text-truncate" style="max-width:140px" title="{{ api['endpoint'] }}">{{ api['endpoint'] or
+					'-' }}</td>
+				<td>{{ api['api_key'][:4] + '****' if api['api_key'] else '-' }}</td>
+				<td>{{ api['status'] }}</td>
+				<td class="table-actions"><a href="/admin/apis?edit={{ api['id'] }}">查看/修改</a>
+					<form method="post" action="/admin/apis" data-confirm="确认删除该接口配置？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+							value="{{ api['id'] }}"><button type="submit">删除</button></form>
+				</td>
+			</tr>{% end %}</tbody>
 	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/apis?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/apis?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+	<div class="admin-pagination">{% if page > 1 %}<a
+			href="/admin/apis?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{%
+		if page * per_page < total %}<a href="/admin/apis?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
+	</div>
 </section>
-<div class="modal fade admin-edit-modal" id="apiModal" tabindex="-1" {% if edit_api %}data-auto-open="true"{% end %}>
+<div class="modal fade admin-edit-modal" id="apiModal" tabindex="-1" {% if edit_api %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -32,15 +62,32 @@
 					{% if edit_api %}<input type="hidden" name="id" value="{{ edit_api['id'] }}">{% end %}
 					<section class="admin-form-section">
 						<div class="admin-grid-form">
-							<label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_api['name'] if edit_api else '' }}" placeholder="接口名称" required></label>
-							<label class="required"><span>类型</span><select name="api_type"><option value="weather" {% if edit_api and edit_api['api_type'] == 'weather' %}selected{% end %}>天气</option><option value="music" {% if edit_api and edit_api['api_type'] == 'music' %}selected{% end %}>音乐</option><option value="websearch" {% if edit_api and edit_api['api_type'] == 'websearch' %}selected{% end %}>网络搜索</option><option value="other" {% if not edit_api or edit_api['api_type'] == 'other' %}selected{% end %}>其他</option></select></label>
-							<label class="form-wide"><span>Endpoint</span><input type="text" name="endpoint" value="{{ edit_api['endpoint'] if edit_api else '' }}" placeholder="https://api.example.com/v1"></label>
-							<label class="required"><span>API Key</span><input type="text" name="api_key" value="{{ edit_api['api_key'] if edit_api else '' }}" placeholder="密钥值" required></label>
-							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_api or edit_api['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_api and edit_api['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
+							<label class="required"><span>名称</span><input type="text" name="name"
+									value="{{ edit_api['name'] if edit_api else '' }}" placeholder="接口名称"
+									required></label>
+							<label class="required"><span>类型</span><select name="api_type">
+									<option value="weather" {% if edit_api and edit_api['api_type']=='weather' %}selected{% end %}>天气</option>
+									<option value="music" {% if edit_api and edit_api['api_type']=='music' %}selected{%
+										end %}>音乐</option>
+									<option value="websearch" {% if edit_api and edit_api['api_type']=='websearch' %}selected{% end %}>网络搜索</option>
+									<option value="other" {% if not edit_api or edit_api['api_type']=='other' %}selected{% end %}>其他</option>
+								</select></label>
+							<label class="form-wide"><span>Endpoint</span><input type="text" name="endpoint"
+									value="{{ edit_api['endpoint'] if edit_api else '' }}"
+									placeholder="https://api.example.com/v1"></label>
+							<label class="required"><span>API Key</span><input type="text" name="api_key"
+									value="{{ edit_api['api_key'] if edit_api else '' }}" placeholder="密钥值"
+									required></label>
+							<label class="required"><span>状态</span><select name="status">
+									<option value="enabled" {% if not edit_api or edit_api['status']=='enabled' %}selected{% end %}>启用</option>
+									<option value="disabled" {% if edit_api and edit_api['status']=='disabled' %}selected{% end %}>禁用</option>
+								</select></label>
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="btn btn-light"
+						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
+				</div>
 			</form>
 		</div>
 	</div>

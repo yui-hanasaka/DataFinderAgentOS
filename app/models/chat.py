@@ -18,7 +18,13 @@ class ChatRepository:
     def get_session(session_id):
         with get_connection() as conn:
             return conn.execute(
-                "SELECT * FROM chat_sessions WHERE id=?", (session_id,)
+                """SELECT s.*, u.username,
+                          COALESCE(e.name, '-') AS employee_name
+                   FROM chat_sessions s
+                   LEFT JOIN users u ON s.user_id = u.id
+                   LEFT JOIN digital_employees e ON s.employee_id = e.id
+                   WHERE s.id=?""",
+                (session_id,),
             ).fetchone()
 
     @staticmethod

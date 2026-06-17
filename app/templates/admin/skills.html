@@ -1,22 +1,49 @@
 {% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>智能业务</p><h1>技能管理</h1><span>维护内置技能与外部 API 技能，供数字员工绑定使用。</span></div>
+	<div>
+		<p>智能业务</p>
+		<h1>技能管理</h1><span>维护内置技能与外部 API 技能，供数字员工绑定使用。</span>
+	</div>
 	<form class="admin-search" method="get" action="/admin/skills">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索技能名称/编码">
-		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a href="/admin/skills">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#skillModal"><i class="fa-solid fa-plus"></i> 新增技能</button>
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
+			href="/admin/skills">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#skillModal"><i
+				class="fa-solid fa-plus"></i> 新增技能</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>技能列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead><tr><th>ID</th><th>编码</th><th>名称</th><th>类型</th><th>状态</th><th>操作</th></tr></thead>
-		<tbody>{% for skill in skills %}<tr><td>{{ skill['id'] }}</td><td>{{ skill['code'] }}</td><td>{{ skill['name'] }}</td><td>{{ '内置' if skill['skill_type'] == 'builtin' else '外部API' }}</td><td>{{ skill['status'] }}</td><td class="table-actions"><a href="/admin/skills?edit={{ skill['id'] }}">查看/修改</a><form method="post" action="/admin/skills" data-confirm="确认删除该技能？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ skill['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>编码</th>
+				<th>名称</th>
+				<th>类型</th>
+				<th>状态</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>{% for skill in skills %}<tr>
+				<td>{{ skill['id'] }}</td>
+				<td>{{ skill['code'] }}</td>
+				<td>{{ skill['name'] }}</td>
+				<td>{{ '内置' if skill['skill_type'] == 'builtin' else '外部API' }}</td>
+				<td>{{ skill['status'] }}</td>
+				<td class="table-actions"><a href="/admin/skills?edit={{ skill['id'] }}">查看/修改</a>
+					<form method="post" action="/admin/skills" data-confirm="确认删除该技能？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+							value="{{ skill['id'] }}"><button type="submit">删除</button></form>
+				</td>
+			</tr>{% end %}</tbody>
 	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/skills?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/skills?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+	<div class="admin-pagination">{% if page > 1 %}<a
+			href="/admin/skills?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{%
+		if page * per_page < total %}<a href="/admin/skills?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
+	</div>
 </section>
-<div class="modal fade admin-edit-modal" id="skillModal" tabindex="-1" {% if edit_skill %}data-auto-open="true"{% end %}>
+<div class="modal fade admin-edit-modal" id="skillModal" tabindex="-1" {% if edit_skill %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -33,15 +60,28 @@
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">基础信息</div>
 						<div class="admin-grid-form">
-							<label class="required"><span>编码</span><input type="text" name="code" value="{{ edit_skill['code'] if edit_skill else '' }}" {% if edit_skill %}readonly{% end %} placeholder="唯一标识，字母数字下划线" required></label>
-							<label class="required"><span>名称</span><input type="text" name="name" value="{{ edit_skill['name'] if edit_skill else '' }}" placeholder="技能显示名称" required></label>
-							<label class="required"><span>类型</span><select name="skill_type"><option value="builtin" {% if not edit_skill or edit_skill['skill_type'] == 'builtin' %}selected{% end %}>内置</option><option value="api" {% if edit_skill and edit_skill['skill_type'] == 'api' %}selected{% end %}>外部API</option></select></label>
-							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_skill or edit_skill['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_skill and edit_skill['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
-							<label class="form-wide"><span>配置 JSON</span><textarea name="config_json" rows="6" placeholder='{"endpoint": "", "method": "POST", "params": {}}'>{{ edit_skill['config_json'] if edit_skill else '' }}</textarea></label>
+							<label class="required"><span>编码</span><input type="text" name="code"
+									value="{{ edit_skill['code'] if edit_skill else '' }}" {% if edit_skill %}readonly{%
+									end %} placeholder="唯一标识，字母数字下划线" required></label>
+							<label class="required"><span>名称</span><input type="text" name="name"
+									value="{{ edit_skill['name'] if edit_skill else '' }}" placeholder="技能显示名称"
+									required></label>
+							<label class="required"><span>类型</span><select name="skill_type">
+									<option value="builtin" {% if not edit_skill or edit_skill['skill_type']=='builtin' %}selected{% end %}>内置</option>
+									<option value="api" {% if edit_skill and edit_skill['skill_type']=='api' %}selected{% end %}>外部API</option>
+								</select></label>
+							<label class="required"><span>状态</span><select name="status">
+									<option value="enabled" {% if not edit_skill or edit_skill['status']=='enabled' %}selected{% end %}>启用</option>
+									<option value="disabled" {% if edit_skill and edit_skill['status']=='disabled' %}selected{% end %}>禁用</option>
+								</select></label>
+							<label class="form-wide"><span>配置 JSON</span><textarea name="config_json" rows="6"
+									placeholder='{"endpoint": "", "method": "POST", "params": {}}'>{{ edit_skill['config_json'] if edit_skill else '' }}</textarea></label>
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="btn btn-light"
+						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
+				</div>
 			</form>
 		</div>
 	</div>

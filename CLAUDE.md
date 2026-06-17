@@ -5,31 +5,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-uv run python app.py          # start server on :10086 (autoreload enabled)
-uv run pytest                 # all tests
-uv run pytest test/test_db.py # single file
-uv run pyright                # type check (standard, Python 3.12+)
-uv run ruff check .           # lint
-uv run ruff format .          # format
-npx @biomejs/biome check app/static/js/  # JS lint
+uv run python app.py                       # start server on :10086 (autoreload enabled)
+uv run pytest                              # all tests
+uv run pytest test/test_db.py              # single file
+uv run pyright                             # type check (standard, Python 3.12+)
+uv run ruff check .                        # lint
+uv run ruff format .                       # format
+npx @biomejs/biome check                  # JS/CSS lint + format
+npx eslint app/static/js/ app/templates/ --ext .html,.js  # JS lint (incl. inline scripts)
+uv run python scripts/check_templates.py   # template syntax checker
 ```
 
 ## Quality Gate (mandatory after every task)
 
-After completing any code change, run ALL three checks in order and ensure 100% pass:
+After completing any code change, run ALL checks in order and ensure 100% pass:
 
 ```
-1. uv run ruff check .        # 0 errors
-2. uv run ruff format .       # no changes left
-3. uv run pyright             # 0 errors, 0 warnings, 0 informations
+1. uv run ruff check .                        # 0 errors
+2. uv run ruff format .                       # no changes left
+3. uv run pyright                             # 0 errors, 0 warnings, 0 informations
+4. npx @biomejs/biome check                   # 0 errors, 0 warnings
+5. npx eslint app/static/js/ app/templates/ --ext .html,.js  # 0 real errors (see note)
+6. uv run python scripts/check_templates.py   # 0 template issues
 ```
 
 **Strict rules:**
 - Zero `#noqa` comments allowed anywhere — fix the root cause instead.
 - Zero `# type: ignore` comments allowed anywhere — fix the type issue instead.
+- Zero `/* eslint-disable */`, `// biome-ignore`, `<!-- eslint-disable -->` comments allowed anywhere.
+- NEVER use Bash (`sed`/`cat`/`grep` etc.) or PowerShell to edit file content. Use the dedicated Read / Write / Edit tools instead.
 - If ruff format produces changes, re-run ruff check afterwards.
 - pyright must report `0 errors, 0 warnings, 0 informations` — no suppressed diagnostics of any severity.
-- Run all three checks sequentially and report the output verbatim. Do not skip any check.
+- Run all checks sequentially and report the output verbatim. Do not skip any check.
+
+**ESLint note:** `Parsing error: Unexpected token {` on lines containing `{{ }}` in `<script>` blocks is a known false positive — ESLint cannot parse Tornado template syntax inside JavaScript. These 2 files (screen.html, ask.html) are verified by the template checker (step 6) instead. All other ESLint errors must be zero.
 
 ## Architecture
 

@@ -1,7 +1,10 @@
 ﻿{% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>智能业务</p><h1>会话管理</h1><span>查看所有用户的对话会话，支持关键词搜索与删除操作。</span></div>
+	<div>
+		<p>智能业务</p>
+		<h1>会话管理</h1><span>查看所有用户的对话会话，支持关键词搜索与删除操作。</span>
+	</div>
 	<form class="admin-search" method="get" action="/admin/sessions">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索用户/员工/标题">
 		<button type="submit">🔍 搜索</button><a href="/admin/sessions">重置</a>
@@ -11,9 +14,34 @@
 <section class="admin-table-card">
 	<div class="table-title"><strong>会话列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead><tr><th>ID</th><th>用户</th><th>数字员工</th><th>标题</th><th>消息数</th><th>创建时间</th><th>操作</th></tr></thead>
-		<tbody>{% for s in sessions %}<tr><td>{{ s['id'] }}</td><td>{{ s['username'] or '-' }}</td><td>{{ s['employee_name'] or '-' }}</td><td><a href="/admin/conversations/{{ s['id'] }}">{{ s['title'] or '(无标题)' }}</a></td><td>{{ s['msg_count'] }}</td><td>{{ s['created_at'] }}</td><td class="table-actions"><form method="post" action="/admin/sessions" data-confirm="确认删除该会话及其所有消息？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ s['id'] }}"><button type="submit">删除</button></form></td></tr>{% end %}</tbody>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>用户</th>
+				<th>数字员工</th>
+				<th>标题</th>
+				<th>消息数</th>
+				<th>创建时间</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>{% for s in sessions %}<tr>
+				<td>{{ s['id'] }}</td>
+				<td>{{ s['username'] or '-' }}</td>
+				<td>{{ s['employee_name'] or '-' }}</td>
+				<td><a href="/admin/conversations/{{ s['id'] }}">{{ s['title'] or '(无标题)' }}</a></td>
+				<td>{{ s['msg_count'] }}</td>
+				<td>{{ s['created_at'] }}</td>
+				<td class="table-actions">
+					<form method="post" action="/admin/sessions" data-confirm="确认删除该会话及其所有消息？">{% module
+						xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden"
+							name="id" value="{{ s['id'] }}"><button type="submit">删除</button></form>
+				</td>
+			</tr>{% end %}</tbody>
 	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/sessions?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/sessions?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+	<div class="admin-pagination">{% if page > 1 %}<a
+			href="/admin/sessions?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
+			页</span>{% if page * per_page < total %}<a href="/admin/sessions?page={{ page + 1 }}&keyword={{ keyword }}">
+			下一页</a>{% end %}</div>
 </section>
 {% end %}

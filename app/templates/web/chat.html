@@ -1,381 +1,1052 @@
 {% extends "base.html" %}
 {% block body %}
 <style>
-/* ═══════════════ Apple-style Glassmorphism Chat ═══════════════ */
-/* Spring curve: overshoot + settle */
-:root{--spring: cubic-bezier(.34,1.56,.64,1); --spring-soft: cubic-bezier(.25,1.2,.5,1); --ease-out-expo: cubic-bezier(.16,1,.3,1)}
+  /* ═══════════════ Apple-style Glassmorphism Chat ═══════════════ */
+  /* Spring curve: overshoot + settle */
+  :root {
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+    --spring-soft: cubic-bezier(.25, 1.2, .5, 1);
+    --ease-out-expo: cubic-bezier(.16, 1, .3, 1)
+  }
 
-/* ── Keyframes ── */
-@keyframes msgSlideUp { from{opacity:0;transform:translateY(20px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
-@keyframes msgSlideRight { from{opacity:0;transform:translateX(28px) scale(.96)} to{opacity:1;transform:translateX(0) scale(1)} }
-@keyframes glowPulse { 0%,100%{box-shadow:0 0 18px rgba(99,102,241,.1)} 50%{box-shadow:0 0 40px rgba(99,102,241,.25)} }
-@keyframes typingDot { 0%,60%{opacity:.25;transform:translateY(0)} 30%{opacity:1;transform:translateY(-6px)} }
-@keyframes iconFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-@keyframes iconPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-@keyframes borderShimmer { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  /* ── Keyframes ── */
+  @keyframes msgSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(.96)
+    }
 
-/* ═══════════════ Layout ═══════════════ */
-.glass-shell {
-  display:flex; height:calc(100vh - 0px); overflow:hidden;
-  background:radial-gradient(ellipse at 20% 50%, #1e1b4b 0%, #0f0d22 40%, #09071a 100%);
-  font-family:"Microsoft YaHei","PingFang SC","Segoe UI",-apple-system,sans-serif;
-}
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1)
+    }
+  }
 
-/* ═══════════════ Sidebar — Deep Frosted Glass ═══════════════ */
-.glass-sidebar {
-  width:268px; min-width:268px; display:flex; flex-direction:column; padding:20px 14px; z-index:2; position:relative;
-  background:rgba(15,13,34,.78);
-  backdrop-filter:blur(40px) saturate(180%);
-  -webkit-backdrop-filter:blur(40px) saturate(180%);
-  border-right:1px solid rgba(139,130,255,.08);
-  box-shadow:4px 0 48px rgba(0,0,0,.35), inset -1px 0 0 rgba(255,255,255,.03);
-}
-.glass-sidebar::after {
-  content:""; position:absolute; inset:0; pointer-events:none; z-index:-1;
-  background:linear-gradient(180deg, rgba(255,255,255,.02) 0%, transparent 40%, rgba(99,102,241,.03) 100%);
-}
-.glass-sidebar .side-brand {
-  display:flex; align-items:center; gap:10px; margin-bottom:20px; padding:0 4px; text-decoration:none;
-}
-.glass-sidebar .side-brand .brand-dot {
-  width:34px;height:34px;border-radius:11px;
-  background:linear-gradient(135deg,#818cf8,#6366f1);
-  display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px;
-  box-shadow:0 8px 24px rgba(99,102,241,.5), inset 0 1px 0 rgba(255,255,255,.2);
-  animation:iconFloat 3s ease-in-out infinite;
-  transition:transform var(--spring) .3s;
-}
-.glass-sidebar .side-brand:hover .brand-dot { transform:scale(1.1); }
-.glass-sidebar .side-brand span { color:#e0e0f8; font-weight:700; font-size:15px; letter-spacing:.04em; transition:color .3s; }
+  @keyframes msgSlideRight {
+    from {
+      opacity: 0;
+      transform: translateX(28px) scale(.96)
+    }
 
-.btn-glass {
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  width:100%;padding:12px 0; border:1px solid rgba(139,130,255,.2);
-  border-radius:13px; cursor:pointer; font-size:13px; font-weight:600; letter-spacing:.02em;
-  background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.12));
-  color:#e0e0f8; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-  box-shadow:0 4px 12px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.05);
-  transition:all var(--spring-soft) .3s;
-}
-.btn-glass:hover {
-  background:linear-gradient(135deg,rgba(99,102,241,.35),rgba(139,92,246,.22));
-  border-color:rgba(139,130,255,.45);
-  box-shadow:0 10px 28px rgba(99,102,241,.3), inset 0 1px 0 rgba(255,255,255,.08);
-  transform:translateY(-2px);
-}
-.btn-glass:active{transform:scale(.97)}
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1)
+    }
+  }
 
-.emp-select-glass {
-  width:100%;padding:10px 12px; margin:10px 0;
-  border:1px solid rgba(139,130,255,.1); border-radius:11px;
-  background:rgba(20,18,48,.5); color:#c8c8f0; font-size:13px;
-  outline:none; cursor:pointer; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-  transition:all .25s ease;
-}
-.emp-select-glass:focus{ border-color:rgba(139,130,255,.4); box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+  @keyframes glowPulse {
 
-.side-section-header {
-  display:flex; align-items:center; justify-content:space-between; margin:8px 0 4px;
-}
-.side-section-header h3 { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:#6b6b9e; font-weight:700; }
+    0%,
+    100% {
+      box-shadow: 0 0 18px rgba(99, 102, 241, .1)
+    }
 
-/* ── Session items ── */
-.session-list { flex:1; overflow-y:auto; margin:4px -4px; }
-.session-list::-webkit-scrollbar { width:3px; }
-.session-list::-webkit-scrollbar-thumb { background:rgba(139,130,255,.15); border-radius:99px; }
-.session-list::-webkit-scrollbar-track { background:transparent; }
-.glass-session {
-  display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:11px;
-  cursor:pointer; font-size:13px; color:#c0c0e0; margin-bottom:2px;
-  transition:all var(--spring-soft) .25s; border:1px solid transparent; position:relative; overflow:hidden;
-}
-.glass-session::before {
-  content:""; position:absolute; inset:0; border-radius:inherit; opacity:0; transition:opacity .3s;
-  background:linear-gradient(135deg,rgba(139,130,255,.06),rgba(99,102,241,.02));
-}
-.glass-session:hover { background:rgba(139,130,255,.06); border-color:rgba(139,130,255,.1); transform:translateX(3px); }
-.glass-session:hover::before{opacity:1}
-.glass-session.active {
-  background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.08));
-  border-color:rgba(139,130,255,.2); color:#fff;
-  box-shadow:0 4px 18px rgba(99,102,241,.12), inset 0 1px 0 rgba(255,255,255,.04);
-}
-.glass-session .session-cb { display:none; accent-color:#6366f1; }
-.glass-session .session-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    50% {
+      box-shadow: 0 0 40px rgba(99, 102, 241, .25)
+    }
+  }
 
-/* ── Batch bar ── */
-.glass-batch-bar {
-  display:none; align-items:center; gap:8px; margin-bottom:6px; padding:6px 8px;
-  border-radius:10px; background:rgba(239,68,68,.06); border:1px solid rgba(239,68,68,.15);
-}
-.glass-batch-bar label { font-size:12px; color:#f0a0a0; cursor:pointer; display:flex;align-items:center;gap:4px; }
-.glass-batch-bar button { padding:4px 10px; border-radius:7px; border:1px solid rgba(239,68,68,.3); background:rgba(239,68,68,.15); color:#f0a0a0; font-size:11px; cursor:pointer; transition:all .2s; }
-.glass-batch-bar button:hover { background:rgba(239,68,68,.3); transform:scale(1.04); }
-.glass-batch-bar .batch-cancel { border-color:rgba(139,130,255,.15); background:rgba(139,130,255,.06); color:#a0a0d0; }
-.glass-batch-bar .batch-cancel:hover { background:rgba(139,130,255,.15); }
+  @keyframes typingDot {
 
-.btn-batch-toggle { background:none;border:1px solid rgba(139,130,255,.12);border-radius:7px;padding:3px 9px;font-size:11px;cursor:pointer;color:#6b6b9e; transition:all .2s; }
-.btn-batch-toggle:hover { border-color:rgba(139,130,255,.35); color:#b0b0e0; }
+    0%,
+    60% {
+      opacity: .25;
+      transform: translateY(0)
+    }
 
-/* ═══════════════ Main Chat Area ═══════════════ */
-.glass-main { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
-.glass-main::before {
-  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
-  background:radial-gradient(circle at 70% 30%, rgba(99,102,241,.05) 0, transparent 50%),
-             radial-gradient(circle at 30% 80%, rgba(139,92,246,.03) 0, transparent 50%);
-}
+    30% {
+      opacity: 1;
+      transform: translateY(-6px)
+    }
+  }
 
-/* ── Messages ── */
-.glass-messages {
-  flex:1; overflow-y:auto; padding:32px 36px; position:relative; z-index:1;
-  display:flex; flex-direction:column; gap:18px; scroll-behavior:smooth;
-}
-.glass-messages::-webkit-scrollbar { width:5px; }
-.glass-messages::-webkit-scrollbar-thumb { background:rgba(139,130,255,.12); border-radius:99px; }
-.glass-messages::-webkit-scrollbar-track { background:transparent; }
+  @keyframes iconFloat {
 
-/* ── Empty state ── */
-.empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; color:#4a4a70; }
-.empty-state .empty-icon { font-size:64px; opacity:.4; animation:iconFloat 4s ease-in-out infinite; }
-.empty-state h2 { margin:0; font-size:21px; color:#6b6b9e; font-weight:500; }
-.empty-state p { margin:0; font-size:14px; color:#4a4a70; max-width:420px; text-align:center; line-height:1.7; }
+    0%,
+    100% {
+      transform: translateY(0)
+    }
 
-/* ── Message bubbles — Apple iMessage style ── */
-.glass-msg {
-  max-width:70%; padding:14px 20px; border-radius:20px; line-height:1.6; font-size:14px;
-  word-break:break-word; position:relative;
-  animation:msgSlideUp .45s var(--spring-soft);
-}
-.glass-msg.user {
-  align-self:flex-end; animation-name:msgSlideRight;
-  background:linear-gradient(135deg,#6366f1,#7c3aed);
-  color:#fff; border-bottom-right-radius:6px;
-  box-shadow:0 10px 28px rgba(99,102,241,.32), inset 0 1px 0 rgba(255,255,255,.15);
-}
-.glass-msg.assistant {
-  align-self:flex-start; color:#d0d0f0;
-  background:rgba(23,21,46,.8); backdrop-filter:blur(28px) saturate(150%);
-  -webkit-backdrop-filter:blur(28px) saturate(150%);
-  border:1px solid rgba(139,130,255,.1); border-bottom-left-radius:6px;
-  box-shadow:0 8px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.03);
-}
-.glass-msg code {
-  background:rgba(139,130,255,.12); padding:2px 7px; border-radius:5px;
-  font-family:"SF Mono","Cascadia Code","Fira Code",monospace; font-size:.87em;
-}
-.glass-msg pre { background:rgba(0,0,0,.25); padding:14px 18px; border-radius:12px; overflow-x:auto; margin:8px 0; border:1px solid rgba(139,130,255,.06); }
-.glass-msg pre code { background:none; padding:0; }
-.glass-msg strong { color:#c4b5fd; font-weight:700; }
-.glass-msg.user code { background:rgba(255,255,255,.18); }
-.glass-msg.user strong { color:#fff; }
+    50% {
+      transform: translateY(-5px)
+    }
+  }
 
-/* ── Typing indicator ── */
-.typing-indicator { display:flex; gap:6px; padding:4px 2px; align-items:center; }
-.typing-indicator span { width:7px;height:7px;border-radius:50%;background:#818cf8; animation:typingDot 1.4s infinite; box-shadow:0 0 6px rgba(129,140,248,.4); }
-.typing-indicator span:nth-child(2){animation-delay:.2s}
-.typing-indicator span:nth-child(3){animation-delay:.4s}
+  @keyframes iconPulse {
 
-/* ═══════════════ Input Area — Deep Glass ═══════════════ */
-.glass-input-area {
-  position:relative; z-index:2; padding:18px 32px 24px;
-  background:rgba(13,11,32,.8); backdrop-filter:blur(40px) saturate(180%);
-  -webkit-backdrop-filter:blur(40px) saturate(180%);
-  border-top:1px solid rgba(139,130,255,.08);
-  box-shadow:0 -8px 48px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.03);
-}
+    0%,
+    100% {
+      transform: scale(1)
+    }
 
-/* ── Skill Toggle ── */
-.skill-toggle {
-  display:inline-flex; align-items:center; gap:7px; padding:7px 16px;
-  border:1px solid rgba(139,130,255,.15); border-radius:999px;
-  background:rgba(139,130,255,.06); color:#a0a0e0; font-size:13px; font-weight:500;
-  cursor:pointer; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-  transition:all var(--spring-soft) .3s; margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.1);
-}
-.skill-toggle:hover {
-  border-color:rgba(139,130,255,.35); color:#e0e0f8;
-  background:rgba(139,130,255,.12); box-shadow:0 4px 16px rgba(99,102,241,.15);
-}
-.skill-toggle .arrow {
-  transition:transform var(--spring-soft) .35s; font-size:10px; opacity:.7;
-}
-.skill-toggle.open .arrow { transform:rotate(180deg); opacity:1; }
-.skill-toggle.open {
-  border-color:rgba(139,130,255,.3); background:rgba(139,130,255,.1); color:#fff;
-}
+    50% {
+      transform: scale(1.08)
+    }
+  }
 
-/* ── Skill Panel — Fixed: no flash ══════ */
-.skill-panel {
-  overflow:hidden; max-height:0; opacity:0; visibility:hidden;
-  transition:max-height .4s var(--ease-out-expo), opacity .25s ease, visibility 0s .4s, margin .35s ease;
-  margin-bottom:0; border-radius:18px;
-  background:transparent; border:1px solid transparent;
-}
-.skill-panel.open {
-  max-height:320px; opacity:1; visibility:visible;
-  transition:max-height .45s var(--ease-out-expo), opacity .3s ease, visibility 0s 0s, margin .35s ease;
-  margin-bottom:14px;
-  background:rgba(18,16,40,.55); backdrop-filter:blur(24px) saturate(150%);
-  -webkit-backdrop-filter:blur(24px) saturate(150%);
-  border:1px solid rgba(139,130,255,.1);
-  box-shadow:0 12px 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
-}
-.skill-panel-inner { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px; }
+  @keyframes borderShimmer {
+    0% {
+      background-position: 0% 50%
+    }
 
-/* ── Skill Cards ── */
-.skill-card {
-  display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px 10px;
-  border-radius:16px; cursor:pointer;
-  transition:all var(--spring-soft) .35s;
-  border:1px solid rgba(139,130,255,.06); background:rgba(22,20,44,.4);
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  box-shadow:0 2px 8px rgba(0,0,0,.08);
-}
-.skill-card:hover {
-  background:rgba(99,102,241,.14); border-color:rgba(139,130,255,.28);
-  transform:translateY(-4px) scale(1.03);
-  box-shadow:0 14px 36px rgba(99,102,241,.2), inset 0 1px 0 rgba(255,255,255,.05);
-}
-.skill-card:active{transform:translateY(-1px) scale(.98)}
-.skill-card .sk-icon {
-  width:46px;height:46px;border-radius:13px; display:grid;place-items:center;
-  font-size:22px; transition:transform var(--spring-soft) .35s;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
-}
-.skill-card:hover .sk-icon { transform:scale(1.18); animation:iconPulse .6s var(--spring-soft); }
-.skill-card .sk-label { font-size:13px; font-weight:600; color:#d0d0f0; transition:color .3s; }
-.skill-card:hover .sk-label{color:#fff}
-.skill-card .sk-hint { font-size:10px; color:#6b6b9e; text-align:center; line-height:1.4; transition:color .3s; }
-.skill-card:hover .sk-hint{color:#9088d0}
+    50% {
+      background-position: 100% 50%
+    }
 
-/* ── Input Row ── */
-.glass-input-row { display:flex; gap:12px; align-items:flex-end; }
-.glass-input-row textarea {
-  flex:1; padding:13px 18px; border:1px solid rgba(139,130,255,.1);
-  border-radius:16px; resize:none; font-size:14px; min-height:50px; max-height:140px;
-  background:rgba(18,16,38,.5); color:#e0e0f8; outline:none;
-  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-  transition:all .25s ease; font-family:inherit; line-height:1.5;
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.15);
-}
-.glass-input-row textarea::placeholder { color:#58588a; }
-.glass-input-row textarea:focus {
-  border-color:rgba(139,130,255,.4);
-  box-shadow:0 0 0 4px rgba(99,102,241,.08), inset 0 2px 6px rgba(0,0,0,.1);
-  background:rgba(22,20,44,.6);
-}
-.btn-send-glass {
-  padding:0 28px;height:50px; border:none; border-radius:16px; cursor:pointer;
-  font-size:14px; font-weight:700; letter-spacing:.04em;
-  background:linear-gradient(135deg,#6366f1,#7c3aed);
-  color:#fff; box-shadow:0 10px 28px rgba(99,102,241,.38), inset 0 1px 0 rgba(255,255,255,.15);
-  transition:all var(--spring-soft) .3s;
-}
-.btn-send-glass:hover {
-  box-shadow:0 16px 40px rgba(99,102,241,.5), inset 0 1px 0 rgba(255,255,255,.2);
-  transform:translateY(-2px);
-}
-.btn-send-glass:active{transform:translateY(0) scale(.97)}
-.btn-send-glass:disabled {
-  background:rgba(139,130,255,.1); color:#58588a; box-shadow:none; cursor:not-allowed;
-}
-.glass-export-link {
-  font-size:13px; color:#58588a; text-decoration:none; align-self:center; padding:0 10px;
-  transition:all .25s; opacity:.6;
-}
-.glass-export-link:hover { color:#818cf8; opacity:1; transform:scale(1.2); }
+    100% {
+      background-position: 0% 50%
+    }
+  }
 
-/* ── Theme Toggle ── */
-.chat-theme-btn {
-  width:32px;height:32px;border-radius:50%;border:1px solid rgba(139,130,255,.2);
-  background:rgba(139,130,255,.06);color:#e0d060;cursor:pointer;font-size:15px;
-  display:grid;place-items:center;transition:all var(--spring-soft) .3s;flex-shrink:0;
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-}
-.chat-theme-btn:hover{border-color:rgba(139,130,255,.4);background:rgba(139,130,255,.14);transform:rotate(25deg) scale(1.1)}
+  /* ═══════════════ Layout ═══════════════ */
+  .glass-shell {
+    display: flex;
+    height: calc(100vh - 0px);
+    overflow: hidden;
+    background: radial-gradient(ellipse at 20% 50%, #1e1b4b 0%, #0f0d22 40%, #09071a 100%);
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", -apple-system, sans-serif;
+  }
 
-/* ── Responsive ── */
-@media(max-width:800px){
-  .glass-shell{flex-direction:column}
-  .glass-sidebar{width:100%;min-width:auto;max-height:220px;flex-shrink:0}
-  .skill-panel-inner{grid-template-columns:repeat(2,1fr)}
-  .glass-msg{max-width:88%}
-  .glass-input-area{padding:14px 18px 20px}
-}
-@media(max-width:480px){
-  .skill-panel-inner{grid-template-columns:1fr}
-  .glass-messages{padding:20px 16px}
-}
+  /* ═══════════════ Sidebar — Deep Frosted Glass ═══════════════ */
+  .glass-sidebar {
+    width: 268px;
+    min-width: 268px;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px;
+    z-index: 2;
+    position: relative;
+    background: rgba(15, 13, 34, .78);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border-right: 1px solid rgba(139, 130, 255, .08);
+    box-shadow: 4px 0 48px rgba(0, 0, 0, .35), inset -1px 0 0 rgba(255, 255, 255, .03);
+  }
 
-/* ═══════════ Light Theme — Apple Day Mode ═══════════ */
-[data-theme="light"] .glass-shell{background:radial-gradient(ellipse at 20% 50%, #f2eeff 0%, #eae4fa 40%, #e0daf2 100%)}
-[data-theme="light"] .glass-sidebar{
-  background:rgba(255,255,255,.72); backdrop-filter:blur(40px) saturate(180%);
-  border-right-color:rgba(99,102,241,.04); box-shadow:4px 0 48px rgba(99,102,241,.04), inset -1px 0 0 rgba(99,102,241,.02);
-}
-[data-theme="light"] .glass-sidebar::after{background:linear-gradient(180deg, rgba(99,102,241,.02) 0%, transparent 40%, rgba(99,102,241,.01) 100%)}
-[data-theme="light"] .glass-sidebar .side-brand span{color:#2d2a4a}
-[data-theme="light"] .btn-glass{
-  background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.04));
-  border-color:rgba(99,102,241,.12); color:#3d3a60; box-shadow:0 2px 8px rgba(99,102,241,.03), inset 0 1px 0 rgba(255,255,255,.3);
-}
-[data-theme="light"] .btn-glass:hover{
-  background:linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.08));
-  border-color:rgba(99,102,241,.28); box-shadow:0 10px 28px rgba(99,102,241,.1), inset 0 1px 0 rgba(255,255,255,.4);
-}
-[data-theme="light"] .emp-select-glass{background:rgba(255,255,255,.5);border-color:rgba(99,102,241,.06);color:#3d3a60}
-[data-theme="light"] .side-section-header h3{color:#8a86c0}
-[data-theme="light"] .btn-batch-toggle{color:#8a86c0;border-color:rgba(99,102,241,.1)}
-[data-theme="light"] .glass-session{color:#4d4a70}
-[data-theme="light"] .glass-session:hover{background:rgba(99,102,241,.04); border-color:rgba(99,102,241,.08)}
-[data-theme="light"] .glass-session.active{
-  background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.04));
-  border-color:rgba(99,102,241,.15); color:#2d2a4a; box-shadow:0 4px 18px rgba(99,102,241,.06), inset 0 1px 0 rgba(255,255,255,.3);
-}
-[data-theme="light"] .chat-theme-btn{border-color:rgba(99,102,241,.15);background:rgba(99,102,241,.04);color:#b08830}
-[data-theme="light"] .chat-theme-btn:hover{border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.1)}
+  .glass-sidebar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .02) 0%, transparent 40%, rgba(99, 102, 241, .03) 100%);
+  }
 
-[data-theme="light"] .glass-msg.assistant{
-  background:rgba(255,255,255,.72); backdrop-filter:blur(28px) saturate(150%);
-  border-color:rgba(99,102,241,.05); color:#3d3a60;
-  box-shadow:0 8px 28px rgba(99,102,241,.04), inset 0 1px 0 rgba(255,255,255,.5);
-}
-[data-theme="light"] .glass-msg strong{color:#6366f1}
-[data-theme="light"] .glass-msg pre{background:rgba(99,102,241,.04); border-color:rgba(99,102,241,.06)}
+  .glass-sidebar .side-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 0 4px;
+    text-decoration: none;
+  }
 
-[data-theme="light"] .glass-input-area{
-  background:rgba(255,255,255,.7); backdrop-filter:blur(40px) saturate(180%);
-  border-top-color:rgba(99,102,241,.04); box-shadow:0 -8px 48px rgba(99,102,241,.05), inset 0 1px 0 rgba(255,255,255,.4);
-}
-[data-theme="light"] .skill-toggle{border-color:rgba(99,102,241,.1);background:rgba(99,102,241,.03);color:#4d4a70;box-shadow:0 2px 8px rgba(99,102,241,.02)}
-[data-theme="light"] .skill-toggle:hover{border-color:rgba(99,102,241,.25);background:rgba(99,102,241,.08)}
-[data-theme="light"] .skill-toggle.open{border-color:rgba(99,102,241,.2);background:rgba(99,102,241,.06);color:#2d2a4a}
-[data-theme="light"] .skill-panel.open{
-  background:rgba(255,255,255,.5); backdrop-filter:blur(24px) saturate(150%);
-  border-color:rgba(99,102,241,.06); box-shadow:0 12px 40px rgba(99,102,241,.06), inset 0 1px 0 rgba(255,255,255,.4);
-}
-[data-theme="light"] .skill-card{border-color:rgba(99,102,241,.04);background:rgba(255,255,255,.4);box-shadow:0 2px 8px rgba(99,102,241,.02)}
-[data-theme="light"] .skill-card:hover{background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.18);box-shadow:0 14px 36px rgba(99,102,241,.08)}
-[data-theme="light"] .skill-card .sk-label{color:#3d3a60}
-[data-theme="light"] .skill-card:hover .sk-label{color:#2d2a4a}
-[data-theme="light"] .skill-card .sk-hint{color:#8a86c0}
-[data-theme="light"] .skill-card:hover .sk-hint{color:#6b67a0}
+  .glass-sidebar .side-brand .brand-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 800;
+    font-size: 17px;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, .5), inset 0 1px 0 rgba(255, 255, 255, .2);
+    animation: iconFloat 3s ease-in-out infinite;
+    transition: transform var(--spring) .3s;
+  }
 
-[data-theme="light"] .glass-input-row textarea{
-  background:rgba(255,255,255,.5);border-color:rgba(99,102,241,.06);color:#2d2a4a;
-  box-shadow:inset 0 2px 6px rgba(99,102,241,.03);
-}
-[data-theme="light"] .glass-input-row textarea::placeholder{color:#9a96c8}
-[data-theme="light"] .glass-input-row textarea:focus{border-color:rgba(99,102,241,.25);box-shadow:0 0 0 4px rgba(99,102,241,.04);background:rgba(255,255,255,.65)}
-[data-theme="light"] .btn-send-glass:disabled{background:rgba(99,102,241,.06);color:#9a96c8}
-[data-theme="light"] .glass-export-link{color:#9a96c8}
-[data-theme="light"] .glass-export-link:hover{color:#6366f1}
-[data-theme="light"] .glass-batch-bar{background:rgba(239,68,68,.03);border-color:rgba(239,68,68,.08)}
-[data-theme="light"] .empty-state{color:#9a96c8}
-[data-theme="light"] .empty-state h2{color:#8a86c0}
-[data-theme="light"] .empty-state p{color:#9a96c8}
-[data-theme="light"] .skill-toggle.open .arrow{color:#6366f1}
+  .glass-sidebar .side-brand:hover .brand-dot {
+    transform: scale(1.1);
+  }
+
+  .glass-sidebar .side-brand span {
+    color: #e0e0f8;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: .04em;
+    transition: color .3s;
+  }
+
+  .btn-glass {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 0;
+    border: 1px solid rgba(139, 130, 255, .2);
+    border-radius: 13px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    background: linear-gradient(135deg, rgba(99, 102, 241, .2), rgba(139, 92, 246, .12));
+    color: #e0e0f8;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .15), inset 0 1px 0 rgba(255, 255, 255, .05);
+    transition: all var(--spring-soft) .3s;
+  }
+
+  .btn-glass:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, .35), rgba(139, 92, 246, .22));
+    border-color: rgba(139, 130, 255, .45);
+    box-shadow: 0 10px 28px rgba(99, 102, 241, .3), inset 0 1px 0 rgba(255, 255, 255, .08);
+    transform: translateY(-2px);
+  }
+
+  .btn-glass:active {
+    transform: scale(.97)
+  }
+
+  .emp-select-glass {
+    width: 100%;
+    padding: 10px 12px;
+    margin: 10px 0;
+    border: 1px solid rgba(139, 130, 255, .1);
+    border-radius: 11px;
+    background: rgba(20, 18, 48, .5);
+    color: #c8c8f0;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all .25s ease;
+  }
+
+  .emp-select-glass:focus {
+    border-color: rgba(139, 130, 255, .4);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+  }
+
+  .side-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 8px 0 4px;
+  }
+
+  .side-section-header h3 {
+    margin: 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: #6b6b9e;
+    font-weight: 700;
+  }
+
+  /* ── Session items ── */
+  .session-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 4px -4px;
+  }
+
+  .session-list::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .session-list::-webkit-scrollbar-thumb {
+    background: rgba(139, 130, 255, .15);
+    border-radius: 99px;
+  }
+
+  .session-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .glass-session {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 11px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #c0c0e0;
+    margin-bottom: 2px;
+    transition: all var(--spring-soft) .25s;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-session::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity .3s;
+    background: linear-gradient(135deg, rgba(139, 130, 255, .06), rgba(99, 102, 241, .02));
+  }
+
+  .glass-session:hover {
+    background: rgba(139, 130, 255, .06);
+    border-color: rgba(139, 130, 255, .1);
+    transform: translateX(3px);
+  }
+
+  .glass-session:hover::before {
+    opacity: 1
+  }
+
+  .glass-session.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, .15), rgba(139, 92, 246, .08));
+    border-color: rgba(139, 130, 255, .2);
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, .12), inset 0 1px 0 rgba(255, 255, 255, .04);
+  }
+
+  .glass-session .session-cb {
+    display: none;
+    accent-color: #6366f1;
+  }
+
+  .glass-session .session-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Batch bar ── */
+  .glass-batch-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, .06);
+    border: 1px solid rgba(239, 68, 68, .15);
+  }
+
+  .glass-batch-bar label {
+    font-size: 12px;
+    color: #f0a0a0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .glass-batch-bar button {
+    padding: 4px 10px;
+    border-radius: 7px;
+    border: 1px solid rgba(239, 68, 68, .3);
+    background: rgba(239, 68, 68, .15);
+    color: #f0a0a0;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .glass-batch-bar button:hover {
+    background: rgba(239, 68, 68, .3);
+    transform: scale(1.04);
+  }
+
+  .glass-batch-bar .batch-cancel {
+    border-color: rgba(139, 130, 255, .15);
+    background: rgba(139, 130, 255, .06);
+    color: #a0a0d0;
+  }
+
+  .glass-batch-bar .batch-cancel:hover {
+    background: rgba(139, 130, 255, .15);
+  }
+
+  .btn-batch-toggle {
+    background: none;
+    border: 1px solid rgba(139, 130, 255, .12);
+    border-radius: 7px;
+    padding: 3px 9px;
+    font-size: 11px;
+    cursor: pointer;
+    color: #6b6b9e;
+    transition: all .2s;
+  }
+
+  .btn-batch-toggle:hover {
+    border-color: rgba(139, 130, 255, .35);
+    color: #b0b0e0;
+  }
+
+  /* ═══════════════ Main Chat Area ═══════════════ */
+  .glass-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .glass-main::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(99, 102, 241, .05) 0, transparent 50%),
+      radial-gradient(circle at 30% 80%, rgba(139, 92, 246, .03) 0, transparent 50%);
+  }
+
+  /* ── Messages ── */
+  .glass-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 36px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    scroll-behavior: smooth;
+  }
+
+  .glass-messages::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .glass-messages::-webkit-scrollbar-thumb {
+    background: rgba(139, 130, 255, .12);
+    border-radius: 99px;
+  }
+
+  .glass-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    color: #4a4a70;
+  }
+
+  .empty-state .empty-icon {
+    font-size: 64px;
+    opacity: .4;
+    animation: iconFloat 4s ease-in-out infinite;
+  }
+
+  .empty-state h2 {
+    margin: 0;
+    font-size: 21px;
+    color: #6b6b9e;
+    font-weight: 500;
+  }
+
+  .empty-state p {
+    margin: 0;
+    font-size: 14px;
+    color: #4a4a70;
+    max-width: 420px;
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  /* ── Message bubbles — Apple iMessage style ── */
+  .glass-msg {
+    max-width: 70%;
+    padding: 14px 20px;
+    border-radius: 20px;
+    line-height: 1.6;
+    font-size: 14px;
+    word-break: break-word;
+    position: relative;
+    animation: msgSlideUp .45s var(--spring-soft);
+  }
+
+  .glass-msg.user {
+    align-self: flex-end;
+    animation-name: msgSlideRight;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    color: #fff;
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 10px 28px rgba(99, 102, 241, .32), inset 0 1px 0 rgba(255, 255, 255, .15);
+  }
+
+  .glass-msg.assistant {
+    align-self: flex-start;
+    color: #d0d0f0;
+    background: rgba(23, 21, 46, .8);
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    border: 1px solid rgba(139, 130, 255, .1);
+    border-bottom-left-radius: 6px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .03);
+  }
+
+  .glass-msg code {
+    background: rgba(139, 130, 255, .12);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: .87em;
+  }
+
+  .glass-msg pre {
+    background: rgba(0, 0, 0, .25);
+    padding: 14px 18px;
+    border-radius: 12px;
+    overflow-x: auto;
+    margin: 8px 0;
+    border: 1px solid rgba(139, 130, 255, .06);
+  }
+
+  .glass-msg pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .glass-msg strong {
+    color: #c4b5fd;
+    font-weight: 700;
+  }
+
+  .glass-msg.user code {
+    background: rgba(255, 255, 255, .18);
+  }
+
+  .glass-msg.user strong {
+    color: #fff;
+  }
+
+  /* ── Typing indicator ── */
+  .typing-indicator {
+    display: flex;
+    gap: 6px;
+    padding: 4px 2px;
+    align-items: center;
+  }
+
+  .typing-indicator span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #818cf8;
+    animation: typingDot 1.4s infinite;
+    box-shadow: 0 0 6px rgba(129, 140, 248, .4);
+  }
+
+  .typing-indicator span:nth-child(2) {
+    animation-delay: .2s
+  }
+
+  .typing-indicator span:nth-child(3) {
+    animation-delay: .4s
+  }
+
+  /* ═══════════════ Input Area — Deep Glass ═══════════════ */
+  .glass-input-area {
+    position: relative;
+    z-index: 2;
+    padding: 18px 32px 24px;
+    background: rgba(13, 11, 32, .8);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border-top: 1px solid rgba(139, 130, 255, .08);
+    box-shadow: 0 -8px 48px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .03);
+  }
+
+  /* ── Skill Toggle ── */
+  .skill-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border: 1px solid rgba(139, 130, 255, .15);
+    border-radius: 999px;
+    background: rgba(139, 130, 255, .06);
+    color: #a0a0e0;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all var(--spring-soft) .3s;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+  }
+
+  .skill-toggle:hover {
+    border-color: rgba(139, 130, 255, .35);
+    color: #e0e0f8;
+    background: rgba(139, 130, 255, .12);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, .15);
+  }
+
+  .skill-toggle .arrow {
+    transition: transform var(--spring-soft) .35s;
+    font-size: 10px;
+    opacity: .7;
+  }
+
+  .skill-toggle.open .arrow {
+    transform: rotate(180deg);
+    opacity: 1;
+  }
+
+  .skill-toggle.open {
+    border-color: rgba(139, 130, 255, .3);
+    background: rgba(139, 130, 255, .1);
+    color: #fff;
+  }
+
+  /* ── Skill Panel — Fixed: no flash ══════ */
+  .skill-panel {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-height .4s var(--ease-out-expo), opacity .25s ease, visibility 0s .4s, margin .35s ease;
+    margin-bottom: 0;
+    border-radius: 18px;
+    background: transparent;
+    border: 1px solid transparent;
+  }
+
+  .skill-panel.open {
+    max-height: 320px;
+    opacity: 1;
+    visibility: visible;
+    transition: max-height .45s var(--ease-out-expo), opacity .3s ease, visibility 0s 0s, margin .35s ease;
+    margin-bottom: 14px;
+    background: rgba(18, 16, 40, .55);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(139, 130, 255, .1);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .04);
+  }
+
+  .skill-panel-inner {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 16px;
+  }
+
+  /* ── Skill Cards ── */
+  .skill-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 10px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all var(--spring-soft) .35s;
+    border: 1px solid rgba(139, 130, 255, .06);
+    background: rgba(22, 20, 44, .4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+  }
+
+  .skill-card:hover {
+    background: rgba(99, 102, 241, .14);
+    border-color: rgba(139, 130, 255, .28);
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 14px 36px rgba(99, 102, 241, .2), inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+
+  .skill-card:active {
+    transform: translateY(-1px) scale(.98)
+  }
+
+  .skill-card .sk-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    transition: transform var(--spring-soft) .35s;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1);
+  }
+
+  .skill-card:hover .sk-icon {
+    transform: scale(1.18);
+    animation: iconPulse .6s var(--spring-soft);
+  }
+
+  .skill-card .sk-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #d0d0f0;
+    transition: color .3s;
+  }
+
+  .skill-card:hover .sk-label {
+    color: #fff
+  }
+
+  .skill-card .sk-hint {
+    font-size: 10px;
+    color: #6b6b9e;
+    text-align: center;
+    line-height: 1.4;
+    transition: color .3s;
+  }
+
+  .skill-card:hover .sk-hint {
+    color: #9088d0
+  }
+
+  /* ── Input Row ── */
+  .glass-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .glass-input-row textarea {
+    flex: 1;
+    padding: 13px 18px;
+    border: 1px solid rgba(139, 130, 255, .1);
+    border-radius: 16px;
+    resize: none;
+    font-size: 14px;
+    min-height: 50px;
+    max-height: 140px;
+    background: rgba(18, 16, 38, .5);
+    color: #e0e0f8;
+    outline: none;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all .25s ease;
+    font-family: inherit;
+    line-height: 1.5;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, .15);
+  }
+
+  .glass-input-row textarea::placeholder {
+    color: #58588a;
+  }
+
+  .glass-input-row textarea:focus {
+    border-color: rgba(139, 130, 255, .4);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .08), inset 0 2px 6px rgba(0, 0, 0, .1);
+    background: rgba(22, 20, 44, .6);
+  }
+
+  .btn-send-glass {
+    padding: 0 28px;
+    height: 50px;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    color: #fff;
+    box-shadow: 0 10px 28px rgba(99, 102, 241, .38), inset 0 1px 0 rgba(255, 255, 255, .15);
+    transition: all var(--spring-soft) .3s;
+  }
+
+  .btn-send-glass:hover {
+    box-shadow: 0 16px 40px rgba(99, 102, 241, .5), inset 0 1px 0 rgba(255, 255, 255, .2);
+    transform: translateY(-2px);
+  }
+
+  .btn-send-glass:active {
+    transform: translateY(0) scale(.97)
+  }
+
+  .btn-send-glass:disabled {
+    background: rgba(139, 130, 255, .1);
+    color: #58588a;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .glass-export-link {
+    font-size: 13px;
+    color: #58588a;
+    text-decoration: none;
+    align-self: center;
+    padding: 0 10px;
+    transition: all .25s;
+    opacity: .6;
+  }
+
+  .glass-export-link:hover {
+    color: #818cf8;
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  /* ── Theme Toggle ── */
+  .chat-theme-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 130, 255, .2);
+    background: rgba(139, 130, 255, .06);
+    color: #e0d060;
+    cursor: pointer;
+    font-size: 15px;
+    display: grid;
+    place-items: center;
+    transition: all var(--spring-soft) .3s;
+    flex-shrink: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .chat-theme-btn:hover {
+    border-color: rgba(139, 130, 255, .4);
+    background: rgba(139, 130, 255, .14);
+    transform: rotate(25deg) scale(1.1)
+  }
+
+  /* ── Responsive ── */
+  @media(max-width:800px) {
+    .glass-shell {
+      flex-direction: column
+    }
+
+    .glass-sidebar {
+      width: 100%;
+      min-width: auto;
+      max-height: 220px;
+      flex-shrink: 0
+    }
+
+    .skill-panel-inner {
+      grid-template-columns: repeat(2, 1fr)
+    }
+
+    .glass-msg {
+      max-width: 88%
+    }
+
+    .glass-input-area {
+      padding: 14px 18px 20px
+    }
+  }
+
+  @media(max-width:480px) {
+    .skill-panel-inner {
+      grid-template-columns: 1fr
+    }
+
+    .glass-messages {
+      padding: 20px 16px
+    }
+  }
+
+  /* ═══════════ Light Theme — Apple Day Mode ═══════════ */
+  [data-theme="light"] .glass-shell {
+    background: radial-gradient(ellipse at 20% 50%, #f2eeff 0%, #eae4fa 40%, #e0daf2 100%)
+  }
+
+  [data-theme="light"] .glass-sidebar {
+    background: rgba(255, 255, 255, .72);
+    backdrop-filter: blur(40px) saturate(180%);
+    border-right-color: rgba(99, 102, 241, .04);
+    box-shadow: 4px 0 48px rgba(99, 102, 241, .04), inset -1px 0 0 rgba(99, 102, 241, .02);
+  }
+
+  [data-theme="light"] .glass-sidebar::after {
+    background: linear-gradient(180deg, rgba(99, 102, 241, .02) 0%, transparent 40%, rgba(99, 102, 241, .01) 100%)
+  }
+
+  [data-theme="light"] .glass-sidebar .side-brand span {
+    color: #2d2a4a
+  }
+
+  [data-theme="light"] .btn-glass {
+    background: linear-gradient(135deg, rgba(99, 102, 241, .08), rgba(139, 92, 246, .04));
+    border-color: rgba(99, 102, 241, .12);
+    color: #3d3a60;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, .03), inset 0 1px 0 rgba(255, 255, 255, .3);
+  }
+
+  [data-theme="light"] .btn-glass:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, .16), rgba(139, 92, 246, .08));
+    border-color: rgba(99, 102, 241, .28);
+    box-shadow: 0 10px 28px rgba(99, 102, 241, .1), inset 0 1px 0 rgba(255, 255, 255, .4);
+  }
+
+  [data-theme="light"] .emp-select-glass {
+    background: rgba(255, 255, 255, .5);
+    border-color: rgba(99, 102, 241, .06);
+    color: #3d3a60
+  }
+
+  [data-theme="light"] .side-section-header h3 {
+    color: #8a86c0
+  }
+
+  [data-theme="light"] .btn-batch-toggle {
+    color: #8a86c0;
+    border-color: rgba(99, 102, 241, .1)
+  }
+
+  [data-theme="light"] .glass-session {
+    color: #4d4a70
+  }
+
+  [data-theme="light"] .glass-session:hover {
+    background: rgba(99, 102, 241, .04);
+    border-color: rgba(99, 102, 241, .08)
+  }
+
+  [data-theme="light"] .glass-session.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, .08), rgba(139, 92, 246, .04));
+    border-color: rgba(99, 102, 241, .15);
+    color: #2d2a4a;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, .06), inset 0 1px 0 rgba(255, 255, 255, .3);
+  }
+
+  [data-theme="light"] .chat-theme-btn {
+    border-color: rgba(99, 102, 241, .15);
+    background: rgba(99, 102, 241, .04);
+    color: #b08830
+  }
+
+  [data-theme="light"] .chat-theme-btn:hover {
+    border-color: rgba(99, 102, 241, .3);
+    background: rgba(99, 102, 241, .1)
+  }
+
+  [data-theme="light"] .glass-msg.assistant {
+    background: rgba(255, 255, 255, .72);
+    backdrop-filter: blur(28px) saturate(150%);
+    border-color: rgba(99, 102, 241, .05);
+    color: #3d3a60;
+    box-shadow: 0 8px 28px rgba(99, 102, 241, .04), inset 0 1px 0 rgba(255, 255, 255, .5);
+  }
+
+  [data-theme="light"] .glass-msg strong {
+    color: #6366f1
+  }
+
+  [data-theme="light"] .glass-msg pre {
+    background: rgba(99, 102, 241, .04);
+    border-color: rgba(99, 102, 241, .06)
+  }
+
+  [data-theme="light"] .glass-input-area {
+    background: rgba(255, 255, 255, .7);
+    backdrop-filter: blur(40px) saturate(180%);
+    border-top-color: rgba(99, 102, 241, .04);
+    box-shadow: 0 -8px 48px rgba(99, 102, 241, .05), inset 0 1px 0 rgba(255, 255, 255, .4);
+  }
+
+  [data-theme="light"] .skill-toggle {
+    border-color: rgba(99, 102, 241, .1);
+    background: rgba(99, 102, 241, .03);
+    color: #4d4a70;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, .02)
+  }
+
+  [data-theme="light"] .skill-toggle:hover {
+    border-color: rgba(99, 102, 241, .25);
+    background: rgba(99, 102, 241, .08)
+  }
+
+  [data-theme="light"] .skill-toggle.open {
+    border-color: rgba(99, 102, 241, .2);
+    background: rgba(99, 102, 241, .06);
+    color: #2d2a4a
+  }
+
+  [data-theme="light"] .skill-panel.open {
+    background: rgba(255, 255, 255, .5);
+    backdrop-filter: blur(24px) saturate(150%);
+    border-color: rgba(99, 102, 241, .06);
+    box-shadow: 0 12px 40px rgba(99, 102, 241, .06), inset 0 1px 0 rgba(255, 255, 255, .4);
+  }
+
+  [data-theme="light"] .skill-card {
+    border-color: rgba(99, 102, 241, .04);
+    background: rgba(255, 255, 255, .4);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, .02)
+  }
+
+  [data-theme="light"] .skill-card:hover {
+    background: rgba(99, 102, 241, .08);
+    border-color: rgba(99, 102, 241, .18);
+    box-shadow: 0 14px 36px rgba(99, 102, 241, .08)
+  }
+
+  [data-theme="light"] .skill-card .sk-label {
+    color: #3d3a60
+  }
+
+  [data-theme="light"] .skill-card:hover .sk-label {
+    color: #2d2a4a
+  }
+
+  [data-theme="light"] .skill-card .sk-hint {
+    color: #8a86c0
+  }
+
+  [data-theme="light"] .skill-card:hover .sk-hint {
+    color: #6b67a0
+  }
+
+  [data-theme="light"] .glass-input-row textarea {
+    background: rgba(255, 255, 255, .5);
+    border-color: rgba(99, 102, 241, .06);
+    color: #2d2a4a;
+    box-shadow: inset 0 2px 6px rgba(99, 102, 241, .03);
+  }
+
+  [data-theme="light"] .glass-input-row textarea::placeholder {
+    color: #9a96c8
+  }
+
+  [data-theme="light"] .glass-input-row textarea:focus {
+    border-color: rgba(99, 102, 241, .25);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .04);
+    background: rgba(255, 255, 255, .65)
+  }
+
+  [data-theme="light"] .btn-send-glass:disabled {
+    background: rgba(99, 102, 241, .06);
+    color: #9a96c8
+  }
+
+  [data-theme="light"] .glass-export-link {
+    color: #9a96c8
+  }
+
+  [data-theme="light"] .glass-export-link:hover {
+    color: #6366f1
+  }
+
+  [data-theme="light"] .glass-batch-bar {
+    background: rgba(239, 68, 68, .03);
+    border-color: rgba(239, 68, 68, .08)
+  }
+
+  [data-theme="light"] .empty-state {
+    color: #9a96c8
+  }
+
+  [data-theme="light"] .empty-state h2 {
+    color: #8a86c0
+  }
+
+  [data-theme="light"] .empty-state p {
+    color: #9a96c8
+  }
+
+  [data-theme="light"] .skill-toggle.open .arrow {
+    color: #6366f1
+  }
 </style>
 
 <div class="glass-shell">
@@ -385,10 +1056,11 @@
       <div class="brand-dot">D</div>
       <span>AgentOS</span>
     </a>
-    <button class="chat-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题" style="position:absolute;top:20px;right:14px;">🌙</button>
+    <button class="chat-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题"
+      style="position:absolute;top:20px;right:14px;">🌙</button>
     <select class="emp-select-glass" id="empSelect" onchange="switchEmployee(this.value)">
       {% for e in employees %}
-      <option value="{{ e["id"] }}" {% if e["id"] == current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
+      <option value="{{ e["id"] }}" {% if e["id"]==current_employee_id %}selected{% end %}>{{ e["name"] }}</option>
       {% end %}
     </select>
     <button class="btn-glass" onclick="newSession()">✦ 新建对话</button>
@@ -406,8 +1078,8 @@
 
     <div class="session-list" id="sessionList">
       {% for s in sessions %}
-      <div class="glass-session {% if s["id"] == (current_session["id"] if current_session else -1) %}active{% end %}"
-           onclick="sessionClick(event, '{{ s["id"] }}')">
+      <div class="glass-session {% if s["id"]==(current_session["id"] if current_session else -1) %}active{% end %}"
+        data-sid="{{ s['id'] }}" onclick="sessionClick(event, this.dataset.sid)">
         <input type="checkbox" class="session-cb" value="{{ s['id'] }}" onclick="event.stopPropagation()">
         <span class="session-text">{{ s["title"] or '无标题对话' }}</span>
       </div>
@@ -439,22 +1111,26 @@
       <div class="skill-panel" id="skillPanel">
         <div class="skill-panel-inner">
           <div class="skill-card" onclick="insertSkill('@weather ')" title="查询指定城市的实时天气">
-            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(245,158,11,.15))">🌤</div>
+            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(245,158,11,.15))">🌤
+            </div>
             <div class="sk-label">天气查询</div>
             <div class="sk-hint">@weather 城市名</div>
           </div>
           <div class="skill-card" onclick="insertSkill('@music ')" title="音乐播放器">
-            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(236,72,153,.25),rgba(219,39,119,.15))">🎵</div>
+            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(236,72,153,.25),rgba(219,39,119,.15))">🎵
+            </div>
             <div class="sk-label">音乐播放</div>
             <div class="sk-hint">@music 歌曲名</div>
           </div>
           <div class="skill-card" onclick="insertSkill('@西师妹 ')" title="西南师大校园助手">
-            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(52,211,153,.25),rgba(16,185,129,.15))">🎓</div>
+            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(52,211,153,.25),rgba(16,185,129,.15))">🎓
+            </div>
             <div class="sk-label">西师妹</div>
             <div class="sk-hint">@西师妹 校园问题</div>
           </div>
           <div class="skill-card" onclick="insertSkill('\\search ')" title="AI 联网搜索">
-            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(96,165,250,.25),rgba(59,130,246,.15))">🔍</div>
+            <div class="sk-icon" style="background:linear-gradient(135deg,rgba(96,165,250,.25),rgba(59,130,246,.15))">🔍
+            </div>
             <div class="sk-label">联网搜索</div>
             <div class="sk-hint">\search 关键词</div>
           </div>
@@ -463,191 +1139,189 @@
 
       <div class="glass-input-row">
         <textarea id="msgInput"
-          placeholder="{% if current_session %}输入消息… Enter 发送，Shift+Enter 换行{% else %}请先点击「✦ 新建对话」开始{% end %}"
-          rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"
-          {% if not current_session %}disabled{% end %}></textarea>
-        <button class="btn-send-glass" id="sendBtn" onclick="send()"
-          {% if not current_session %}disabled{% end %}>发送</button>
-        <a class="glass-export-link" {% if current_session %}href="/chat/export/{{ current_session["id"] }}"{% end %} target="_blank" title="导出PDF">📄</a>
+          placeholder="{% if current_session %}输入消息… Enter 发送，Shift+Enter 换行{% else %}请先点击「✦ 新建对话」开始{% end %}" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" {% if not current_session %}disabled{% end %}></textarea>
+        <button class="btn-send-glass" id="sendBtn" onclick="send()" {% if not current_session %}disabled{% end %}>发送</button>
+        <a class="glass-export-link" {% if current_session %}href="/chat/export/{{ current_session["id"] }}"{% end %}
+          target="_blank" title="导出PDF">📄</a>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const SESSION_ID = '{{ current_session["id"] if current_session else "" }}';
-initThemeIcon('themeIcon');
+  const SESSION_ID = '{{ current_session["id"] if current_session else "" }}';
+  initThemeIcon('themeIcon');
 
-function getCookie(name) {
-  const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
-  return v ? decodeURIComponent(v.split('=')[1]) : '';
-}
+  function getCookie(name) {
+    const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
+    return v ? decodeURIComponent(v.split('=')[1]) : '';
+  }
 
-function renderContent(text) {
-  // Replaced by renderSafeMarkdown from base.js — kept as alias for compat
-  return renderSafeMarkdown(text);
-}
+  function renderContent(text) {
+    // Replaced by renderSafeMarkdown from base.js — kept as alias for compat
+    return renderSafeMarkdown(text);
+  }
 
-/* ── Skill Panel ── */
-function toggleSkillPanel() {
-  const panel = document.getElementById('skillPanel');
-  const toggle = document.getElementById('skillToggle');
-  panel.classList.toggle('open');
-  toggle.classList.toggle('open');
-}
+  /* ── Skill Panel ── */
+  function toggleSkillPanel() {
+    const panel = document.getElementById('skillPanel');
+    const toggle = document.getElementById('skillToggle');
+    panel.classList.toggle('open');
+    toggle.classList.toggle('open');
+  }
 
-function insertSkill(prefix) {
-  const input = document.getElementById('msgInput');
-  if (!input || input.disabled) return;
-  input.value = prefix + input.value;
-  input.focus();
-  document.getElementById('skillPanel').classList.remove('open');
-  document.getElementById('skillToggle').classList.remove('open');
-}
+  function insertSkill(prefix) {
+    const input = document.getElementById('msgInput');
+    if (!input || input.disabled) return;
+    input.value = prefix + input.value;
+    input.focus();
+    document.getElementById('skillPanel').classList.remove('open');
+    document.getElementById('skillToggle').classList.remove('open');
+  }
 
-/* ── Messages ── */
-function appendUserMsg(content) {
-  clearEmptyState();
-  const d = document.createElement('div');
-  d.className = 'glass-msg user';
-  d.textContent = content;
-  document.getElementById('messages').appendChild(d);
-  scrollBottom();
-}
+  /* ── Messages ── */
+  function appendUserMsg(content) {
+    clearEmptyState();
+    const d = document.createElement('div');
+    d.className = 'glass-msg user';
+    d.textContent = content;
+    document.getElementById('messages').appendChild(d);
+    scrollBottom();
+  }
 
-function appendAssistantMsg(content) {
-  const d = document.createElement('div');
-  d.className = 'glass-msg assistant';
-  d.innerHTML = renderSafeMarkdown(content);
-  document.getElementById('messages').appendChild(d);
-  scrollBottom();
-  return d;
-}
+  function appendAssistantMsg(content) {
+    const d = document.createElement('div');
+    d.className = 'glass-msg assistant';
+    d.innerHTML = renderSafeMarkdown(content);
+    document.getElementById('messages').appendChild(d);
+    scrollBottom();
+    return d;
+  }
 
-function appendTyping() {
-  const d = document.createElement('div');
-  d.className = 'glass-msg assistant';
-  d.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
-  d.id = 'typingMsg';
-  document.getElementById('messages').appendChild(d);
-  scrollBottom();
-  return d;
-}
+  function appendTyping() {
+    const d = document.createElement('div');
+    d.className = 'glass-msg assistant';
+    d.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    d.id = 'typingMsg';
+    document.getElementById('messages').appendChild(d);
+    scrollBottom();
+    return d;
+  }
 
-function clearEmptyState() {
-  const es = document.querySelector('.empty-state');
-  if (es) es.remove();
-}
+  function clearEmptyState() {
+    const es = document.querySelector('.empty-state');
+    if (es) es.remove();
+  }
 
-function scrollBottom() {
-  const m = document.getElementById('messages');
-  requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
-}
+  function scrollBottom() {
+    const m = document.getElementById('messages');
+    requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
+  }
 
-/* ── Send ── */
-async function send() {
-  if (!SESSION_ID) return;
-  const input = document.getElementById('msgInput');
-  const content = input.value.trim();
-  if (!content) return;
-  input.value = '';
-  const btn = document.getElementById('sendBtn');
-  btn.disabled = true;
+  /* ── Send ── */
+  async function send() {
+    if (!SESSION_ID) return;
+    const input = document.getElementById('msgInput');
+    const content = input.value.trim();
+    if (!content) return;
+    input.value = '';
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
 
-  appendUserMsg(content);
-  appendTyping();
+    appendUserMsg(content);
+    appendTyping();
 
-  try {
-    const resp = await fetch('/chat/send/' + SESSION_ID, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-      body: JSON.stringify({message: content})
-    });
-    const typing = document.getElementById('typingMsg');
-    if (typing) typing.remove();
-    const msgDiv = appendAssistantMsg('');
+    try {
+      const resp = await fetch('/chat/send/' + SESSION_ID, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
+        body: JSON.stringify({ message: content })
+      });
+      const typing = document.getElementById('typingMsg');
+      if (typing) typing.remove();
+      const msgDiv = appendAssistantMsg('');
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '', accumulated = '';
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') { btn.disabled = false; return; }
-          try { accumulated += JSON.parse(data).content; } catch(e) {}
-          msgDiv.innerHTML = renderSafeMarkdown(accumulated);
-          scrollBottom();
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '', accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') { btn.disabled = false; return; }
+            try { accumulated += JSON.parse(data).content; } catch { /* partial SSE chunk */ }
+            msgDiv.innerHTML = renderSafeMarkdown(accumulated);
+            scrollBottom();
+          }
         }
       }
+    } catch (e) {
+      const typing = document.getElementById('typingMsg');
+      if (typing) typing.remove();
+      const errDiv = appendAssistantMsg('❌ 请求失败：' + e.message);
+      errDiv.style.color = '#f87171';
     }
-  } catch(e) {
-    const typing = document.getElementById('typingMsg');
-    if (typing) typing.remove();
-    const errDiv = appendAssistantMsg('❌ 请求失败：' + e.message);
-    errDiv.style.color = '#f87171';
+    btn.disabled = false;
   }
-  btn.disabled = false;
-}
 
-/* ── Session management ── */
-function sessionClick(e, id) {
-  if (batchMode) {
-    const cb = e.currentTarget.querySelector('.session-cb');
-    if (cb) { cb.checked = !cb.checked; }
-    return;
+  /* ── Session management ── */
+  function sessionClick(e, id) {
+    if (batchMode) {
+      const cb = e.currentTarget.querySelector('.session-cb');
+      if (cb) { cb.checked = !cb.checked; }
+      return;
+    }
+    window.location.href = '/chat/session/' + id;
   }
-  window.location.href = '/chat/session/' + id;
-}
 
-function newSession() {
-  const empId = document.getElementById('empSelect').value || 0;
-  window.location.href = '/chat/new?employee_id=' + empId;
-}
+  function newSession() {
+    const empId = document.getElementById('empSelect').value || 0;
+    window.location.href = '/chat/new?employee_id=' + empId;
+  }
 
-function switchEmployee(id) {
-  fetch('/chat/employee', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-    body: JSON.stringify({employee_id: id})
-  }).then(() => window.location.reload());
-}
+  function switchEmployee(id) {
+    fetch('/chat/employee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
+      body: JSON.stringify({ employee_id: id })
+    }).then(() => window.location.reload());
+  }
 
-/* ── Batch delete ── */
-let batchMode = false;
-function toggleBatchMode() {
-  batchMode = !batchMode;
-  document.querySelectorAll('.session-cb').forEach(cb => { cb.style.display = batchMode ? 'inline' : 'none'; cb.checked = false; });
-  document.getElementById('batchBar').style.display = batchMode ? 'flex' : 'none';
-  document.getElementById('selectAll').checked = false;
-  document.getElementById('btnBatch').textContent = batchMode ? '完成' : '批量';
-  document.getElementById('btnBatch').style.color = batchMode ? '#818cf8' : '';
-}
+  /* ── Batch delete ── */
+  let batchMode = false;
+  function toggleBatchMode() {
+    batchMode = !batchMode;
+    document.querySelectorAll('.session-cb').forEach(cb => { cb.style.display = batchMode ? 'inline' : 'none'; cb.checked = false; });
+    document.getElementById('batchBar').style.display = batchMode ? 'flex' : 'none';
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('btnBatch').textContent = batchMode ? '完成' : '批量';
+    document.getElementById('btnBatch').style.color = batchMode ? '#818cf8' : '';
+  }
 
-function toggleSelectAll() {
-  const checked = document.getElementById('selectAll').checked;
-  document.querySelectorAll('.session-cb').forEach(cb => { cb.checked = checked; });
-}
+  function toggleSelectAll() {
+    const checked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.session-cb').forEach(cb => { cb.checked = checked; });
+  }
 
-function batchDelete() {
-  const ids = [];
-  document.querySelectorAll('.session-cb:checked').forEach(cb => { ids.push(parseInt(cb.value)); });
-  if (!ids.length) return alert('请至少选择一个对话');
-  if (!confirm('确认删除选中的 ' + ids.length + ' 个对话？此操作不可恢复。')) return;
-  fetch('/chat/batch-delete', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf')},
-    body: JSON.stringify({ids: ids})
-  }).then(r => r.json()).then(data => {
-    if (data.ok) window.location.reload();
-    else alert(data.error);
-  }).catch(e => alert('删除失败：' + e.message));
-}
+  function batchDelete() {
+    const ids = [];
+    document.querySelectorAll('.session-cb:checked').forEach(cb => { ids.push(parseInt(cb.value)); });
+    if (!ids.length) return alert('请至少选择一个对话');
+    if (!confirm('确认删除选中的 ' + ids.length + ' 个对话？此操作不可恢复。')) return;
+    fetch('/chat/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
+      body: JSON.stringify({ ids: ids })
+    }).then(r => r.json()).then(data => {
+      if (data.ok) window.location.reload();
+      else alert(data.error);
+    }).catch(e => alert('删除失败：' + e.message));
+  }
 </script>
 {% end %}

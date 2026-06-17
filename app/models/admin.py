@@ -1,5 +1,6 @@
 import secrets
 import sqlite3
+from datetime import datetime
 
 from app.models.crypto import hash_password
 from app.models.db import get_connection
@@ -16,25 +17,22 @@ def _like(keyword: str) -> str:
 
 
 class AdminRepository:
+    MAX_FAILED_ATTEMPTS = 5
+    LOCK_DURATION_MINUTES = 15
+
     @staticmethod
     def get_admin_by_username(username: str):
         with get_connection() as conn:
             return conn.execute(
-                """
-				select
-					au.id,
-					au.username,
-					au.password_hash,
-					au.salt,
-					au.display_name,
-					au.is_super,
-					au.status,
-					ar.role_code,
-					ar.role_name
-				from admin_users au
-				left join admin_roles ar on ar.id = au.role_id
-				where au.username=?
-				""",
+                """SELECT
+                        au.id, au.username, au.password_hash, au.salt,
+                        au.display_name, au.is_super, au.status,
+                        au.failed_login_count, au.locked_until,
+                        au.must_change_password, au.last_login_at,
+                        ar.role_code, ar.role_name
+                   FROM admin_users au
+                   LEFT JOIN admin_roles ar ON ar.id = au.role_id
+                   WHERE au.username=?""",
                 (username,),
             ).fetchone()
 
@@ -44,8 +42,43 @@ class AdminRepository:
         if not row or row["status"] != "enabled":
             return False
 
+        # Check lockout
+        if row["locked_until"]:
+            locked = datetime.fromisoformat(row["locked_until"])
+            if locked > datetime.now():
+                return False  # still locked
+
         salt = bytes.fromhex(row["salt"])
-        return hash_password(password, salt) == row["password_hash"]
+        pwd_ok = hash_password(password, salt) == row["password_hash"]
+
+        with get_connection() as conn:
+            if pwd_ok:
+                conn.execute(
+                    """UPDATE admin_users
+                       SET failed_login_count=0, locked_until=NULL,
+                           last_login_at=datetime('now')
+                       WHERE id=?""",
+                    (row["id"],),
+                )
+            else:
+                failed = (row["failed_login_count"] or 0) + 1
+                if failed >= AdminRepository.MAX_FAILED_ATTEMPTS:
+                    conn.execute(
+                        """UPDATE admin_users
+                           SET failed_login_count=?,
+                               locked_until=datetime('now','+'||?||' minutes')
+                           WHERE id=?""",
+                        (failed, AdminRepository.LOCK_DURATION_MINUTES, row["id"]),
+                    )
+                else:
+                    conn.execute(
+                        """UPDATE admin_users
+                           SET failed_login_count=?
+                           WHERE id=?""",
+                        (failed, row["id"]),
+                    )
+
+        return pwd_ok
 
     @staticmethod
     def list_roles(keyword: str = "", page: int = 1, per_page: int = PER_PAGE):
@@ -60,12 +93,10 @@ class AdminRepository:
                 f"select count(*) from admin_roles {where}", params
             ).fetchone()[0]
             rows = conn.execute(
-                f"""
-				select * from admin_roles
-				{where}
-				order by is_system desc, id asc
-				limit ? offset ?
-				""",
+                f"""SELECT * FROM admin_roles
+                    {where}
+                    ORDER BY is_system DESC, id ASC
+                    LIMIT ? OFFSET ?""",
                 params + [per_page, _page_offset(page, per_page)],
             ).fetchall()
         return rows, total
@@ -74,14 +105,14 @@ class AdminRepository:
     def list_all_roles():
         with get_connection() as conn:
             return conn.execute(
-                "select * from admin_roles where status='enabled' order by is_system desc, id asc"
+                "SELECT * FROM admin_roles WHERE status='enabled' ORDER BY is_system DESC, id ASC"
             ).fetchall()
 
     @staticmethod
     def get_role(role_id: int):
         with get_connection() as conn:
             return conn.execute(
-                "select * from admin_roles where id=?", (role_id,)
+                "SELECT * FROM admin_roles WHERE id=?", (role_id,)
             ).fetchone()
 
     @staticmethod
@@ -91,10 +122,8 @@ class AdminRepository:
         try:
             with get_connection() as conn:
                 cur = conn.execute(
-                    """
-					insert into admin_roles(role_code, role_name, role_type, description)
-					values(?, ?, ?, ?)
-					""",
+                    """INSERT INTO admin_roles(role_code, role_name, role_type, description)
+                       VALUES(?, ?, ?, ?)""",
                     (role_code, role_name, role_type, description),
                 )
                 new_id = cur.lastrowid
@@ -115,18 +144,17 @@ class AdminRepository:
     ):
         with get_connection() as conn:
             role = conn.execute(
-                "select is_system from admin_roles where id=?", (role_id,)
+                "SELECT is_system FROM admin_roles WHERE id=?", (role_id,)
             ).fetchone()
             if not role:
                 return False, "角色不存在"
             if role["is_system"]:
                 return False, "系统内置角色不允许修改"
             conn.execute(
-                """
-				update admin_roles
-				set role_name=?, role_type=?, description=?, status=?, updated_at=datetime('now')
-				where id=?
-				""",
+                """UPDATE admin_roles
+                   SET role_name=?, role_type=?, description=?, status=?,
+                       updated_at=datetime('now')
+                   WHERE id=?""",
                 (role_name, role_type, description, status, role_id),
             )
             AdminRepository._replace_role_menus(conn, role_id, menu_ids)
@@ -136,19 +164,19 @@ class AdminRepository:
     def delete_role(role_id: int):
         with get_connection() as conn:
             role = conn.execute(
-                "select is_system from admin_roles where id=?", (role_id,)
+                "SELECT is_system FROM admin_roles WHERE id=?", (role_id,)
             ).fetchone()
             if not role:
                 return False, "角色不存在"
             if role["is_system"]:
                 return False, "系统内置角色不允许删除"
             used = conn.execute(
-                "select count(*) from admin_users where role_id=?", (role_id,)
+                "SELECT count(*) FROM admin_users WHERE role_id=?", (role_id,)
             ).fetchone()[0]
             if used:
                 return False, "该角色已被用户使用，不能删除"
-            conn.execute("delete from admin_role_menus where role_id=?", (role_id,))
-            conn.execute("delete from admin_roles where id=?", (role_id,))
+            conn.execute("DELETE FROM admin_role_menus WHERE role_id=?", (role_id,))
+            conn.execute("DELETE FROM admin_roles WHERE id=?", (role_id,))
         return True, None
 
     @staticmethod
@@ -163,15 +191,13 @@ class AdminRepository:
 
         with get_connection() as conn:
             total = conn.execute(
-                f"select count(*) from admin_menus {where}", params
+                f"SELECT count(*) FROM admin_menus {where}", params
             ).fetchone()[0]
             rows = conn.execute(
-                f"""
-				select * from admin_menus
-				{where}
-				order by sort_order asc, id asc
-				limit ? offset ?
-				""",
+                f"""SELECT * FROM admin_menus
+                    {where}
+                    ORDER BY sort_order ASC, id ASC
+                    LIMIT ? OFFSET ?""",
                 params + [per_page, _page_offset(page, per_page)],
             ).fetchall()
         return rows, total
@@ -180,14 +206,14 @@ class AdminRepository:
     def list_all_menus():
         with get_connection() as conn:
             return conn.execute(
-                "select * from admin_menus where status='enabled' order by sort_order asc, id asc"
+                "SELECT * FROM admin_menus WHERE status='enabled' ORDER BY sort_order ASC, id ASC"
             ).fetchall()
 
     @staticmethod
     def get_menu(menu_id: int):
         with get_connection() as conn:
             return conn.execute(
-                "select * from admin_menus where id=?", (menu_id,)
+                "SELECT * FROM admin_menus WHERE id=?", (menu_id,)
             ).fetchone()
 
     @staticmethod
@@ -202,10 +228,8 @@ class AdminRepository:
         try:
             with get_connection() as conn:
                 conn.execute(
-                    """
-					insert into admin_menus(parent_id, menu_code, menu_name, icon, url, sort_order)
-					values(?, ?, ?, ?, ?, ?)
-					""",
+                    """INSERT INTO admin_menus(parent_id, menu_code, menu_name, icon, url, sort_order)
+                       VALUES(?, ?, ?, ?, ?, ?)""",
                     (parent_id, menu_code, menu_name, icon, url, sort_order),
                 )
             return True, None
@@ -224,11 +248,10 @@ class AdminRepository:
     ):
         with get_connection() as conn:
             conn.execute(
-                """
-				update admin_menus
-				set parent_id=?, menu_name=?, icon=?, url=?, sort_order=?, status=?, updated_at=datetime('now')
-				where id=?
-				""",
+                """UPDATE admin_menus
+                   SET parent_id=?, menu_name=?, icon=?, url=?, sort_order=?,
+                       status=?, updated_at=datetime('now')
+                   WHERE id=?""",
                 (parent_id, menu_name, icon, url, sort_order, status, menu_id),
             )
         return True, None
@@ -237,31 +260,31 @@ class AdminRepository:
     def delete_menu(menu_id: int):
         with get_connection() as conn:
             children = conn.execute(
-                "select count(*) from admin_menus where parent_id=?", (menu_id,)
+                "SELECT count(*) FROM admin_menus WHERE parent_id=?", (menu_id,)
             ).fetchone()[0]
             if children:
                 return False, "存在子功能，不能删除"
-            conn.execute("delete from admin_role_menus where menu_id=?", (menu_id,))
-            conn.execute("delete from admin_menus where id=?", (menu_id,))
+            conn.execute("DELETE FROM admin_role_menus WHERE menu_id=?", (menu_id,))
+            conn.execute("DELETE FROM admin_menus WHERE id=?", (menu_id,))
         return True, None
 
     @staticmethod
     def get_role_menu_ids(role_id: int):
         with get_connection() as conn:
             rows = conn.execute(
-                "select menu_id from admin_role_menus where role_id=?", (role_id,)
+                "SELECT menu_id FROM admin_role_menus WHERE role_id=?", (role_id,)
             ).fetchall()
         return [row["menu_id"] for row in rows]
 
     @staticmethod
     def _replace_role_menus(conn, role_id: int, menu_ids):
-        conn.execute("delete from admin_role_menus where role_id=?", (role_id,))
+        conn.execute("DELETE FROM admin_role_menus WHERE role_id=?", (role_id,))
         ids = [
             (role_id, int(menu_id)) for menu_id in menu_ids if str(menu_id).isdigit()
         ]
         if ids:
             conn.executemany(
-                "insert or ignore into admin_role_menus(role_id, menu_id) values(?, ?)",
+                "INSERT OR IGNORE INTO admin_role_menus(role_id, menu_id) VALUES(?, ?)",
                 ids,
             )
 
@@ -275,19 +298,17 @@ class AdminRepository:
 
         with get_connection() as conn:
             total = conn.execute(
-                f"select count(*) from admin_users au left join admin_roles ar on ar.id=au.role_id {where}",
+                f"SELECT count(*) FROM admin_users au LEFT JOIN admin_roles ar ON ar.id=au.role_id {where}",
                 params,
             ).fetchone()[0]
             rows = conn.execute(
-                f"""
-				select au.id, au.username, au.display_name, au.role_id, au.is_super, au.status,
-					au.created_at, ar.role_name, ar.role_code
-				from admin_users au
-				left join admin_roles ar on ar.id=au.role_id
-				{where}
-				order by au.is_super desc, au.id asc
-				limit ? offset ?
-				""",
+                f"""SELECT au.id, au.username, au.display_name, au.role_id, au.is_super, au.status,
+                           au.created_at, ar.role_name, ar.role_code
+                    FROM admin_users au
+                    LEFT JOIN admin_roles ar ON ar.id=au.role_id
+                    {where}
+                    ORDER BY au.is_super DESC, au.id ASC
+                    LIMIT ? OFFSET ?""",
                 params + [per_page, _page_offset(page, per_page)],
             ).fetchall()
         return rows, total
@@ -296,7 +317,7 @@ class AdminRepository:
     def get_user(user_id: int):
         with get_connection() as conn:
             return conn.execute(
-                "select id, username, display_name, role_id, is_super, status from admin_users where id=?",
+                "SELECT id, username, display_name, role_id, is_super, status FROM admin_users WHERE id=?",
                 (user_id,),
             ).fetchone()
 
@@ -312,10 +333,8 @@ class AdminRepository:
         try:
             with get_connection() as conn:
                 conn.execute(
-                    """
-					insert into admin_users(username, password_hash, salt, display_name, role_id, status)
-					values(?, ?, ?, ?, ?, ?)
-					""",
+                    """INSERT INTO admin_users(username, password_hash, salt, display_name, role_id, status)
+                       VALUES(?, ?, ?, ?, ?, ?)""",
                     (
                         username,
                         hash_password(password, salt),
@@ -335,7 +354,7 @@ class AdminRepository:
     ):
         with get_connection() as conn:
             user = conn.execute(
-                "select username, is_super from admin_users where id=?", (user_id,)
+                "SELECT username, is_super FROM admin_users WHERE id=?", (user_id,)
             ).fetchone()
             if not user:
                 return False, "用户不存在"
@@ -346,11 +365,10 @@ class AdminRepository:
                     return False, "密码长度不能少于8位"
                 salt = secrets.token_bytes(16)
                 conn.execute(
-                    """
-					update admin_users
-					set display_name=?, role_id=?, status=?, password_hash=?, salt=?, updated_at=datetime('now')
-					where id=?
-					""",
+                    """UPDATE admin_users
+                       SET display_name=?, role_id=?, status=?, password_hash=?, salt=?,
+                           updated_at=datetime('now')
+                       WHERE id=?""",
                     (
                         display_name,
                         role_id,
@@ -362,11 +380,9 @@ class AdminRepository:
                 )
             else:
                 conn.execute(
-                    """
-					update admin_users
-					set display_name=?, role_id=?, status=?, updated_at=datetime('now')
-					where id=?
-					""",
+                    """UPDATE admin_users
+                       SET display_name=?, role_id=?, status=?, updated_at=datetime('now')
+                       WHERE id=?""",
                     (display_name, role_id, status, user_id),
                 )
         return True, None
@@ -379,7 +395,8 @@ class AdminRepository:
                    FROM admin_users au
                    JOIN admin_role_menus arm ON arm.role_id = au.role_id
                    JOIN admin_menus am ON am.id = arm.menu_id
-                   WHERE au.id = ? AND am.status = 'enabled' AND am.url IS NOT NULL AND am.url <> ''""",
+                   WHERE au.id = ? AND am.status = 'enabled'
+                     AND am.url IS NOT NULL AND am.url <> ''""",
                 (admin_id,),
             ).fetchall()
         return {row["url"] for row in rows}
@@ -388,11 +405,11 @@ class AdminRepository:
     def delete_user(user_id: int):
         with get_connection() as conn:
             user = conn.execute(
-                "select username from admin_users where id=?", (user_id,)
+                "SELECT username FROM admin_users WHERE id=?", (user_id,)
             ).fetchone()
             if not user:
                 return False, "用户不存在"
             if user["username"] == "admin":
                 return False, "admin 不允许删除"
-            conn.execute("delete from admin_users where id=?", (user_id,))
+            conn.execute("DELETE FROM admin_users WHERE id=?", (user_id,))
         return True, None

@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block body %}
 <section class="admin-page-head">
-	<div><p>会话管理</p><h1>{{ title }}</h1><span>会话 ID: {{ session['id'] }}，用户: {{ session['username'] or '-' }}，数字员工: {{ session['employee_name'] or '-' }}</span></div>
+	<div>
+		<p>会话管理</p>
+		<h1>{{ title }}</h1><span>会话 ID: {{ session['id'] }}，用户: {{ session['username'] or '-' }}，数字员工: {{
+			session['employee_name'] or '-' }}</span>
+	</div>
 	<a href="/admin/sessions" class="adm-btn adm-btn-ghost">← 返回列表</a>
 </section>
 <section class="admin-table-card">
@@ -10,7 +14,9 @@
 		{% for msg in messages %}
 		<div class="conv-message conv-{{ msg['role'] }}">
 			<div class="conv-meta">
-				<span class="conv-role-badge {% if msg['role'] == 'user' %}badge-user{% else %}badge-assistant{% end %}">{{ '用户' if msg['role'] == 'user' else '助手' }}</span>
+				<span
+					class="conv-role-badge {% if msg['role'] == 'user' %}badge-user{% else %}badge-assistant{% end %}">{{
+					'用户' if msg['role'] == 'user' else '助手' }}</span>
 				<span class="conv-time">{{ msg['created_at'] }}</span>
 			</div>
 			<div class="conv-content">{{ msg['content'] }}</div>
@@ -19,15 +25,63 @@
 	</div>
 </section>
 <style>
-.admin-conversation-timeline { display:flex; flex-direction:column; gap:12px; padding:16px 0; }
-.conv-message { padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.25); backdrop-filter:blur(6px); border-left:3px solid rgba(120,140,180,0.35); }
-.conv-user { border-left-color:rgba(64,128,255,0.55); }
-.conv-assistant { border-left-color:rgba(34,187,128,0.55); }
-.conv-meta { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-.conv-role-badge { font-size:11px; padding:2px 8px; border-radius:3px; font-weight:600; }
-.badge-user { background:rgba(64,128,255,0.12); color:#4080ff; }
-.badge-assistant { background:rgba(34,187,128,0.12); color:#22bb80; }
-.conv-time { font-size:12px; color:rgba(80,90,110,0.65); }
-.conv-content { white-space:pre-wrap; word-break:break-word; font-size:14px; line-height:1.6; }
+	.admin-conversation-timeline {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 16px 0;
+	}
+
+	.conv-message {
+		padding: 12px 16px;
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.25);
+		backdrop-filter: blur(6px);
+		border-left: 3px solid rgba(120, 140, 180, 0.35);
+	}
+
+	.conv-user {
+		border-left-color: rgba(64, 128, 255, 0.55);
+	}
+
+	.conv-assistant {
+		border-left-color: rgba(34, 187, 128, 0.55);
+	}
+
+	.conv-meta {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 6px;
+	}
+
+	.conv-role-badge {
+		font-size: 11px;
+		padding: 2px 8px;
+		border-radius: 3px;
+		font-weight: 600;
+	}
+
+	.badge-user {
+		background: rgba(64, 128, 255, 0.12);
+		color: #4080ff;
+	}
+
+	.badge-assistant {
+		background: rgba(34, 187, 128, 0.12);
+		color: #22bb80;
+	}
+
+	.conv-time {
+		font-size: 12px;
+		color: rgba(80, 90, 110, 0.65);
+	}
+
+	.conv-content {
+		white-space: pre-wrap;
+		word-break: break-word;
+		font-size: 14px;
+		line-height: 1.6;
+	}
 </style>
 {% end %}

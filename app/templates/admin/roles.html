@@ -10,26 +10,50 @@
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索角色编码/名称/描述">
 		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
 		<a href="/admin/roles">重置</a>
-		<button type="button" data-bs-toggle="modal" data-bs-target="#roleModal"><i class="fa-solid fa-plus"></i> 新增角色</button>
+		<button type="button" data-bs-toggle="modal" data-bs-target="#roleModal"><i class="fa-solid fa-plus"></i>
+			新增角色</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>角色列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
-		<thead><tr><th>ID</th><th>编码</th><th>名称</th><th>类型</th><th>系统</th><th>状态</th><th>描述</th><th>操作</th></tr></thead>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>编码</th>
+				<th>名称</th>
+				<th>类型</th>
+				<th>系统</th>
+				<th>状态</th>
+				<th>描述</th>
+				<th>操作</th>
+			</tr>
+		</thead>
 		<tbody>
 			{% for role in roles %}
 			<tr>
-				<td>{{ role['id'] }}</td><td>{{ role['role_code'] }}</td><td>{{ role['role_name'] }}</td><td>{{ '管理用户' if role['role_type'] == 'manager' else '普通用户' }}</td><td>{{ '是' if role['is_system'] else '否' }}</td><td>{{ role['status'] }}</td><td>{{ role['description'] or '-' }}</td>
-				<td class="table-actions"><a href="/admin/roles?edit={{ role['id'] }}">查看/修改</a><form method="post" action="/admin/roles" data-confirm="确认删除该角色？删除后不可恢复。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ role['id'] }}"><button type="submit" {% if role['is_system'] %}disabled{% end %}>删除</button></form></td>
+				<td>{{ role['id'] }}</td>
+				<td>{{ role['role_code'] }}</td>
+				<td>{{ role['role_name'] }}</td>
+				<td>{{ '管理用户' if role['role_type'] == 'manager' else '普通用户' }}</td>
+				<td>{{ '是' if role['is_system'] else '否' }}</td>
+				<td>{{ role['status'] }}</td>
+				<td>{{ role['description'] or '-' }}</td>
+				<td class="table-actions"><a href="/admin/roles?edit={{ role['id'] }}">查看/修改</a>
+					<form method="post" action="/admin/roles" data-confirm="确认删除该角色？删除后不可恢复。">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+							value="{{ role['id'] }}"><button type="submit" {% if role['is_system'] %}disabled{% end %}>删除</button></form>
+				</td>
 			</tr>
 			{% end %}
 		</tbody>
 	</table>
-	<div class="admin-pagination">{% if page > 1 %}<a href="/admin/roles?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{% if page * per_page < total %}<a href="/admin/roles?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+	<div class="admin-pagination">{% if page > 1 %}<a
+			href="/admin/roles?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }} 页</span>{%
+		if page * per_page < total %}<a href="/admin/roles?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
+	</div>
 </section>
-<div class="modal fade admin-edit-modal" id="roleModal" tabindex="-1" {% if edit_role %}data-auto-open="true"{% end %}>
+<div class="modal fade admin-edit-modal" id="roleModal" tabindex="-1" {% if edit_role %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -46,11 +70,21 @@
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">基础信息<small>角色编码用于代码识别，创建后不可修改</small></div>
 						<div class="admin-grid-form">
-							<label class="required"><span>角色编码</span><input type="text" name="role_code" value="{{ edit_role['role_code'] if edit_role else '' }}" {% if edit_role %}readonly{% end %} placeholder="如：op_manager" required></label>
-							<label class="required"><span>角色名称</span><input type="text" name="role_name" value="{{ edit_role['role_name'] if edit_role else '' }}" placeholder="如：运营管理员" required></label>
-							<label class="required"><span>角色类型</span><select name="role_type"><option value="manager" {% if edit_role and edit_role['role_type'] == 'manager' %}selected{% end %}>管理用户</option><option value="web_user" {% if edit_role and edit_role['role_type'] == 'web_user' %}selected{% end %}>普通用户</option></select></label>
-							<label class="required"><span>状态</span><select name="status"><option value="enabled" {% if not edit_role or edit_role['status'] == 'enabled' %}selected{% end %}>启用</option><option value="disabled" {% if edit_role and edit_role['status'] == 'disabled' %}selected{% end %}>禁用</option></select></label>
-							<label class="form-wide"><span>角色描述</span><textarea name="description" placeholder="描述该角色的职责范围和能力">{{ edit_role['description'] if edit_role and edit_role['description'] else '' }}</textarea></label>
+							<label class="required"><span>角色编码</span><input type="text" name="role_code"
+									value="{{ edit_role['role_code'] if edit_role else '' }}" {% if edit_role %}readonly{% end %} placeholder="如：op_manager" required></label>
+							<label class="required"><span>角色名称</span><input type="text" name="role_name"
+									value="{{ edit_role['role_name'] if edit_role else '' }}" placeholder="如：运营管理员"
+									required></label>
+							<label class="required"><span>角色类型</span><select name="role_type">
+									<option value="manager" {% if edit_role and edit_role['role_type']=='manager' %}selected{% end %}>管理用户</option>
+									<option value="web_user" {% if edit_role and edit_role['role_type']=='web_user' %}selected{% end %}>普通用户</option>
+								</select></label>
+							<label class="required"><span>状态</span><select name="status">
+									<option value="enabled" {% if not edit_role or edit_role['status']=='enabled' %}selected{% end %}>启用</option>
+									<option value="disabled" {% if edit_role and edit_role['status']=='disabled' %}selected{% end %}>禁用</option>
+								</select></label>
+							<label class="form-wide"><span>角色描述</span><textarea name="description"
+									placeholder="描述该角色的职责范围和能力">{{ edit_role['description'] if edit_role and edit_role['description'] else '' }}</textarea></label>
 						</div>
 					</section>
 					<section class="admin-form-section">
@@ -62,12 +96,15 @@
 						</div>
 						<div class="permission-grid">
 							{% for menu in menus %}
-							<label><input type="checkbox" name="menu_ids" value="{{ menu['id'] }}" {% if menu['id'] in checked_menu_ids %}checked{% end %}> <span>{{ menu['icon'] or '▦' }}</span>{{ menu['menu_name'] }}</label>
+							<label><input type="checkbox" name="menu_ids" value="{{ menu['id'] }}" {% if menu['id'] in checked_menu_ids %}checked{% end %}> <span>{{ menu['icon'] or '▦' }}</span>{{
+								menu['menu_name'] }}</label>
 							{% end %}
 						</div>
 					</section>
 				</div>
-				<div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button></div>
+				<div class="modal-footer"><button type="button" class="btn btn-light"
+						data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">确认保存</button>
+				</div>
 			</form>
 		</div>
 	</div>

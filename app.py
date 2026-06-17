@@ -139,7 +139,7 @@ def app():
         cookie_secret=cookie_secret,
         login_url="/",
         xsrf_cookies=True,
-        xsrf_cookie_kwargs={"httponly": False, "samesite": "Lax"},
+        xsrf_cookie_kwargs={"httponly": False, "samesite": "Lax", "secure": not dev},
         debug=dev,
         autoreload=dev,
     )
