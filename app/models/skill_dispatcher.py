@@ -65,13 +65,65 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
     }
 
 
+# wttr.in weather code → Chinese description (WW Online codes)
+_WEATHER_CODES_ZH: dict[str, str] = {
+    "113": "晴",
+    "116": "多云",
+    "119": "多云",
+    "122": "阴",
+    "143": "雾",
+    "176": "小雨",
+    "179": "小雪",
+    "182": "雨夹雪",
+    "185": "冻雨",
+    "200": "雷阵雨",
+    "227": "暴风雪",
+    "230": "暴风雪",
+    "248": "雾",
+    "260": "雾",
+    "263": "小雨",
+    "266": "小雨",
+    "281": "冻雨",
+    "284": "冻雨",
+    "293": "小雨",
+    "296": "小雨",
+    "299": "中雨",
+    "302": "中雨",
+    "305": "大雨",
+    "308": "大雨",
+    "311": "冻雨",
+    "314": "冻雨",
+    "317": "雨夹雪",
+    "320": "雨夹雪",
+    "323": "小雪",
+    "326": "小雪",
+    "329": "中雪",
+    "332": "中雪",
+    "335": "大雪",
+    "338": "大雪",
+    "350": "冰雹",
+    "353": "阵雨",
+    "356": "大雨",
+    "359": "暴雨",
+    "362": "雨夹雪",
+    "365": "雨夹雪",
+    "368": "小雪",
+    "371": "大雪",
+    "374": "冰雹",
+    "377": "冰雹",
+    "386": "雷阵雨",
+    "389": "雷暴",
+    "392": "雷暴伴雪",
+    "395": "大雪",
+}
+
+
 async def _weather(city: str, api_key: str | None = None) -> str:
     if api_key:
-        # OpenWeatherMap when key is configured
         try:
             url = (
                 f"https://api.openweathermap.org/data/2.5/weather"
-                f"?q={city}&appid={api_key}&units=metric&lang=zh_cn"
+                f"?q={urllib.parse.quote(city)}&appid={api_key}&units=metric&lang=zh_cn"
             )
             async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
                 r = await client.get(url)
@@ -87,25 +139,37 @@ async def _weather(city: str, api_key: str | None = None) -> str:
                     f"- 温度：{temp}°C（体感{feels}°C）\n"
                     f"- 湿度：{humidity}%"
                 )
-            return f"【天气查询】无法获取 {city} 的天气信息：{data.get('message', '未知错误')}"
+            log_error(
+                f"weather OpenWeatherMap status={r.status_code} body={str(data)[:300]}",
+                RuntimeError(f"HTTP {r.status_code}"),
+            )
+            # Fall through to wttr.in
         except Exception as exc:
-            log_error(f"weather OpenWeatherMap failed city={city}", exc)
+            log_error(f"weather OpenWeatherMap city={city}", exc)
             # Fall through to wttr.in
 
-    # wttr.in — free, no API key required, supports Chinese city names
+    # wttr.in — free, no API key, JSON API
     try:
         encoded = urllib.parse.quote(city)
         url = f"https://wttr.in/{encoded}?format=j1"
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(10),
-            headers={"Accept-Language": "zh-CN,zh;q=0.9"},
+            timeout=httpx.Timeout(12),
+            headers={"User-Agent": "curl/7.88", "Accept-Language": "zh-CN,zh;q=0.9"},
         ) as client:
             r = await client.get(url, follow_redirects=True)
+        if r.status_code != 200:
+            log_error(
+                f"weather wttr.in HTTP {r.status_code} city={city}",
+                RuntimeError(f"HTTP {r.status_code}"),
+            )
+            return f"【天气查询】城市：{city}\n（天气服务返回 {r.status_code}，请稍后重试）"
+
         data = r.json()
         cur = data["current_condition"][0]
-        desc = cur.get("lang_zh", [{}])[0].get("value") or cur.get("weatherDesc", [{}])[
-            0
-        ].get("value", "")
+        code = cur.get("weatherCode", "")
+        desc = _WEATHER_CODES_ZH.get(
+            str(code), cur.get("weatherDesc", [{}])[0].get("value", "")
+        )
         temp = cur["temp_C"]
         feels = cur["FeelsLikeC"]
         humidity = cur["humidity"]
@@ -120,7 +184,7 @@ async def _weather(city: str, api_key: str | None = None) -> str:
             f"- 风速：{wind} km/h"
         )
     except Exception as exc:
-        log_error(f"weather wttr.in failed city={city}", exc)
+        log_error(f"weather wttr.in city={city}", exc)
         return f"【天气查询】城市：{city}\n（天气服务暂时不可用，请稍后重试）"
 
 
