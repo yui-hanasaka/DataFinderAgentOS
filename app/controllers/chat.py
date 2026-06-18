@@ -42,11 +42,6 @@ class ChatHomeHandler(ChatBaseHandler):
         user_id = self._user_id()
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         employees = EmployeeRepository.list_all_active()
-        enabled_models = ModelRepository.list_all_enabled()
-        models_for_template = [
-            {"id": r["id"], "name": r["name"], "model_type": r["model_type"]}
-            for r in enabled_models
-        ]
         self.render(
             "web/chat.html",
             title="对话",
@@ -56,10 +51,6 @@ class ChatHomeHandler(ChatBaseHandler):
             messages=[],
             employees=employees,
             current_employee_id=0,
-            models=models_for_template,
-            current_model_id=0,
-            current_model_name="跟随员工",
-            is_model_custom=False,
         )
 
 
@@ -72,19 +63,6 @@ class ChatSessionHandler(ChatBaseHandler):
         sessions, _ = ChatRepository.list_sessions(user_id, page=1)
         messages = ChatRepository.list_messages(int(session_id))
         employees = EmployeeRepository.list_all_active()
-        enabled_models = ModelRepository.list_all_enabled()
-        models_for_template = [
-            {"id": r["id"], "name": r["name"], "model_type": r["model_type"]}
-            for r in enabled_models
-        ]
-        sess_model_id = int(session["model_id"] or 0)
-        if sess_model_id > 0:
-            model_row = ModelRepository.get_model_masked(sess_model_id)
-            current_model_name = model_row["name"] if model_row else "未知模型"
-            is_model_custom = True
-        else:
-            current_model_name = "跟随员工"
-            is_model_custom = False
 
         self.render(
             "web/chat.html",
@@ -95,10 +73,6 @@ class ChatSessionHandler(ChatBaseHandler):
             messages=messages,
             employees=employees,
             current_employee_id=session["employee_id"],
-            models=models_for_template,
-            current_model_id=sess_model_id,
-            current_model_name=current_model_name,
-            is_model_custom=is_model_custom,
         )
 
 
