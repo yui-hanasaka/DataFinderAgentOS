@@ -1239,7 +1239,7 @@
     try {
       const r = await fetch('/chat/music/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
         body: JSON.stringify({ q: q })
       });
       const j = await r.json();
