@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from app.models.deep import _repair_truncated_json
 from app.models.errors import log_error
 from app.models.model_client import chat_complete, parse_chat_response
 from app.models.model_engine import ModelRepository
@@ -45,7 +46,7 @@ async def _review_once(
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=150,
+        max_tokens=256,
         stream=False,
     )
     parsed = parse_chat_response(resp.content)
@@ -61,7 +62,25 @@ async def _review_once(
     content = (
         content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     )
-    result = json.loads(content)
+
+    # Try strict parse first, fall back to JSON repair for truncated model output
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        repaired = _repair_truncated_json(content)
+        try:
+            result = json.loads(repaired)
+        except json.JSONDecodeError:
+            # Both failed — treat as denial (fail closed)
+            _logger.warning(
+                "tool_reviewer JSON unparseable for tool=%s, denying. "
+                "raw=%s repaired=%s",
+                tool_name,
+                content[:200],
+                repaired[:200],
+            )
+            return ReviewResult(approved=False, reason="审查服务异常，已拒绝执行")
+
     return ReviewResult(
         approved=bool(result.get("approved", True)),
         reason=str(result.get("reason", "")),

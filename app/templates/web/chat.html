@@ -382,6 +382,7 @@
     border: 1px solid rgba(139, 130, 255, .1);
     border-bottom-left-radius: 6px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .03);
+    white-space: pre-wrap;
   }
 
   .glass-msg code { background: rgba(139, 130, 255, .12); padding: 2px 7px; border-radius: 5px; font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace; font-size: .87em; }
@@ -392,6 +393,7 @@
   .glass-msg.user strong { color: #fff; }
 
   /* ── Typing indicator ── */
+  .turn-sep { border: none; border-top: 1px solid rgba(139,130,255,.1); margin: 14px 0; }
   .typing-indicator { display: flex; gap: 6px; padding: 4px 2px; align-items: center; }
   .typing-indicator span { width: 7px; height: 7px; border-radius: 50%; background: #818cf8; animation: typingDot 1.4s infinite; box-shadow: 0 0 6px rgba(129, 140, 248, .4); }
   .typing-indicator span:nth-child(2) { animation-delay: .2s }
@@ -567,6 +569,17 @@
   }
 
   .btn-send-glass:hover { box-shadow: 0 16px 40px rgba(99, 102, 241, .5), inset 0 1px 0 rgba(255, 255, 255, .2); transform: translateY(-2px); }
+
+  .btn-stop-glass {
+    padding: 0 24px; height: 50px; border: none; border-radius: 16px;
+    cursor: pointer; font-size: 14px; font-weight: 700; letter-spacing: .04em;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    box-shadow: 0 10px 28px rgba(239, 68, 68, .38), inset 0 1px 0 rgba(255, 255, 255, .15);
+    transition: all var(--spring-soft) .3s;
+  }
+  .btn-stop-glass:hover { box-shadow: 0 16px 40px rgba(239, 68, 68, .5); transform: translateY(-2px); }
+  .btn-stop-glass:active { transform: scale(.97); }
   .btn-send-glass:active { transform: translateY(0) scale(.97) }
   .btn-send-glass:disabled { background: rgba(139, 130, 255, .1); color: #58588a; box-shadow: none; cursor: not-allowed; }
 
@@ -641,8 +654,8 @@
   /* ═══════════════ Tool Call Cards ═══════════════ */
   .tool-card {
     align-self: flex-start;
-    max-width: 70%;
-    margin: 4px 0;
+    max-width: 85%;
+    margin: 6px 0;
     border-radius: 14px;
     background: rgba(20, 18, 44, .65);
     backdrop-filter: blur(20px) saturate(150%);
@@ -928,8 +941,9 @@
       <div class="glass-input-row">
         <textarea id="msgInput"
           placeholder="{% if current_session %}输入消息… Enter 发送，Shift+Enter 换行{% else %}请先点击「✦ 新建对话」开始{% end %}" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" {% if not current_session %}disabled{% end %}></textarea>
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!_abortController)send()}" {% if not current_session %}disabled{% end %}></textarea>
         <button class="btn-send-glass" id="sendBtn" onclick="send()" {% if not current_session %}disabled{% end %}>发送</button>
+        <button class="btn-stop-glass" id="stopBtn" onclick="stopSend()" style="display:none">⏹ 停止</button>
         <button type="button" class="btn-task-glass"
           onclick="prependTask()" title="启动TaskAgent多步任务模式">
           /task
@@ -1013,17 +1027,24 @@
     requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
   }
 
+  var _abortController = null;
+
   /* ── Send ── */
   async function send() {
-    if (!SESSION_ID) return;
+    if (!SESSION_ID || _abortController) return;
     const input = document.getElementById('msgInput');
     const content = input.value.trim();
     if (!content) return;
     input.value = '';
-    const btn = document.getElementById('sendBtn');
-    btn.disabled = true;
 
-    // Reset tool cards from previous request (prevents overwrite/carryover)
+    // Switch UI: send → stop
+    document.getElementById('sendBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display = '';
+    document.getElementById('stopBtn').disabled = false;
+
+    _abortController = new AbortController();
+
+    // Reset tool cards from previous request
     var oldCards = document.querySelectorAll('.tool-card');
     for (var ci = 0; ci < oldCards.length; ci++) oldCards[ci].remove();
     for (var k in _toolCards) delete _toolCards[k];
@@ -1035,12 +1056,13 @@
       const resp = await fetch('/chat/send/' + SESSION_ID, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-XSRFToken': getCookie('_xsrf') },
-        body: JSON.stringify({ message: content })
+        body: JSON.stringify({ message: content }),
+        signal: _abortController.signal
       });
       if (!resp.ok) {
         const errBody = await resp.text();
-        let errMsg = '服务器错误（' + resp.status + '）';
-        try { const j = JSON.parse(errBody); if (j.error) errMsg = j.error; } catch { /* not json */ }
+        var errMsg = '服务器错误（' + resp.status + '）';
+        try { var j = JSON.parse(errBody); if (j.error) errMsg = j.error; } catch (e2) { /* not json */ }
         throw new Error(errMsg);
       }
       const typing = document.getElementById('typingMsg');
@@ -1049,20 +1071,25 @@
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '', accumulated = '';
+      var buffer = '', accumulated = '', _needsSeparator = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop();
-        for (const line of lines) {
+        for (var li = 0; li < lines.length; li++) {
+          var line = lines[li];
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') return;
+            var payload = line.slice(6);
+            if (payload === '[DONE]') return;
             try {
-              const parsed = JSON.parse(data);
+              var parsed = JSON.parse(payload);
               if (parsed.type === 'text') {
+                if (_needsSeparator) {
+                  accumulated += '\n<hr class="turn-sep">\n';
+                  _needsSeparator = false;
+                }
                 accumulated += parsed.content || '';
                 msgDiv.innerHTML = renderSafeMarkdown(accumulated);
                 scrollBottom();
@@ -1075,20 +1102,35 @@
               } else if (parsed.type === 'tool_review') {
                 updateToolReview(parsed);
               } else if (parsed.type === 'tool_result') {
+                _needsSeparator = true;
                 updateToolResult(parsed);
               }
-            } catch { /* partial SSE chunk */ }
+            } catch (e3) { /* partial SSE chunk */ }
           }
         }
       }
     } catch (e) {
+      if (e.name === 'AbortError') {
+        // User clicked stop — clean exit, no error message
+        return;
+      }
       const typing = document.getElementById('typingMsg');
       if (typing) typing.remove();
       const errDiv = appendAssistantMsg('❌ 请求失败：' + e.message);
       errDiv.style.color = '#f87171';
     } finally {
-      btn.disabled = false;
+      _abortController = null;
+      document.getElementById('stopBtn').style.display = 'none';
+      document.getElementById('sendBtn').style.display = '';
     }
+  }
+
+  function stopSend() {
+    if (_abortController) {
+      _abortController.abort();
+      _abortController = null;
+    }
+    document.getElementById('stopBtn').disabled = true;
   }
 
   /* ── Session management ── */
