@@ -175,6 +175,342 @@
 [data-theme="light"] .ai-search-textarea::placeholder {
   color: #9a96c8 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Agentic AI Search — Think Bubbles, Tool Cards, Streaming UI
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── AI Thread (scrollable message area) ── */
+.ai-thread {
+  position: relative; z-index: 1;
+  width: min(960px, 100%);
+  max-height: 52vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 12px 0; margin-top: 16px;
+}
+.ai-thread::-webkit-scrollbar { width: 4px; }
+.ai-thread::-webkit-scrollbar-thumb {
+  background: rgba(139,130,255,.12); border-radius: 99px;
+}
+
+/* ── Think Bubble ── */
+.ai-think-bubble {
+  background: var(--c-surface, rgba(20,18,48,.5));
+  border: 1px solid rgba(139,130,255,.1);
+  border-radius: 14px; padding: 16px 20px;
+  font-size: 14px; color: var(--c-text, #e0e0f8);
+  line-height: 1.7; animation: aiMsgSlideUp .35s cubic-bezier(.34,1.56,.64,1);
+  position: relative; overflow: hidden;
+}
+.ai-think-bubble.streaming {
+  border-color: rgba(99,102,241,.3);
+  box-shadow: 0 0 20px rgba(99,102,241,.08), inset 0 0 20px rgba(99,102,241,.03);
+  background: linear-gradient(135deg,
+    rgba(20,18,48,.5) 0%, rgba(30,26,56,.5) 50%, rgba(20,18,48,.5) 100%);
+  background-size: 200% 200%;
+  animation: aiGradientFlow 3s ease infinite, aiMsgSlideUp .35s cubic-bezier(.34,1.56,.64,1);
+}
+.ai-think-bubble .ai-bubble-content { margin-top: 8px; }
+.ai-think-bubble .ai-bubble-content p { margin: 4px 0; }
+.ai-think-bubble .ai-bubble-content strong { color: var(--c-accent, #818cf8); }
+.ai-think-bubble .ai-bubble-content ul, .ai-think-bubble .ai-bubble-content ol {
+  padding-left: 20px; margin: 6px 0;
+}
+.ai-think-bubble .ai-bubble-content code {
+  background: rgba(99,102,241,.1); padding: 1px 6px; border-radius: 4px;
+  font-size: 13px;
+}
+
+/* ── Typing Wave ── */
+.ai-typing-wave {
+  display: flex; align-items: center; gap: 3px; margin-bottom: 8px;
+}
+.ai-typing-wave .wave-bar {
+  width: 3px; height: 14px; border-radius: 2px;
+  background: rgba(139,130,255,.5);
+  animation: aiWaveBar .9s ease-in-out infinite;
+}
+.ai-typing-wave .wave-bar:nth-child(1) { animation-delay: 0s; }
+.ai-typing-wave .wave-bar:nth-child(2) { animation-delay: .12s; }
+.ai-typing-wave .wave-bar:nth-child(3) { animation-delay: .24s; }
+.ai-typing-wave .wave-bar:nth-child(4) { animation-delay: .36s; }
+.ai-typing-wave .wave-bar:nth-child(5) { animation-delay: .48s; }
+.ai-typing-text {
+  font-size: 12px; color: var(--c-text-muted, #9090b8);
+  margin-left: 8px;
+}
+
+/* ── Tool Card ── */
+.ai-tool-card {
+  background: var(--c-surface, rgba(20,18,48,.45));
+  border: 1px solid rgba(139,130,255,.1);
+  border-radius: 12px; overflow: hidden;
+  animation: aiMsgSlideUp .3s cubic-bezier(.34,1.56,.64,1);
+  transition: border-color .3s, box-shadow .3s, background .3s;
+}
+.ai-tool-card.expanded {
+  border-color: rgba(139,130,255,.2);
+}
+.ai-tool-card.completed {
+  border-color: rgba(52,211,153,.2);
+  box-shadow: 0 0 12px rgba(52,211,153,.06);
+}
+.ai-tool-card.reviewing {
+  border-color: rgba(167,139,250,.3);
+  box-shadow: 0 0 16px rgba(167,139,250,.1);
+}
+.ai-tool-card.aborted {
+  border-color: rgba(245,158,11,.2);
+  box-shadow: 0 0 12px rgba(245,158,11,.06);
+}
+.ai-tool-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; cursor: pointer;
+  user-select: none; transition: background .2s;
+}
+.ai-tool-card-header:hover { background: rgba(139,130,255,.04); }
+.ai-tool-card .ai-tool-icon { font-size: 17px; flex-shrink: 0; }
+.ai-tool-card .ai-tool-name {
+  font-size: 13px; font-weight: 600; color: var(--c-text, #e0e0f8);
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ai-tool-card .ai-tool-spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(139,130,255,.15);
+  border-top-color: var(--c-accent, #818cf8); border-radius: 50%;
+  animation: aiToolRadarSpin .8s linear infinite; flex-shrink: 0;
+}
+.ai-tool-card .ai-tool-done-icon {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(52,211,153,.15); color: #34d399;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  animation: aiScaleUp .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ai-tool-card .ai-tool-review-icon {
+  font-size: 14px; flex-shrink: 0;
+}
+.ai-tool-card .ai-tool-warn-icon {
+  font-size: 14px; flex-shrink: 0; color: #f59e0b;
+}
+.ai-tool-card .ai-tool-stop-icon {
+  font-size: 14px; flex-shrink: 0; color: #f59e0b;
+}
+.ai-tool-card .ai-tool-status {
+  font-size: 11px; color: var(--c-text-muted, #9090b8);
+  flex-shrink: 0; white-space: nowrap;
+}
+.ai-tool-card .ai-tool-arrow {
+  font-size: 12px; color: var(--c-text-muted, #9090b8);
+  transition: transform .25s; flex-shrink: 0;
+}
+.ai-tool-card.expanded .ai-tool-arrow { transform: rotate(180deg); }
+.ai-tool-card-body {
+  display: none; padding: 0 16px 14px;
+  font-size: 12px; color: var(--c-text-muted, #9090b8);
+  line-height: 1.5; max-height: 200px; overflow-y: auto;
+  border-top: 1px solid rgba(139,130,255,.06);
+  margin: 0 16px;
+}
+.ai-tool-card.expanded .ai-tool-card-body { display: block; }
+.ai-tool-card-body::-webkit-scrollbar { width: 3px; }
+.ai-tool-card-body::-webkit-scrollbar-thumb {
+  background: rgba(139,130,255,.1); border-radius: 99px;
+}
+.ai-tool-args, .ai-tool-result, .ai-tool-review {
+  padding: 8px 12px; border-radius: 8px; margin-top: 8px;
+  background: rgba(18,16,38,.35); white-space: pre-wrap;
+  word-break: break-all; font-family: "Cascadia Code","Fira Code",monospace;
+  font-size: 11px; max-height: 180px; overflow-y: auto;
+}
+.ai-tool-review.approved {
+  background: rgba(52,211,153,.06); color: #34d399; font-family: inherit;
+}
+.ai-tool-review.denied {
+  background: rgba(248,113,113,.06); color: #f87171; font-family: inherit;
+}
+
+/* ── AI Input Area ── */
+.ai-search-container {
+  position: relative; z-index: 1; width: min(720px, 100%);
+  background: var(--c-surface, rgba(20,18,48,.7));
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(139,130,255,.15);
+  border-radius: 16px; padding: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.2);
+  margin: 20px auto 0;
+}
+.ai-search-textarea {
+  width: 100%; border: none; background: transparent;
+  color: var(--c-text, #e0e0f8); font-size: 15px;
+  outline: none; resize: none;
+}
+.ai-input-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+  margin-top: 12px;
+}
+.ai-btn-stop {
+  padding: 8px 24px; border-radius: 10px; border: 1px solid rgba(248,113,113,.25);
+  background: rgba(248,113,113,.08); color: #f87171;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .25s;
+}
+.ai-btn-stop:hover { background: rgba(248,113,113,.15); border-color: rgba(248,113,113,.4); }
+
+/* ── Sources Hint ── */
+.ai-sources-hint {
+  position: relative; z-index: 1; width: min(720px, 100%);
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: 10px auto 0; padding: 6px 0;
+  font-size: 11px; color: var(--c-text-muted, #9090b8);
+}
+
+/* ── Status Bar ── */
+.ai-status-bar {
+  position: relative; z-index: 1; width: min(960px, 100%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: 10px;
+  background: var(--c-surface, rgba(20,18,48,.5));
+  border: 1px solid rgba(139,130,255,.08);
+  font-size: 12px; color: var(--c-text-muted, #9090b8);
+}
+.ai-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(139,130,255,.3); flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.ai-status-dot.active {
+  background: var(--c-accent, #818cf8);
+  box-shadow: 0 0 8px var(--c-accent, #818cf8);
+  animation: aiTextPulse 1.8s ease-in-out infinite;
+}
+.ai-status-dot.reviewing { background: #a78bfa; box-shadow: 0 0 8px #a78bfa; }
+.ai-status-dot.done { background: #34d399; box-shadow: 0 0 8px #34d399; animation: none; }
+.ai-status-dot.error { background: #f87171; box-shadow: 0 0 8px #f87171; animation: none; }
+.ai-status-text { flex: 1; }
+.ai-status-tool { font-size: 11px; opacity: .7; }
+
+/* ── Final Summary ── */
+.ai-summary {
+  position: relative; z-index: 1; width: min(960px, 100%);
+  border-radius: 16px; padding: 24px;
+  background: rgba(52,211,153,.06);
+  border: 1px solid rgba(52,211,153,.15);
+  animation: aiMsgSlideUp .4s cubic-bezier(.34,1.56,.64,1);
+}
+.ai-summary-header {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 18px; font-weight: 700; color: #34d399;
+  margin-bottom: 12px;
+}
+.ai-summary-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(52,211,153,.15); color: #34d399;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+}
+.ai-summary-stats {
+  font-size: 14px; color: var(--c-text, #e0e0f8);
+  margin-bottom: 8px;
+}
+.ai-summary-stats strong { color: #34d399; }
+.ai-summary-list {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 12px;
+}
+.ai-insert-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: 10px;
+  background: var(--c-surface, rgba(20,18,48,.3));
+  border: 1px solid rgba(139,130,255,.06);
+  font-size: 13px; animation: aiMsgSlideUp .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ai-insert-status {
+  font-size: 11px; color: #34d399; flex-shrink: 0;
+  font-weight: 600; white-space: nowrap;
+}
+.ai-insert-title {
+  flex: 1; color: var(--c-text, #e0e0f8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ai-insert-link {
+  color: var(--c-accent, #818cf8); text-decoration: none;
+  font-size: 13px; flex-shrink: 0;
+}
+
+/* ── Animations ── */
+@keyframes aiMsgSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes aiGradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes aiWaveBar {
+  0%, 100% { transform: scaleY(1); opacity: .4; }
+  50% { transform: scaleY(2.2); opacity: 1; }
+}
+@keyframes aiToolRadarSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes aiScaleUp {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+@keyframes aiTextPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+/* ── Light Theme Overrides for Agentic UI ── */
+[data-theme="light"] .ai-think-bubble {
+  background: rgba(255,255,255,.7); border-color: rgba(99,102,241,.08);
+}
+[data-theme="light"] .ai-think-bubble.streaming {
+  border-color: rgba(99,102,241,.2);
+  background: linear-gradient(135deg,
+    rgba(255,255,255,.7) 0%, rgba(243,244,255,.8) 50%, rgba(255,255,255,.7) 100%);
+  background-size: 200% 200%;
+}
+[data-theme="light"] .ai-think-bubble .ai-bubble-content strong { color: #6366f1; }
+[data-theme="light"] .ai-typing-text { color: #4d4a70; }
+[data-theme="light"] .ai-tool-card {
+  background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.1);
+}
+[data-theme="light"] .ai-tool-card.expanded { border-color: rgba(99,102,241,.25); }
+[data-theme="light"] .ai-tool-card.completed { border-color: rgba(16,185,129,.2); }
+[data-theme="light"] .ai-tool-card.reviewing { border-color: rgba(139,92,246,.25); }
+[data-theme="light"] .ai-tool-card.aborted { border-color: rgba(245,158,11,.2); }
+[data-theme="light"] .ai-tool-card-header:hover { background: rgba(99,102,241,.04); }
+[data-theme="light"] .ai-tool-card .ai-tool-name { color: #2d2a4a; }
+[data-theme="light"] .ai-tool-card .ai-tool-status { color: #4d4a70; }
+[data-theme="light"] .ai-tool-card-body { color: #4d4a70; border-top-color: rgba(99,102,241,.08); }
+[data-theme="light"] .ai-tool-args, [data-theme="light"] .ai-tool-result, [data-theme="light"] .ai-tool-review {
+  background: rgba(99,102,241,.03);
+}
+[data-theme="light"] .ai-search-container {
+  background: rgba(255,255,255,.7); border-color: rgba(99,102,241,.1);
+}
+[data-theme="light"] .ai-search-textarea { color: #2d2a4a; }
+[data-theme="light"] .ai-status-bar {
+  background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.1);
+  color: #4d4a70;
+}
+[data-theme="light"] .ai-summary {
+  background: rgba(16,185,129,.04); border-color: rgba(16,185,129,.15);
+}
+[data-theme="light"] .ai-summary-stats { color: #2d2a4a; }
+[data-theme="light"] .ai-insert-card {
+  background: rgba(255,255,255,.7); border-color: rgba(99,102,241,.08);
+}
+[data-theme="light"] .ai-insert-title { color: #2d2a4a; }
+[data-theme="light"] .ai-tool-card .ai-tool-spinner {
+  border-color: rgba(99,102,241,.12); border-top-color: #6366f1;
+}
+[data-theme="light"] .ai-tool-card .ai-tool-done-icon {
+  background: rgba(16,185,129,.1);
+}
 </style>
 {% end %}
 
@@ -198,14 +534,36 @@
       <button id="btnSearch" onclick="doSearch()">开始采集</button>
     </div>
 
-    <!-- AI Search Box -->
-    <div id="aiSearchPanel" style="display:none; margin-top:20px; text-align:left;">
-      <div class="ai-search-container" style="background:var(--c-surface, rgba(20,18,48,.7)); backdrop-filter:blur(24px); border:1px solid rgba(139,130,255,.15); border-radius:16px; padding:16px; box-shadow:0 8px 40px rgba(0,0,0,.2);">
-        <textarea id="aiDescription" rows="4" class="ai-search-textarea" style="width:100%; border:none; background:transparent; color:var(--c-text, #e0e0f8); font-size:15px; outline:none; resize:none;" placeholder="描述您需要收集的信息，AI 将会多轮迭代优化关键词进行采集，例如：「西华师范大学近期在人工智能和科研方面的最新动态，包括合作、项目、获奖情况」"></textarea>
+    <!-- AI Search Panel -->
+    <div id="aiSearchPanel" style="display:none;">
+      <!-- Input Area -->
+      <div class="ai-search-container">
+        <textarea id="aiDescription" rows="3" class="ai-search-textarea"
+          placeholder="描述您需要收集的信息，AI 将自主规划搜索策略、评估相关性、迭代采集..."></textarea>
+        <div class="ai-input-actions">
+          <button id="btnAiSearch" class="wtc-btn-primary" onclick="doAiSearch()">🚀 开始 AI 采集</button>
+          <button id="btnAiStop" class="ai-btn-stop" onclick="stopAiSearch()" style="display:none;">⏹ 停止</button>
+        </div>
       </div>
-      <div style="display:flex; justify-content:flex-end; margin-top:12px;">
-        <button id="btnAiSearch" class="wtc-btn-primary" style="height:44px; padding:0 32px;" onclick="doAiSearch()">开始 AI 迭代搜索</button>
+
+      <!-- Sources Hint -->
+      <div class="ai-sources-hint">
+        <span>📡 可用采集源（供AI参考）：</span>
+        <span id="aiSourceList"></span>
       </div>
+
+      <!-- Agentic Animation Thread -->
+      <div class="ai-thread" id="aiThread"></div>
+
+      <!-- Telemetry Status Bar -->
+      <div class="ai-status-bar" id="aiStatusBar" style="display:none;">
+        <span class="ai-status-dot active" id="aiStatusDot"></span>
+        <span class="ai-status-text" id="aiStatusText">初始化 Agent…</span>
+        <span class="ai-status-tool" id="aiStatusTool"></span>
+      </div>
+
+      <!-- Final Summary -->
+      <div class="ai-summary" id="aiSummary" style="display:none;"></div>
     </div>
   </div>
 
@@ -265,23 +623,31 @@ var activeEventSource = null;
 
 /* ── Tab Switcher JS ── */
 window.switchTab = function(type) {
+  // Abort active AI SSE connection
+  if (_aiAbortController) {
+    _aiAbortController.abort();
+    _aiAbortController = null;
+  }
   if (activeEventSource) {
     activeEventSource.close();
     activeEventSource = null;
   }
-  
+
   activeTab = type;
-  const tabTradBtn = document.getElementById('tabTradBtn');
-  const tabAiBtn = document.getElementById('tabAiBtn');
-  const tradSearchPanel = document.getElementById('tradSearchPanel');
-  const aiSearchPanel = document.getElementById('aiSearchPanel');
-  const wtcParams = document.querySelector('.wtc-params');
-  const wtcHeroSubtitle = document.getElementById('wtcHeroSubtitle');
-  const btnSearch = document.getElementById('btnSearch');
-  const btnAiSearch = document.getElementById('btnAiSearch');
+  var tabTradBtn = document.getElementById('tabTradBtn');
+  var tabAiBtn = document.getElementById('tabAiBtn');
+  var tradSearchPanel = document.getElementById('tradSearchPanel');
+  var aiSearchPanel = document.getElementById('aiSearchPanel');
+  var wtcParams = document.querySelector('.wtc-params');
+  var wtcHeroSubtitle = document.getElementById('wtcHeroSubtitle');
+  var btnSearch = document.getElementById('btnSearch');
+  var btnAiSearch = document.getElementById('btnAiSearch');
+  var btnAiStop = document.getElementById('btnAiStop');
 
   btnSearch.disabled = false;
-  btnAiSearch.disabled = false;
+  if (btnAiSearch) btnAiSearch.disabled = false;
+  if (btnAiSearch) btnAiSearch.style.display = '';
+  if (btnAiStop) btnAiStop.style.display = 'none';
   document.getElementById('spinner').classList.remove('active');
 
   if (type === 'trad') {
@@ -292,17 +658,37 @@ window.switchTab = function(type) {
     if (wtcParams) wtcParams.style.display = 'flex';
     wtcHeroSubtitle.textContent = '选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库';
     document.getElementById('statusText').textContent = '输入关键词开始智能采集';
+    // Show trad elements, hide AI elements
+    document.getElementById('gallery').style.display = '';
+    document.getElementById('emptyState').style.display = '';
+    document.getElementById('statusArea').style.display = '';
+    var aiThread = document.getElementById('aiThread');
+    if (aiThread) aiThread.innerHTML = '';
+    var aiStatusBar = document.getElementById('aiStatusBar');
+    if (aiStatusBar) aiStatusBar.style.display = 'none';
+    var aiSummary = document.getElementById('aiSummary');
+    if (aiSummary) aiSummary.style.display = 'none';
   } else {
     tabTradBtn.classList.remove('active');
     tabAiBtn.classList.add('active');
     tradSearchPanel.style.display = 'none';
     aiSearchPanel.style.display = 'block';
     if (wtcParams) wtcParams.style.display = 'none';
-    wtcHeroSubtitle.textContent = '选择采集源 · 输入信息需求 · AI流式多轮迭代采集 · 保存到数据仓库';
-    document.getElementById('statusText').textContent = '描述信息需求开始 AI 迭代搜索';
+    wtcHeroSubtitle.textContent = '描述信息需求 · AI 自主规划搜索策略 · 迭代采集 · 自动保存';
+    document.getElementById('statusText').textContent = '描述信息需求开始 AI 采集';
+    // Hide trad elements, show AI elements
+    document.getElementById('gallery').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statusArea').style.display = 'none';
+    // Populate source list hint
+    var srcEls = document.querySelectorAll('#sourceToggles .wtc-src-toggle.active');
+    var srcNames = [];
+    srcEls.forEach(function(el) { srcNames.push(el.textContent.trim()); });
+    var aiSourceList = document.getElementById('aiSourceList');
+    if (aiSourceList) aiSourceList.textContent = srcNames.join(', ') || '全部';
   }
 
-  // Reset page results
+  // Reset page results (trad)
   document.getElementById('gallery').innerHTML = '';
   document.getElementById('emptyState').style.display = '';
   document.getElementById('toolbar').style.display = 'none';
@@ -377,120 +763,377 @@ async function doSearch() {
   }
 }
 
-/* ── AI Iterative Search SSE ── */
-function doAiSearch() {
+/* ── Agentic AI Search ── */
+var _aiAbortController = null;
+var _aiSavedItems = [];
+var _aiToolCards = {};
+var _aiCurrentBubble = null;
+var _aiBubbleText = '';
+var _aiNewTurn = false;
+
+async function doAiSearch() {
   var desc = document.getElementById('aiDescription').value.trim();
   if (!desc) { return showAdmToast('请输入信息需求描述'); }
 
   var srcIds = getSelectedSourceIds();
   if (!srcIds.length) { return showAdmToast('请选择至少一个采集源'); }
 
-  if (activeEventSource) {
-    activeEventSource.close();
-  }
+  // Abort any existing search
+  if (_aiAbortController) { _aiAbortController.abort(); }
 
-  var btn = document.getElementById('btnAiSearch');
-  btn.disabled = true; btn.textContent = 'AI 搜索中…';
-  document.getElementById('spinner').classList.add('active');
-  document.getElementById('statusText').textContent = '初始化 AI 规划中…';
-  document.getElementById('gallery').innerHTML = '';
+  // Reset UI
+  document.getElementById('aiThread').innerHTML = '';
+  document.getElementById('aiSummary').style.display = 'none';
+  document.getElementById('btnAiSearch').style.display = 'none';
+  document.getElementById('btnAiStop').style.display = '';
+  document.getElementById('btnAiStop').disabled = false;
+  document.getElementById('aiStatusBar').style.display = 'flex';
+  document.getElementById('aiStatusText').textContent = '初始化 Agent…';
+  document.getElementById('aiStatusDot').className = 'ai-status-dot active';
+  document.getElementById('gallery').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('toolbar').style.display = 'none';
-  collectedItems = [];
-  selectedIds.clear();
 
-  var sseUrl = window.location.pathname + 
-               '?action=ai_search&desc=' + encodeURIComponent(desc) + 
+  _aiAbortController = new AbortController();
+  _aiSavedItems = [];
+  _aiCurrentBubble = null;
+  _aiBubbleText = '';
+  _aiToolCards = {};
+  _aiNewTurn = false;
+
+  // Create initial think bubble
+  appendAiThinkBubble();
+  updateAiStatus('tool_call', 'Agent 正在规划搜索策略…');
+
+  var sseUrl = window.location.pathname +
+               '?action=ai_search&desc=' + encodeURIComponent(desc) +
                '&source_ids=' + encodeURIComponent(srcIds.join(','));
 
-  activeEventSource = new EventSource(sseUrl);
-
-  activeEventSource.onmessage = function(e) {
-    try {
-      var data = JSON.parse(e.data);
-      if (data.type === 'iteration_start') {
-        var roundCard = document.createElement('div');
-        roundCard.className = 'ai-round-card';
-        roundCard.id = 'ai-round-' + data.iteration;
-        roundCard.style.cssText = 'width:100%; grid-column: 1 / -1; margin-bottom: 24px; border-radius: 12px; padding: 20px; box-sizing: border-box;';
-        
-        roundCard.innerHTML = `
-          <div class="ai-round-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid rgba(139,130,255,0.1); padding-bottom:10px;">
-            <span style="font-weight:700; color:#818cf8; font-size:15px;"><i class="fa-solid fa-microchip"></i> 第 ${data.iteration} 轮 AI 迭代</span>
-            <span style="font-size:13px; color:rgba(180,180,210,0.7);">搜索关键词：<strong style="color:#fff;">${escHtml(data.keywords)}</strong></span>
-          </div>
-          <div class="ai-round-body wtc-gallery" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; width:100%;">
-            <div class="loading-placeholder" style="grid-column: 1 / -1; padding: 20px; text-align: center; color: rgba(180,180,210,0.5); font-size: 13px;">正在智能检索并抓取中...</div>
-          </div>
-        `;
-        document.getElementById('gallery').appendChild(roundCard);
-        document.getElementById('statusText').textContent = '正在执行第 ' + data.iteration + ' 轮 AI 迭代搜索（关键词: ' + data.keywords + '）…';
-      } 
-      else if (data.type === 'results') {
-        var roundCard = document.getElementById('ai-round-' + data.iteration);
-        if (roundCard) {
-          var body = roundCard.querySelector('.ai-round-body');
-          body.innerHTML = '';
-          
-          if (!data.items || data.items.length === 0) {
-            body.innerHTML = '<div style="grid-column: 1 / -1; padding: 12px; text-align: center; color: rgba(180,180,210,0.4); font-size: 13px;">本轮未检索到新数据（可能遭遇反爬或无更多结果）</div>';
-          } else {
-            var html = '';
-            data.items.forEach(function(item) {
-              var idx = collectedItems.length;
-              collectedItems.push(item);
-              
-              var sel = selectedIds.has(idx) ? ' selected' : '';
-              var checkMark = selectedIds.has(idx) ? '✓' : '';
-              html += '<div class="wtc-card' + sel + '" data-index="' + idx + '" onclick="toggleCard(' + idx + ')">';
-              html += '<div class="check">' + checkMark + '</div>';
-              html += '<div class="src-badge">' + escHtml(item.source_name || '来源') + '</div>';
-              html += '<div class="card-title">' + escHtml(item.title || '(无标题)') + '</div>';
-              html += '<div class="card-snippet">' + escHtml(item.snippet || item.content || '') + '</div>';
-              html += '<div class="card-meta">';
-              html += '<span>' + escHtml(item.published_time || item.published_at || '') + '</span>';
-              if (item.url) {
-                html += '<a class="card-link" href="' + escHtml(item.url) + '" target="_blank" onclick="event.stopPropagation()" title="' + escHtml(item.url) + '">🔗 ' + escHtml(item.source || '链接') + '</a>';
-              }
-              html += '</div></div>';
-            });
-            body.innerHTML = html;
-          }
-        }
-      } 
-      else if (data.type === 'done') {
-        activeEventSource.close();
-        activeEventSource = null;
-        btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
-        document.getElementById('spinner').classList.remove('active');
-        document.getElementById('statusText').innerHTML = 'AI 迭代搜索完成，共收集到 <span class="count">' + data.total + '</span> 条结果';
-        if (collectedItems.length > 0) {
-          document.getElementById('toolbar').style.display = 'flex';
-          document.getElementById('totalCount').textContent = collectedItems.length;
-          updateToolbar();
+  try {
+    var resp = await fetch(sseUrl, { signal: _aiAbortController.signal });
+    if (!resp.ok) {
+      var errText = await resp.text();
+      throw new Error('服务器错误 ' + resp.status + ': ' + errText);
+    }
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+    while (true) {
+      var result = await reader.read();
+      if (result.done) break;
+      buffer += decoder.decode(result.value, { stream: true });
+      var lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
+        if (line.indexOf('data: ') === 0) {
+          var payload = line.substring(6);
+          if (payload === '[DONE]') continue;
+          try { var parsed = JSON.parse(payload); handleAiSseEvent(parsed); } catch (e) { /* partial chunk */ }
         }
       }
-      else if (data.type === 'error') {
-        activeEventSource.close();
-        activeEventSource = null;
-        btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
-        document.getElementById('spinner').classList.remove('active');
-        document.getElementById('statusText').textContent = '✗ ' + data.message;
-      }
-    } catch(err) {
-      console.error(err);
     }
-  };
+  } catch (e) {
+    if (e.name === 'AbortError') { handleAiAbort(); return; }
+    showAiError(e.message || '网络请求失败');
+  }
+}
 
-  activeEventSource.onerror = function() {
-    if (activeEventSource) {
-      activeEventSource.close();
-      activeEventSource = null;
+function handleAiSseEvent(parsed) {
+  if (parsed.type === 'text') {
+    // Remove typing wave from current bubble
+    var typingWave = document.querySelector('#aiThread .ai-typing-wave');
+    if (typingWave) typingWave.style.display = 'none';
+    var typingText = document.querySelector('#aiThread .ai-typing-text');
+    if (typingText) typingText.style.display = 'none';
+
+    if (_aiNewTurn) {
+      if (_aiCurrentBubble) { _aiCurrentBubble.classList.remove('streaming'); }
+      _aiCurrentBubble = null;
+      _aiBubbleText = '';
+      _aiNewTurn = false;
     }
-    btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
-    document.getElementById('spinner').classList.remove('active');
-    document.getElementById('statusText').textContent = '✗ AI 迭代流连接异常，请重试';
+
+    if (!_aiCurrentBubble) {
+      // Collapse all tool cards
+      for (var cid in _aiToolCards) { _aiToolCards[cid].classList.remove('expanded'); }
+      _aiCurrentBubble = appendAiThinkBubble();
+      _aiCurrentBubble.classList.add('streaming');
+    }
+
+    _aiBubbleText += parsed.content || '';
+    var bubbleContent = _aiCurrentBubble.querySelector('.ai-bubble-content');
+    if (bubbleContent) {
+      bubbleContent.innerHTML = typeof renderSafeMarkdown === 'function'
+        ? renderSafeMarkdown(_aiBubbleText)
+        : _aiBubbleText.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    }
+    updateAiStatus('text', 'Agent 思考中…');
+    scrollAiThread();
+
+  } else if (parsed.type === 'tool_call') {
+    updateAiStatus('tool_call', '执行工具: ' + getToolLabel(parsed.name));
+    appendAiToolCard(parsed);
+    scrollAiThread();
+
+  } else if (parsed.type === 'tool_review') {
+    updateAiStatus('tool_review', '安全审查: ' + (parsed.approved ? '已批准' : '已拒绝'));
+    updateAiToolReview(parsed);
+
+  } else if (parsed.type === 'tool_result') {
+    _aiNewTurn = true;
+
+    // Track watchtower_insert results for final summary
+    if (parsed.name === 'watchtower_insert') {
+      try {
+        var result = JSON.parse(parsed.content);
+        if (result.ok && result.title) {
+          _aiSavedItems.push({
+            title: result.title,
+            url: result.url || '',
+            action: result.action || 'created',
+          });
+        }
+      } catch (e) { /* not JSON */ }
+    }
+
+    updateAiToolResult(parsed);
+
+  } else if (parsed.type === 'done') {
+    finishAiSearch(parsed);
+
+  } else if (parsed.type === 'error') {
+    showAiError(parsed.message);
+  }
+}
+
+/* ── Think Bubble ── */
+function appendAiThinkBubble() {
+  var d = document.createElement('div');
+  d.className = 'ai-think-bubble';
+  d.innerHTML =
+    '<div class="ai-typing-wave">' +
+      '<div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>' +
+      '<div class="wave-bar"></div><div class="wave-bar"></div>' +
+    '</div>' +
+    '<span class="ai-typing-text">Agent 正在规划执行路径...</span>' +
+    '<div class="ai-bubble-content"></div>';
+  document.getElementById('aiThread').appendChild(d);
+  return d;
+}
+
+/* ── Tool Card ── */
+function appendAiToolCard(evt) {
+  // Keep typing indicator; it will be hidden on first text event
+  document.querySelectorAll('#aiThread .ai-tool-card.expanded').forEach(function(c) {
+    c.classList.remove('expanded');
+  });
+
+  var card = document.createElement('div');
+  card.className = 'ai-tool-card expanded';
+  card.id = 'ai-tool-' + evt.call_id;
+  _aiToolCards[evt.call_id] = card;
+
+  var icon = getToolIcon(evt.name);
+  var label = getToolLabel(evt.name);
+  var argsStr = evt.args ? JSON.stringify(evt.args, null, 2) : '';
+  if (argsStr.length > 500) argsStr = argsStr.substring(0, 500) + '...';
+
+  card.innerHTML =
+    '<div class="ai-tool-card-header" onclick="var c=this.parentElement;c.classList.toggle(\'expanded\');">' +
+      '<span class="ai-tool-icon">' + escHtml(icon) + '</span>' +
+      '<span class="ai-tool-name">' + escHtml(label) + '</span>' +
+      '<span class="ai-tool-spinner"></span>' +
+      '<span class="ai-tool-status">执行中…</span>' +
+      '<span class="ai-tool-arrow">▾</span>' +
+    '</div>' +
+    '<div class="ai-tool-card-body">' +
+      (argsStr ? '<div class="ai-tool-args">' + escHtml(argsStr) + '</div>' : '') +
+    '</div>';
+  document.getElementById('aiThread').appendChild(card);
+}
+
+function updateAiToolReview(evt) {
+  var card = _aiToolCards[evt.call_id];
+  if (!card) return;
+
+  var spinner = card.querySelector('.ai-tool-spinner');
+  if (evt.approved) {
+    if (spinner) {
+      var ri = document.createElement('span');
+      ri.className = 'ai-tool-icon';
+      ri.innerHTML = '🛡';
+      spinner.parentNode.replaceChild(ri, spinner);
+    }
+    card.querySelector('.ai-tool-status').textContent = '审查中…';
+    card.classList.add('reviewing');
+  } else {
+    if (spinner) {
+      var wi = document.createElement('span');
+      wi.className = 'ai-tool-warn-icon';
+      wi.innerHTML = '🛡';
+      spinner.parentNode.replaceChild(wi, spinner);
+    }
+    card.querySelector('.ai-tool-status').textContent = '安全拦截';
+    card.querySelector('.ai-tool-status').style.color = '#f87171';
+  }
+
+  var body = card.querySelector('.ai-tool-card-body');
+  var existing = body.querySelector('.ai-tool-review');
+  if (existing) existing.remove();
+  var reviewDiv = document.createElement('div');
+  reviewDiv.className = 'ai-tool-review ' + (evt.approved ? 'approved' : 'denied');
+  reviewDiv.textContent = (evt.approved ? '✓ 已批准' : '✗ 已拒绝') +
+    (evt.reason ? ': ' + evt.reason : '');
+  body.appendChild(reviewDiv);
+}
+
+function updateAiToolResult(evt) {
+  var card = _aiToolCards[evt.call_id];
+  if (!card) return;
+  card.classList.add('completed');
+  card.classList.remove('reviewing');
+
+  var iconEl = card.querySelector('.ai-tool-spinner, .ai-tool-icon, .ai-tool-warn-icon');
+  if (iconEl) {
+    var di = document.createElement('span');
+    di.className = 'ai-tool-done-icon';
+    di.innerHTML = '✓';
+    iconEl.parentNode.replaceChild(di, iconEl);
+  }
+  card.querySelector('.ai-tool-status').textContent = '完成';
+  card.querySelector('.ai-tool-status').style.color = '';
+
+  var body = card.querySelector('.ai-tool-card-body');
+  var existing = body.querySelector('.ai-tool-result');
+  if (existing) existing.remove();
+  if (evt.content) {
+    var resultDiv = document.createElement('div');
+    resultDiv.className = 'ai-tool-result';
+    var content = evt.content;
+    if (content.length > 800) content = content.substring(0, 800) + '...[已截断]';
+    resultDiv.textContent = content;
+    body.appendChild(resultDiv);
+  }
+}
+
+function getToolIcon(name) {
+  var icons = {
+    'web_search': '🔍', 'web_fetch': '📥', 'code_execute': '🐍',
+    'watchtower_insert': '💾', 'watchtower_search': '🔎', 'deep_collect': '🔬',
   };
+  return icons[name] || '🔧';
+}
+
+function getToolLabel(name) {
+  var labels = {
+    'web_search': '搜索互联网', 'web_fetch': '下载网页',
+    'code_execute': '执行Python代码', 'watchtower_insert': '保存到瞭望数据库',
+    'watchtower_search': '查询瞭望数据库', 'deep_collect': '深度采集',
+  };
+  return labels[name] || name;
+}
+
+/* ── Final Summary ── */
+function finishAiSearch(data) {
+  document.getElementById('btnAiStop').style.display = 'none';
+  document.getElementById('btnAiSearch').style.display = '';
+  document.getElementById('btnAiSearch').disabled = false;
+  document.getElementById('aiStatusBar').style.display = 'none';
+
+  var summary = document.getElementById('aiSummary');
+  summary.style.display = 'block';
+
+  var totalSaved = data.total_saved || _aiSavedItems.length;
+  var html = '<div class="ai-summary-header">';
+  html += '<span class="ai-summary-icon">✓</span>';
+  html += '<span>AI 采集完成</span>';
+  html += '</div>';
+  html += '<div class="ai-summary-stats">';
+  html += '共保存 <strong>' + totalSaved + '</strong> 条数据到瞭望数据库';
+  html += '</div>';
+
+  if (_aiSavedItems.length > 0) {
+    html += '<div class="ai-summary-list">';
+    _aiSavedItems.forEach(function(item) {
+      var icon = item.action === 'skipped_duplicate' ? '⊘ 已存在' : '✓ 已保存';
+      html += '<div class="ai-insert-card">';
+      html += '<span class="ai-insert-status">' + icon + '</span>';
+      html += '<span class="ai-insert-title">' + escHtml(item.title) + '</span>';
+      if (item.url) {
+        html += '<a class="ai-insert-link" href="' + escHtml(item.url) + '" target="_blank">🔗</a>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div style="margin-top:16px;text-align:center;">';
+  html += '<a href="/admin/warehouse" class="wtc-btn-primary">前往数据仓库查看</a>';
+  html += '</div>';
+
+  summary.innerHTML = html;
+  scrollAiThread();
+}
+
+/* ── Stop / Abort ── */
+function stopAiSearch() {
+  if (_aiAbortController) {
+    _aiAbortController.abort();
+  }
+  document.getElementById('btnAiStop').disabled = true;
+}
+
+function handleAiAbort() {
+  document.getElementById('btnAiStop').style.display = 'none';
+  document.getElementById('btnAiSearch').style.display = '';
+  document.getElementById('btnAiSearch').disabled = false;
+  document.getElementById('aiStatusDot').className = 'ai-status-dot error';
+  document.getElementById('aiStatusText').textContent = '已中止';
+
+  // Mark in-progress tool cards as aborted
+  for (var cid in _aiToolCards) {
+    var card = _aiToolCards[cid];
+    if (card && !card.classList.contains('completed')) {
+      var spinner = card.querySelector('.ai-tool-spinner');
+      if (spinner) {
+        var si = document.createElement('span');
+        si.className = 'ai-tool-stop-icon';
+        si.innerHTML = '⏹';
+        spinner.parentNode.replaceChild(si, spinner);
+      }
+      card.querySelector('.ai-tool-status').textContent = '已中止';
+      card.querySelector('.ai-tool-status').style.color = '#f59e0b';
+      card.classList.add('aborted');
+    }
+  }
+}
+
+function showAiError(msg) {
+  document.getElementById('btnAiStop').style.display = 'none';
+  document.getElementById('btnAiSearch').style.display = '';
+  document.getElementById('btnAiSearch').disabled = false;
+  document.getElementById('aiStatusBar').style.display = 'none';
+
+  var d = document.createElement('div');
+  d.className = 'ai-think-bubble';
+  d.style.color = '#f87171';
+  d.innerHTML = '❌ ' + escHtml(msg);
+  document.getElementById('aiThread').appendChild(d);
+  scrollAiThread();
+}
+
+/* ── Utilities ── */
+function updateAiStatus(state, text) {
+  var dot = document.getElementById('aiStatusDot');
+  var statusText = document.getElementById('aiStatusText');
+  if (dot) { dot.className = 'ai-status-dot active ' + state; }
+  if (statusText) { statusText.textContent = text; }
+}
+
+function scrollAiThread() {
+  var t = document.getElementById('aiThread');
+  if (t) { requestAnimationFrame(function() { t.scrollTop = t.scrollHeight; }); }
 }
 
 /* ── Gallery ── */

@@ -432,6 +432,27 @@
     }
   }
 
+  /* ── Chart lifecycle ── */
+  function _disposeChart() {
+    // Clean up any existing chart instance thoroughly.
+    // Must be called before init'ing a new chart on the same DOM element.
+    if (_chartResizeHandler) {
+      window.removeEventListener('resize', _chartResizeHandler);
+      _chartResizeHandler = null;
+    }
+    if (_chartInstance) {
+      try { _chartInstance.dispose(); } catch(e) { /* already disposed */ }
+      _chartInstance = null;
+    }
+    // Also check by DOM in case _chartInstance was out of sync
+    if (typeof echarts !== 'undefined') {
+      var byDom = echarts.getInstanceByDom(document.getElementById('chart'));
+      if (byDom) {
+        try { byDom.dispose(); } catch(e) { /* already disposed */ }
+      }
+    }
+  }
+
   /* ── Submit ── */
   async function submitQuery() {
     var q = document.getElementById('queryInput').value.trim();
@@ -449,10 +470,7 @@
       var thinkBubble = document.getElementById('thinkBubble');
       thinkBubble.style.display = 'none'; thinkBubble.innerHTML = '';
       document.querySelectorAll('.tool-mini').forEach(function(el) { el.remove(); });
-      if (_chartResizeHandler) { window.removeEventListener('resize', _chartResizeHandler); _chartResizeHandler = null; }
-      var _existingChart = typeof echarts !== 'undefined' ? echarts.getInstanceByDom(document.getElementById('chart')) : null;
-      if (_existingChart) _existingChart.dispose();
-      if (_chartInstance) _chartInstance = null;
+      _disposeChart();
       runPipelineAnimation();
     } catch(initErr) {
       // If setup fails, still try the fetch
@@ -601,125 +619,151 @@
   /* ── Chart ── */
   function renderChart() {
     if (!currentRows.length || !currentColumns.length) return;
-    if (typeof echarts === 'undefined') { console.error('[ask] echarts not loaded'); return; }
+    if (typeof echarts === 'undefined') {
+      document.getElementById('errorArea').textContent = '图表组件加载失败（echarts CDN 不可用），请检查网络连接后刷新页面。';
+      document.getElementById('errorArea').style.display = 'block';
+      return;
+    }
     var chartEl = document.getElementById('chart');
-    chartEl.style.display = 'block';
-    document.getElementById('chartInfo').style.display = 'block';
-    // Properly clean up any existing echarts instance bound to this DOM element
-    if (_chartResizeHandler) { window.removeEventListener('resize', _chartResizeHandler); _chartResizeHandler = null; }
-    var existing = echarts.getInstanceByDom(chartEl);
-    if (existing) existing.dispose();
-    if (_chartInstance) _chartInstance = null;
-    // Ensure DOM is clean before re-init
-    chartEl.innerHTML = '';
+    var chartInfo = document.getElementById('chartInfo');
+    var errorArea = document.getElementById('errorArea');
 
-    var chart = echarts.init(chartEl);
-    _chartInstance = chart;
+    try {
+      _disposeChart();
 
-    var catCol = currentColumns[0];
-    var numCols = currentColumns.slice(1).filter(function(c) {
-      return currentRows.some(function(r) { return !isNaN(parseFloat(r[c])); });
-    });
-    if (!numCols.length && currentColumns.length >= 2) numCols = [currentColumns[1]];
-    if (!numCols.length) { chartEl.style.display = 'none'; return; }
+      // Make chart container visible BEFORE init so echarts can measure dimensions
+      chartEl.style.display = 'block';
+      chartInfo.style.display = 'block';
+      errorArea.style.display = 'none';
 
-    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    var colors = isLight
-      ? ['#6366f1','#8b5cf6','#ec4899','#10b981','#f59e0b']
-      : ['#818cf8','#a78bfa','#f472b6','#34d399','#fbbf24'];
-    var textColor = isLight ? '#4d4a70' : '#c4b5fd';
-    var gridColor = isLight ? 'rgba(99,102,241,.08)' : 'rgba(139,130,255,.08)';
-    var tooltipBg = isLight ? 'rgba(255,255,255,.95)' : 'rgba(20,18,48,.95)';
-    var tooltipText = isLight ? '#2d2a4a' : '#e0e0f8';
+      var chart = echarts.init(chartEl);
+      _chartInstance = chart;
 
-    var numBars = numCols.length;
-    var barWidth = numBars > 2 ? '60%' : '40%';
+      var catCol = currentColumns[0];
+      // Detect columns with actual numeric values (not just string-fallback)
+      var numCols = currentColumns.slice(1).filter(function(c) {
+        return currentRows.some(function(r) {
+          var v = r[c];
+          if (v === null || v === undefined) return false;
+          if (typeof v === 'number') return true;
+          return !isNaN(parseFloat(v));
+        });
+      });
+      if (!numCols.length) {
+        // No numeric column to chart — clean up and show a clear message
+        _disposeChart();
+        chartEl.style.display = 'none';
+        chartInfo.style.display = 'none';
+        errorArea.textContent = '当前查询结果无可绘图的数值列，图表仅支持数值型数据的可视化。可尝试使用统计类查询（如"按来源统计数量"）。';
+        errorArea.style.display = 'block';
+        return;
+      }
 
-    var series = numCols.map(function(c, idx) {
-      var color = colors[idx % colors.length];
-      return {
-        name: beautyCol(c),
-        type: 'bar',
-        barWidth: barWidth,
-        barGap: '20%',
-        emphasis: { itemStyle: { shadowBlur: 10, shadowColor: color } },
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: color }, { offset: 1, color: color + '44' }
-          ]),
-          borderRadius: [5, 5, 0, 0]
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      var colors = isLight
+        ? ['#6366f1','#8b5cf6','#ec4899','#10b981','#f59e0b']
+        : ['#818cf8','#a78bfa','#f472b6','#34d399','#fbbf24'];
+      var textColor = isLight ? '#4d4a70' : '#c4b5fd';
+      var gridColor = isLight ? 'rgba(99,102,241,.08)' : 'rgba(139,130,255,.08)';
+      var tooltipBg = isLight ? 'rgba(255,255,255,.95)' : 'rgba(20,18,48,.95)';
+      var tooltipText = isLight ? '#2d2a4a' : '#e0e0f8';
+
+      var numBars = numCols.length;
+      var barWidth = numBars > 2 ? '60%' : '40%';
+
+      var series = numCols.map(function(c, idx) {
+        var color = colors[idx % colors.length];
+        return {
+          name: beautyCol(c),
+          type: 'bar',
+          barWidth: barWidth,
+          barGap: '20%',
+          emphasis: { itemStyle: { shadowBlur: 10, shadowColor: color } },
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: color }, { offset: 1, color: color + '44' }
+            ]),
+            borderRadius: [5, 5, 0, 0]
+          },
+          label: {
+            show: true,
+            position: 'top',
+            color: textColor,
+            fontSize: 10,
+            fontWeight: 600,
+            rotate: 0
+          },
+          data: currentRows.map(function(r) {
+            var v = parseFloat(r[c]);
+            return isNaN(v) ? 0 : v;
+          })
+        };
+      });
+
+      chart.setOption({
+        backgroundColor: 'transparent',
+        grid: { left: '5%', right: '5%', bottom: '14%', top: '16%', containLabel: true },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: tooltipBg,
+          borderColor: isLight ? 'rgba(99,102,241,.2)' : 'rgba(139,130,255,.2)',
+          borderWidth: 1, padding: [10, 14],
+          textStyle: { color: tooltipText, fontSize: 13 },
+          axisPointer: { type: 'shadow', shadowStyle: { color: gridColor } },
+          formatter: function(params) {
+            var html = '<strong>' + params[0].axisValue + '</strong><br/>';
+            params.forEach(function(p) {
+              html += '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + p.color + ';margin-right:6px;"></span>';
+              html += beautyCol(p.seriesName) + ': <strong>' + p.value + '</strong>';
+              html += '<br/><span style="font-size:10px;color:' + (isLight ? '#9ca3af' : '#6b6b9e') + ';">字段: ' + p.seriesName + '</span><br/>';
+            });
+            return html;
+          }
         },
-        label: {
-          show: true,
-          position: 'top',
-          color: textColor,
-          fontSize: 10,
-          fontWeight: 600,
-          rotate: numBars > 2 ? 0 : 0
+        legend: {
+          data: numCols.map(function(c) { return beautyCol(c); }),
+          bottom: 0, textStyle: { color: textColor, fontSize: 12 },
+          itemWidth: 12, itemHeight: 12, itemGap: 20
         },
-        data: currentRows.map(function(r) {
-          var v = parseFloat(r[c]);
-          return isNaN(v) ? 0 : v;
-        })
-      };
-    });
-
-    chart.setOption({
-      backgroundColor: 'transparent',
-      grid: { left: '5%', right: '5%', bottom: '14%', top: '16%', containLabel: true },
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: tooltipBg,
-        borderColor: isLight ? 'rgba(99,102,241,.2)' : 'rgba(139,130,255,.2)',
-        borderWidth: 1, padding: [10, 14],
-        textStyle: { color: tooltipText, fontSize: 13 },
-        axisPointer: { type: 'shadow', shadowStyle: { color: gridColor } },
-        formatter: function(params) {
-          var html = '<strong>' + params[0].axisValue + '</strong><br/>';
-          params.forEach(function(p) {
-            html += '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + p.color + ';margin-right:6px;"></span>';
-            html += beautyCol(p.seriesName) + ': <strong>' + p.value + '</strong>';
-            html += '<br/><span style="font-size:10px;color:' + (isLight ? '#9ca3af' : '#6b6b9e') + ';">字段: ' + p.seriesName + '</span><br/>';
-          });
-          return html;
-        }
-      },
-      legend: {
-        data: numCols.map(function(c) { return beautyCol(c); }),
-        bottom: 0, textStyle: { color: textColor, fontSize: 12 },
-        itemWidth: 12, itemHeight: 12, itemGap: 20
-      },
-      xAxis: {
-        type: 'category',
-        data: currentRows.map(function(r) {
-          var v = r[catCol] != null ? String(r[catCol]) : '';
-          return v.length > 12 ? v.substring(0, 11) + '…' : v;
-        }),
-        axisLine: { lineStyle: { color: isLight ? 'rgba(99,102,241,.25)' : 'rgba(139,130,255,.25)' } },
-        axisTick: { show: false },
-        axisLabel: {
-          color: textColor, fontSize: 11,
-          rotate: currentRows.length > 5 ? 25 : 0,
-          interval: 0
+        xAxis: {
+          type: 'category',
+          data: currentRows.map(function(r) {
+            var v = r[catCol] != null ? String(r[catCol]) : '';
+            return v.length > 12 ? v.substring(0, 11) + '…' : v;
+          }),
+          axisLine: { lineStyle: { color: isLight ? 'rgba(99,102,241,.25)' : 'rgba(139,130,255,.25)' } },
+          axisTick: { show: false },
+          axisLabel: {
+            color: textColor, fontSize: 11,
+            rotate: currentRows.length > 5 ? 25 : 0,
+            interval: 0
+          },
+          name: beautyCol(catCol),
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600, padding: [10, 0, 0, 0] }
         },
-        name: beautyCol(catCol),
-        nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600, padding: [10, 0, 0, 0] }
-      },
-      yAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
-        axisLine: { show: false }, axisTick: { show: false },
-        axisLabel: { color: textColor, fontSize: 11 },
-        name: numCols.length === 1 ? beautyCol(numCols[0]) : '数值',
-        nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600, padding: [0, 0, 0, 10] }
-      },
-      series: series
-    });
+        yAxis: {
+          type: 'value',
+          splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
+          axisLine: { show: false }, axisTick: { show: false },
+          axisLabel: { color: textColor, fontSize: 11 },
+          name: numCols.length === 1 ? beautyCol(numCols[0]) : '数值',
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600, padding: [0, 0, 0, 10] }
+        },
+        series: series
+      });
 
-    chartEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      chartEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    _chartResizeHandler = function() { chart.resize(); };
-    window.addEventListener('resize', _chartResizeHandler);
+      _chartResizeHandler = function() { chart.resize(); };
+      window.addEventListener('resize', _chartResizeHandler);
+    } catch(e) {
+      console.error('[ask] renderChart error:', e);
+      _disposeChart();
+      chartEl.style.display = 'none';
+      chartInfo.style.display = 'none';
+      errorArea.textContent = '图表渲染失败：' + (e.message || '未知错误');
+      errorArea.style.display = 'block';
+    }
   }
 
   function getCookie(name) {

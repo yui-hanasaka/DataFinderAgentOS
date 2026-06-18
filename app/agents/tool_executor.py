@@ -552,7 +552,15 @@ async def _warehouse_query(question: str) -> str:
             schema = _build_schema_hint()
             prompt = (
                 f"数据库表结构（只读，只能查询以下表）：{schema}\n\n"
-                f"请将以下自然语言转换为 SQLite SELECT 语句，只返回 SQL，不要解释：\n{question}"
+                f"将用户输入转换为 SQLite SELECT 语句，只返回 SQL（不含任何解释、代码块标记）：\n"
+                f"用户输入：{question}\n\n"
+                "规则：\n"
+                "1. 如果用户输入是关键词/名称，生成 LIKE 搜索：SELECT * FROM watchtower_items"
+                " WHERE title LIKE '%关键词%' OR content LIKE '%关键词%' ORDER BY id DESC LIMIT 20\n"
+                "2. 如果用户要求统计数量，使用 COUNT(*) 并 GROUP BY\n"
+                "3. 如果用户要求查看详情，SELECT 相关列并 LIMIT\n"
+                "4. 如果用户输入看起来是 SQL 片段，直接规范化后返回\n"
+                "只返回一条可执行的 SQLite SELECT 语句。"
             )
             resp = await chat_complete(
                 str(model["base_url"]),
@@ -577,12 +585,14 @@ async def _warehouse_query(question: str) -> str:
     except Exception as exc:
         log_error("tool_executor warehouse_query nl_to_sql", exc)
 
-    # Fallback: simple LIKE search on title, content, summary
+    # Fallback: simple LIKE search on title, content, summary.
+    # Include numeric columns (risk, id) so frontend chart can render bars.
     try:
         like = f"%{question}%"
         with get_connection() as conn:
             rows = conn.execute(
-                "SELECT wi.title, wi.url, wi.summary, wi.sentiment, dc.summary AS deep_summary"
+                "SELECT wi.id, wi.title, wi.url, wi.sentiment, wi.collected_at,"
+                " wi.risk, dc.summary AS deep_summary"
                 " FROM watchtower_items wi"
                 " LEFT JOIN deep_contents dc ON dc.item_id = wi.id"
                 " WHERE wi.title LIKE ? OR wi.content LIKE ? OR wi.summary LIKE ?"
@@ -593,10 +603,13 @@ async def _warehouse_query(question: str) -> str:
         return json.dumps(
             [
                 {
+                    "id": int(r["id"]),
                     "title": r["title"],
                     "url": r["url"],
-                    "summary": r["deep_summary"] or r["summary"],
                     "sentiment": r["sentiment"],
+                    "采集时间": r["collected_at"],
+                    "风险指数": int(r["risk"] or 0),
+                    "summary": r["deep_summary"] or r["summary"],
                 }
                 for r in rows
             ],

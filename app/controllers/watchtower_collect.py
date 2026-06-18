@@ -1,6 +1,7 @@
 import asyncio
 import json
 
+from app.agents import agent_loop
 from app.controllers.admin import AdminBaseHandler
 from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
@@ -11,7 +12,6 @@ from app.models.watchtower import (
     analyze_items_sentiment,
 )
 from app.models.watchtower_scraper import WatchtowerScraper
-from app.models.model_client import chat_complete, parse_chat_response
 from app.models.model_engine import ModelRepository
 
 
@@ -188,7 +188,6 @@ class WatchtowerCollectHandler(AdminBaseHandler):
     async def _handle_ai_search_sse(self):
         self.set_header("Content-Type", "text/event-stream; charset=utf-8")
         self.set_header("Cache-Control", "no-cache")
-        self.set_header("Connection", "keep-alive")
 
         desc = self.get_query_argument("desc", "").strip()
         if not desc:
@@ -198,18 +197,10 @@ class WatchtowerCollectHandler(AdminBaseHandler):
             await self.flush()
             return
 
-        source_ids_raw = self.get_query_argument("source_ids", "")
-        source_ids = []
-        if source_ids_raw:
-            source_ids = [
-                int(x) for x in source_ids_raw.split(",") if x.strip().isdigit()
-            ]
-        if not source_ids:
-            source_ids = [src["id"] for src in SourceRepository.list_all_enabled()]
-
-        if not source_ids:
+        if not check_rate_limit(f"wt_ai_search:{self.current_user}", 3, 300):
+            self.set_status(429)
             self.write(
-                f"data: {json.dumps({'type': 'error', 'message': '没有可用的采集源'})}\n\n"
+                f"data: {json.dumps({'type': 'error', 'message': 'AI 采集请求过于频繁，请5分钟后再试'})}\n\n"
             )
             await self.flush()
             return
@@ -222,115 +213,128 @@ class WatchtowerCollectHandler(AdminBaseHandler):
             await self.flush()
             return
 
-        # 1. Generate keywords
-        keywords = desc
+        # Build sources info for AI reference
+        sources = SourceRepository.list_all_enabled()
+        sources_info = ", ".join(f"{s['name']}({s['source_type']})" for s in sources)
+
+        system_prompt = (
+            "你是数据瞭望采集智能代理（Watchtower Collect Agent）。"
+            "你的任务是根据用户的信息需求，自主搜索互联网，评估每条结果的相关性，"
+            "将有价值的信息保存到瞭望数据库，并迭代优化搜索策略直到获得满意的结果。\n"
+            "\n"
+            "## 工作流程\n"
+            "1. **规划搜索**：理解用户需求，生成合适的中文关键词，使用 web_search 进行搜索\n"
+            "2. **评估结果**：仔细阅读每条搜索结果的标题和摘要，判断是否与用户需求相关\n"
+            "3. **保存相关数据**：对确实相关的结果，使用 watchtower_insert 保存\n"
+            "4. **深入采集**：对特别有价值的链接，使用 deep_collect 进行深度分析\n"
+            "5. **迭代优化**：根据已获得的结果质量和数量，调整关键词继续搜索，扩大覆盖面\n"
+            "6. **自主停止**：当获得足够多的高质量结果（建议10条以上），"
+            "或连续尝试多组关键词后无新发现时，主动停止并总结\n"
+            "\n"
+            "## 相关性判断标准\n"
+            "- **必须保存**：内容直接匹配用户需求，信息丰富，有具体事实/数据/观点\n"
+            "- **不应保存**：\n"
+            "  - ICP备案页面、隐私政策、Cookie声明、用户协议、服务条款\n"
+            "  - 网站导航页、404错误页、空白页、纯广告页\n"
+            "  - 与用户需求完全无关的内容\n"
+            "  - 内容过于简短（少于50字）且无实质信息\n"
+            "  - 纯搜索引擎结果聚合页（无原创内容）\n"
+            "- **有疑问时**：倾向于保存，宁可多存不可漏掉\n"
+            "\n"
+            "## watchtower_insert 使用说明\n"
+            "- title: 资讯标题（必填）\n"
+            "- content: 资讯正文或摘要（必填，至少50字）\n"
+            "- url: 来源链接（强烈建议提供，用于URL去重）\n"
+            "- source_name: 来源名称，如 'AI采集-<平台名>'\n"
+            "- sentiment: 情感倾向，可选 positive/negative/neutral\n"
+            "- 同URL不会重复插入，返回 action: 'skipped_duplicate'\n"
+            "\n"
+            "## 搜索策略\n"
+            "- 优先使用 web_search（通过Bing/DuckDuckGo搜索）\n"
+            "- 如果 web_search 返回空，立即使用 code_execute 编写Python爬虫直接搜索\n"
+            "- 每组关键词搜索后，评估结果质量，调整关键词角度再搜\n"
+            "- 覆盖不同角度：如搜'政策'也搜'法规''文件''通知'\n"
+            "- 对特别重要的链接使用 deep_collect 进行AI摘要\n"
+            "\n"
+            "## 停止条件\n"
+            "- 已保存10条以上高质量相关结果 → 总结并停止\n"
+            "- 已尝试3组以上不同关键词且最新一组无新发现 → 总结并停止\n"
+            "- 工具调用轮次达到上限 → 自然结束\n"
+            "\n"
+            "## 输出要求\n"
+            "- 每次搜索后必须口头评估结果质量（相关性、信息量）\n"
+            "- 每次保存后简要说明为什么这条值得保存\n"
+            "- 停止前给出最终总结：共搜索了多少次、保存了多少条、覆盖了哪些角度\n"
+            f"\n可用的采集源（仅供了解，实际的网络搜索不受此限制）：{sources_info}"
+        )
+
+        messages: list[dict[str, object]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"用户信息需求：{desc}\n请开始采集。"},
+        ]
+
+        allowed_tools = [
+            "web_search",
+            "web_fetch",
+            "code_execute",
+            "watchtower_insert",
+            "watchtower_search",
+            "deep_collect",
+        ]
+
+        saved_items: list[dict[str, object]] = []
+        full_text_parts: list[str] = []
+
+        async def _sse(event_type: str, data: object) -> None:
+            nonlocal saved_items, full_text_parts
+            if event_type == "text":
+                full_text_parts.append(str(data))
+                payload = json.dumps({"type": "text", "content": str(data)})
+            elif isinstance(data, dict):
+                payload = json.dumps({"type": event_type, **data})
+                # Track watchtower_insert results for final summary
+                if (
+                    event_type == "tool_result"
+                    and data.get("name") == "watchtower_insert"
+                ):
+                    try:
+                        result = json.loads(str(data.get("content", "{}")))
+                        if result.get("ok") and result.get("title"):
+                            saved_items.append(
+                                {
+                                    "title": result.get("title", ""),
+                                    "url": result.get("url", ""),
+                                    "action": result.get("action", "created"),
+                                }
+                            )
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            else:
+                payload = json.dumps({"type": event_type, "data": str(data)})
+            try:
+                self.write(f"data: {payload}\n\n")
+                await self.flush()
+            except Exception:
+                pass
+
         try:
-            prompt = (
-                "你是一个智能搜索助手。用户给你一个想要收集的信息的描述，请提炼并生成最适合在搜索引擎或新闻网站上查询的中文或英文关键词。\n"
-                "要求：仅返回1-3个关键词，用空格分隔，不要有任何多余标点、解释或引导词（如'关键词：'）。\n\n"
-                f"用户描述：{desc}"
+            await agent_loop.run(
+                desc,
+                messages,
+                model_row,
+                _sse,
+                allowed_tools=allowed_tools,
             )
-            resp = await chat_complete(
-                model_row["base_url"],
-                model_row["api_key"],
-                model_row["model_id"],
-                [{"role": "user", "content": prompt}],
-                temperature=0.1,
-                max_tokens=60,
-                stream=False,
-            )
-            raw = await resp.aread()
-            parsed = parse_chat_response(raw)
-            keywords = str(parsed.get("content", "")).strip()
-            if keywords.startswith("```"):
-                keywords = keywords.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         except Exception as e:
-            log_error("AI Search initial keywords generation failed", e)
-            keywords = desc
-
-        max_iterations = 3
-        all_collected_items = []
-
-        async def _scrape_one(src_id: int, kw: str) -> list:
-            source = SourceRepository.get_source(src_id)
-            if not source or source["status"] != "enabled":
-                return []
-            try:
-                items = await asyncio.wait_for(
-                    WatchtowerScraper.scrape_source_async(src_id, kw, 1, 10),
-                    timeout=15,
-                )
-                for item in items:
-                    item["source_id"] = src_id
-                    item["source_name"] = source["name"]
-                return items
-            except Exception as ex:
-                log_error(f"AI Search scrape failed src={src_id} kw={kw}", ex)
-                return []
-
-        for iteration in range(1, max_iterations + 1):
+            log_error("WatchtowerCollectHandler agent_loop", e)
             self.write(
-                f"data: {json.dumps({'type': 'iteration_start', 'iteration': iteration, 'keywords': keywords})}\n\n"
+                f"data: {json.dumps({'type': 'error', 'message': f'AI 采集执行失败: {e}'})}\n\n"
             )
             await self.flush()
-
-            # Scrape in parallel
-            scrape_tasks = [_scrape_one(sid, keywords) for sid in source_ids]
-            results = await asyncio.gather(*scrape_tasks)
-
-            round_items = []
-            for res_list in results:
-                round_items.extend(res_list)
-
-            # De-duplicate by URL
-            unique_round_items = []
-            seen_urls = {item["url"] for item in all_collected_items if item.get("url")}
-            for item in round_items:
-                url = item.get("url")
-                if not url or url not in seen_urls:
-                    unique_round_items.append(item)
-                    if url:
-                        seen_urls.add(url)
-
-            all_collected_items.extend(unique_round_items)
-
-            self.write(
-                f"data: {json.dumps({'type': 'results', 'iteration': iteration, 'keywords': keywords, 'items': unique_round_items})}\n\n"
-            )
-            await self.flush()
-
-            if len(unique_round_items) >= 5 or iteration == max_iterations:
-                break
-
-            # Refine keywords for next round
-            try:
-                refine_prompt = (
-                    f"你是一个智能搜索助手。用户期望收集的信息是「{desc}」。\n"
-                    f"前一轮使用的关键词是「{keywords}」，共采集到 {len(unique_round_items)} 条有用结果，数量偏少或不够精准。\n"
-                    "请结合当前轮次的结果，重新生成一组新的更精准或者略微宽泛的关键词来拓宽搜索面。\n"
-                    "要求：仅返回1-3个关键词，用空格分隔，不要有任何多余标点、解释或引导词。\n"
-                )
-                resp = await chat_complete(
-                    model_row["base_url"],
-                    model_row["api_key"],
-                    model_row["model_id"],
-                    [{"role": "user", "content": refine_prompt}],
-                    temperature=0.3,
-                    max_tokens=60,
-                    stream=False,
-                )
-                raw = await resp.aread()
-                parsed = parse_chat_response(raw)
-                new_kw = str(parsed.get("content", "")).strip()
-                if new_kw.startswith("```"):
-                    new_kw = new_kw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-                if new_kw and new_kw != keywords:
-                    keywords = new_kw
-            except Exception as e:
-                log_error("AI Search keywords refinement failed", e)
-                break
+            return
 
         self.write(
-            f"data: {json.dumps({'type': 'done', 'total': len(all_collected_items)})}\n\n"
+            f"data: {json.dumps({'type': 'done', 'total_saved': len(saved_items), 'saved_items': saved_items, 'full_text': ''.join(full_text_parts)})}\n\n"
         )
+        self.write("data: [DONE]\n\n")
         await self.flush()
