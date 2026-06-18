@@ -487,8 +487,7 @@
             var parsed = JSON.parse(jsonStr);
             if (parsed.type === 'text') {
               thinkContent += parsed.content;
-              var assembled = thinkContent.replace(/\n/g, '<br>');
-              thinkBubble.innerHTML = '<div class="think-label">🤖 AI 思考中…</div>' + assembled;
+              thinkBubble.innerHTML = '<div class="think-label">🤖 AI 思考中…</div>' + (typeof renderSafeMarkdown === 'function' ? renderSafeMarkdown(thinkContent) : thinkContent.replace(/\n/g, '<br>'));
               thinkBubble.style.display = 'block';
             } else if (parsed.type === 'tool_call') {
               var tm = document.createElement('div');
@@ -506,13 +505,20 @@
               document.getElementById('loading').style.display = 'none';
               var rArrow = document.querySelectorAll('.pipeline-arrow')[2];
               var rStep = document.getElementById('step-render');
-              if (rArrow) rArrow.classList.add('done');
-              if (rStep) { rStep.classList.remove('active'); rStep.classList.add('success'); }
               currentColumns = parsed.columns || [];
               currentRows = parsed.rows || [];
-              if (thinkContent) thinkBubble.innerHTML = '<div class="think-label">✅ 查询完成</div>' + thinkContent.replace(/\n/g, '<br>');
-              showResults();
-              addHistory(q);
+              if (currentColumns.length && currentRows.length) {
+                if (rArrow) rArrow.classList.add('done');
+                if (rStep) { rStep.classList.remove('active'); rStep.classList.add('success'); }
+                if (thinkContent) thinkBubble.innerHTML = '<div class="think-label">✅ 查询完成</div>' + (typeof renderSafeMarkdown === 'function' ? renderSafeMarkdown(thinkContent) : thinkContent.replace(/\n/g, '<br>'));
+                showResults();
+                addHistory(q);
+              } else {
+                // AI responded with text but never called warehouse_query — no data
+                if (rStep) { rStep.classList.remove('active'); rStep.classList.add('error'); }
+                document.getElementById('errorArea').textContent = 'AI 未执行数据库查询，请重新描述你的问题。提示：让 AI 明确使用 warehouse_query 工具查询。';
+                document.getElementById('errorArea').style.display = 'block';
+              }
             } else if (parsed.type === 'error') {
               document.getElementById('loading').style.display = 'none';
               var rArrow2 = document.querySelectorAll('.pipeline-arrow')[2];
