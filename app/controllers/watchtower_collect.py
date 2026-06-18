@@ -192,25 +192,33 @@ class WatchtowerCollectHandler(AdminBaseHandler):
 
         desc = self.get_query_argument("desc", "").strip()
         if not desc:
-            self.write(f"data: {json.dumps({'type': 'error', 'message': '请输入需求描述'})}\n\n")
+            self.write(
+                f"data: {json.dumps({'type': 'error', 'message': '请输入需求描述'})}\n\n"
+            )
             await self.flush()
             return
 
         source_ids_raw = self.get_query_argument("source_ids", "")
         source_ids = []
         if source_ids_raw:
-            source_ids = [int(x) for x in source_ids_raw.split(",") if x.strip().isdigit()]
+            source_ids = [
+                int(x) for x in source_ids_raw.split(",") if x.strip().isdigit()
+            ]
         if not source_ids:
             source_ids = [src["id"] for src in SourceRepository.list_all_enabled()]
 
         if not source_ids:
-            self.write(f"data: {json.dumps({'type': 'error', 'message': '没有可用的采集源'})}\n\n")
+            self.write(
+                f"data: {json.dumps({'type': 'error', 'message': '没有可用的采集源'})}\n\n"
+            )
             await self.flush()
             return
 
         model_row = ModelRepository.get_default_model()
         if not model_row or not model_row.get("api_key"):
-            self.write(f"data: {json.dumps({'type': 'error', 'message': '未配置默认模型或API Key'})}\n\n")
+            self.write(
+                f"data: {json.dumps({'type': 'error', 'message': '未配置默认模型或API Key'})}\n\n"
+            )
             await self.flush()
             return
 
@@ -249,9 +257,7 @@ class WatchtowerCollectHandler(AdminBaseHandler):
                 return []
             try:
                 items = await asyncio.wait_for(
-                    WatchtowerScraper.scrape_source_async(
-                        src_id, kw, 1, 10
-                    ),
+                    WatchtowerScraper.scrape_source_async(src_id, kw, 1, 10),
                     timeout=15,
                 )
                 for item in items:
@@ -263,7 +269,9 @@ class WatchtowerCollectHandler(AdminBaseHandler):
                 return []
 
         for iteration in range(1, max_iterations + 1):
-            self.write(f"data: {json.dumps({'type': 'iteration_start', 'iteration': iteration, 'keywords': keywords})}\n\n")
+            self.write(
+                f"data: {json.dumps({'type': 'iteration_start', 'iteration': iteration, 'keywords': keywords})}\n\n"
+            )
             await self.flush()
 
             # Scrape in parallel
@@ -286,7 +294,9 @@ class WatchtowerCollectHandler(AdminBaseHandler):
 
             all_collected_items.extend(unique_round_items)
 
-            self.write(f"data: {json.dumps({'type': 'results', 'iteration': iteration, 'keywords': keywords, 'items': unique_round_items})}\n\n")
+            self.write(
+                f"data: {json.dumps({'type': 'results', 'iteration': iteration, 'keywords': keywords, 'items': unique_round_items})}\n\n"
+            )
             await self.flush()
 
             if len(unique_round_items) >= 5 or iteration == max_iterations:
@@ -320,5 +330,7 @@ class WatchtowerCollectHandler(AdminBaseHandler):
                 log_error("AI Search keywords refinement failed", e)
                 break
 
-        self.write(f"data: {json.dumps({'type': 'done', 'total': len(all_collected_items)})}\n\n")
+        self.write(
+            f"data: {json.dumps({'type': 'done', 'total': len(all_collected_items)})}\n\n"
+        )
         await self.flush()

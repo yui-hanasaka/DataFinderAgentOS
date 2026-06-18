@@ -70,6 +70,15 @@ def _sqlite_connect() -> "DatabaseConnection":
 def _mysql_connect() -> "DatabaseConnection":
     import pymysql
 
+    has_pass = bool(str(_mysql_params.get("password", "")))
+    _logger.debug(
+        "MySQL connect: %s@%s:%s/%s (password=%s)",
+        _mysql_params.get("user", "?"),
+        _mysql_params.get("host", "?"),
+        _mysql_params.get("port", "?"),
+        _mysql_params.get("database", "?"),
+        "yes" if has_pass else "NO",
+    )
     conn = pymysql.connect(
         host=str(_mysql_params["host"]),
         port=int(_mysql_params["port"]),

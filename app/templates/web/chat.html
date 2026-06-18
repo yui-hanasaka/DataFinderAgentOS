@@ -767,6 +767,47 @@
     animation: msgSlideUp .45s var(--spring-soft), gradientFlow 3s ease infinite, toolGlowLight 2s infinite ease-in-out;
   }
 
+  /* ── Reviewing state — purple/indigo glow ── */
+  .tool-card.reviewing {
+    border-color: rgba(139, 92, 246, 0.35) !important;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.18), 0 6px 20px rgba(0,0,0,.15) !important;
+    background: linear-gradient(135deg, rgba(20, 18, 44, .75) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(20, 18, 44, .75) 100%) !important;
+    background-size: 200% 200% !important;
+    animation: msgSlideUp .45s var(--spring-soft), gradientFlow 3s ease infinite, toolReviewGlow 2s infinite ease-in-out !important;
+  }
+  .tool-card.reviewing .tool-status { color: #a78bfa; text-shadow: 0 0 4px rgba(139,92,246,.4); }
+  @keyframes toolReviewGlow {
+    0% { border-color: rgba(139,92,246,.25); box-shadow: 0 0 6px rgba(139,92,246,.1), 0 6px 20px rgba(0,0,0,.15); }
+    50% { border-color: rgba(139,92,246,.5); box-shadow: 0 0 15px rgba(139,92,246,.25), 0 6px 20px rgba(0,0,0,.15); }
+    100% { border-color: rgba(139,92,246,.25); box-shadow: 0 0 6px rgba(139,92,246,.1), 0 6px 20px rgba(0,0,0,.15); }
+  }
+  .tool-review-icon { color: #c4b5fd; text-shadow: 0 0 8px rgba(139,92,246,.6); font-size: 16px; font-weight: 900; animation: scaleUp .3s var(--spring); margin-right: 6px; display: inline-block; vertical-align: middle; -webkit-text-stroke: 0.5px #7c3aed; }
+  .tool-warn-icon { font-size: 16px; font-weight: 900; }
+  [data-theme="light"] .tool-card.reviewing {
+    background: linear-gradient(135deg, rgba(255,255,255,.72) 0%, rgba(139,92,246,.08) 50%, rgba(255,255,255,.72) 100%) !important;
+    border-color: rgba(139,92,246,.3) !important;
+    box-shadow: 0 0 12px rgba(139,92,246,.12), 0 6px 20px rgba(99,102,241,.04) !important;
+  }
+  [data-theme="light"] .tool-card.reviewing .tool-status { color: #7c3aed; }
+  [data-theme="light"] .tool-review-icon { color: #7c3aed; }
+
+  /* ── Aborted state — amber glow ── */
+  .tool-card.aborted {
+    border-color: rgba(245,158,11,.3) !important;
+    box-shadow: 0 0 8px rgba(245,158,11,.1), 0 6px 20px rgba(0,0,0,.15) !important;
+    animation: none !important;
+    background: linear-gradient(135deg, rgba(20,18,44,.65) 0%, rgba(245,158,11,.06) 50%, rgba(20,18,44,.65) 100%) !important;
+    background-size: 200% 200% !important;
+  }
+  .tool-card.aborted .tool-status { color: #f59e0b; animation: none; text-shadow: 0 0 4px rgba(245,158,11,.3); }
+  .tool-stop-icon { color: #f59e0b; text-shadow: 0 0 6px rgba(245,158,11,.5); font-size: 14px; animation: scaleUp .3s var(--spring); margin-right: 6px; display: inline-block; vertical-align: middle; }
+  [data-theme="light"] .tool-card.aborted {
+    background: linear-gradient(135deg, rgba(255,255,255,.7) 0%, rgba(245,158,11,.04) 50%, rgba(255,255,255,.7) 100%) !important;
+    border-color: rgba(245,158,11,.25) !important;
+  }
+  [data-theme="light"] .tool-card.aborted .tool-status { color: #d97706; }
+  [data-theme="light"] .tool-stop-icon { color: #d97706; }
+
   /* ── Tool Card High-tech Spinners ── */
   .tool-spinner {
     display: inline-block;
@@ -1219,22 +1260,24 @@
 
   /* ── Audio Wave Bars Equalizer ── */
   .audio-wave-bars {
-    display: inline-flex;
+    display: flex;
     align-items: flex-end;
-    gap: 2px;
-    height: 12px;
-    width: 20px;
-    flex-shrink: 0;
+    gap: 3px;
+    height: 24px;
+    width: 100%;
+    margin: 6px 0 4px;
   }
 
   .audio-wave-bars .bar {
-    width: 2px;
-    height: 3px;
-    background-color: var(--neon-cyan);
-    border-radius: 1px;
-    transition: height 0.2s ease;
+    flex: 1;
+    min-height: 3px;
+    background-color: rgba(99, 102, 241, 0.3);
+    border-radius: 2px;
+    transition: height 0.15s ease;
   }
-  
+
+  [data-theme="light"] .audio-wave-bars .bar { background-color: rgba(99, 102, 241, 0.25); }
+
   .custom-audio-player.playing .audio-wave-bars .bar {
     animation: audioWaveBounce 0.8s ease infinite alternate;
   }
@@ -1621,6 +1664,7 @@
   }
 
   function appendTyping() {
+    clearEmptyState();
     const d = document.createElement('div');
     d.className = 'glass-msg assistant thinking';
     d.id = 'typingMsg';
@@ -1815,24 +1859,18 @@
                     <div class="custom-audio-player">
                       <img class="audio-cover" src="${parsed.cover_url || ''}" alt="cover" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R300x300M000003y847F0W8xJm_1.jpg'" />
                       <div class="audio-info">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                          <div class="audio-title">${escHtml(parsed.title || '未知歌曲')}</div>
-                          <div class="audio-wave-bars">
-                            <div class="bar"></div>
-                            <div class="bar"></div>
-                            <div class="bar"></div>
-                            <div class="bar"></div>
-                            <div class="bar"></div>
+                        <div class="audio-title">${escHtml(parsed.title || '未知歌曲')}</div>
+                        <div class="audio-artist">${escHtml(parsed.artist || '未知歌手')}</div>
+                        <div class="audio-wave-bars">
+                          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        </div>
+                        <div class="audio-progress-container">
+                          <div class="audio-progress-bar">
+                            <div class="audio-progress-fill" style="width: 0%"></div>
                           </div>
                         </div>
-                        <div class="audio-artist">${escHtml(parsed.artist || '未知歌手')}</div>
                         <div class="audio-controls-row">
                           <button class="audio-play-btn">▶</button>
-                          <div class="audio-progress-container">
-                            <div class="audio-progress-bar">
-                              <div class="audio-progress-fill" style="width: 0%"></div>
-                            </div>
-                          </div>
                           <div class="audio-time">0:00 / 0:00</div>
                         </div>
                       </div>
@@ -1887,6 +1925,22 @@
         appendTelemetryLog('system', '操作已被用户中止。');
         setAgentState('idle', 'STOPPED (已手动中止)');
         updateActionCard('error', '操作已被中止', '已根据您的要求中止了当前的执行任务。', 100, '⏹');
+        // Abort all in-progress tool cards
+        for (var cid in _toolCards) {
+          var card = _toolCards[cid];
+          if (card && !card.classList.contains('completed')) {
+            var spinner = card.querySelector('.tool-spinner');
+            if (spinner) {
+              var stopIcon = document.createElement('span');
+              stopIcon.className = 'tool-stop-icon';
+              stopIcon.innerHTML = '⏹';
+              spinner.parentNode.replaceChild(stopIcon, spinner);
+            }
+            var status = card.querySelector('.tool-status');
+            if (status) { status.textContent = '已中止'; status.style.color = '#f59e0b'; }
+            card.classList.add('aborted');
+          }
+        }
         return;
       }
       const typing = document.getElementById('typingMsg');
@@ -1921,7 +1975,6 @@
   function stopSend() {
     if (_abortController) {
       _abortController.abort();
-      _abortController = null;
     }
     document.getElementById('stopBtn').disabled = true;
   }
@@ -2253,7 +2306,19 @@
     var reviewText = evt.approved ? '✓ 已批准' : '✗ 已拒绝';
     if (evt.reason) reviewText += ': ' + evt.reason;
     
-    if (!evt.approved) {
+    if (evt.approved) {
+      // Replace spinner with shield → show "reviewing" state
+      const spinner = card.querySelector('.tool-spinner');
+      if (spinner) {
+        const shieldIcon = document.createElement('span');
+        shieldIcon.className = 'tool-review-icon';
+        shieldIcon.innerHTML = '🛡';
+        spinner.parentNode.replaceChild(shieldIcon, spinner);
+      }
+      const status = card.querySelector('.tool-status');
+      if (status) { status.textContent = '审查中…'; }
+      card.classList.add('reviewing');
+    } else {
       const spinner = card.querySelector('.tool-spinner');
       if (spinner) {
         const warnIcon = document.createElement('span');
@@ -2280,20 +2345,25 @@
     const card = _toolCards[evt.call_id];
     if (!card) return;
     card.classList.add('completed');
-    const spinner = card.querySelector('.tool-spinner');
-    if (spinner) {
-      const doneIcon = document.createElement('span');
+    card.classList.remove('reviewing', 'aborted');
+    // Also remove the review text from body
+    const existingReview = card.querySelector('.tool-review');
+    if (existingReview) existingReview.remove();
+    // Replace spinner OR review-icon OR warn-icon with checkmark
+    var iconEl = card.querySelector('.tool-spinner, .tool-review-icon, .tool-warn-icon, .tool-stop-icon');
+    if (iconEl) {
+      var doneIcon = document.createElement('span');
       doneIcon.className = 'tool-done-icon';
       doneIcon.innerHTML = '✓';
-      spinner.parentNode.replaceChild(doneIcon, spinner);
+      iconEl.parentNode.replaceChild(doneIcon, iconEl);
     }
-    const status = card.querySelector('.tool-status');
-    if (status) status.textContent = '完成';
-    const body = card.querySelector('.tool-card-body');
-    const existingResult = body.querySelector('.tool-result');
+    var status = card.querySelector('.tool-status');
+    if (status) { status.textContent = '完成'; status.style.color = ''; }
+    var body = card.querySelector('.tool-card-body');
+    var existingResult = body.querySelector('.tool-result');
     if (existingResult) existingResult.remove();
     if (evt.content) {
-      const resultDiv = document.createElement('div');
+      var resultDiv = document.createElement('div');
       resultDiv.className = 'tool-result';
       resultDiv.textContent = evt.content;
       body.appendChild(resultDiv);

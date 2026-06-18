@@ -115,12 +115,19 @@ def decrypt(value: str) -> str:
     f = _get_fernet()
     try:
         return f.decrypt(value[len(_PREFIX) :].encode("utf-8")).decode("utf-8")
-    except Exception:
+    except Exception as exc:
         # Key rotation or ephemeral key loss — old encrypted value is
         # unrecoverable. Return empty so the caller gets a clean auth failure
         # instead of a 500 crash.
+        import logging
         import warnings
 
+        _logger = logging.getLogger(__name__)
+        _logger.warning(
+            "decrypt failed — encryption key may have changed (%s). "
+            "Re-save the secret to re-encrypt with current key.",
+            exc,
+        )
         warnings.warn(
             "Failed to decrypt a stored secret — the encryption key may have "
             "changed. The secret will be returned as empty. Re-save the secret "

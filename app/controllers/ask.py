@@ -1,13 +1,9 @@
 import json
 
 from app.controllers.base import BaseHandler
-from app.models.db import get_connection
 from app.models.errors import log_error
 from app.models.rate_limit import check_rate_limit
-from app.models.model_client import chat_complete, parse_chat_response
 from app.models.model_engine import ModelRepository
-from app.models.sql_guard import ALLOWED_TABLES
-from app.models.warehouse import WarehouseRepository
 
 
 class AskBaseHandler(BaseHandler):
@@ -34,154 +30,106 @@ class AskHomeHandler(AskBaseHandler):
         )
 
 
-# Column-level metadata for AI schema hints — table names governed by
-# sql_guard.ALLOWED_TABLES (single source of truth for the allowlist).
-# Add a table's columns here when it is approved in ALLOWED_TABLES.
-_TABLE_COLUMNS: dict[str, list[str]] = {
-    "watchtower_items": [
-        "id",
-        "source_id",
-        "title",
-        "content",
-        "url",
-        "sentiment",
-        "risk",
-        "published_at",
-        "collected_at",
-        "is_deep_collected",
-        "deep_collected_at",
-        "deep_task_id",
-        "summary",
-        "keywords",
-        "created_at",
-    ],
-    "watchtower_sources": [
-        "id",
-        "name",
-        "source_type",
-        "url",
-        "fetch_interval",
-        "status",
-        "last_fetched",
-        "created_at",
-    ],
-    "deep_contents": [
-        "id",
-        "item_id",
-        "task_id",
-        "title",
-        "url",
-        "summary",
-        "keywords",
-        "sentiment",
-        "risk",
-        "created_at",
-    ],
-    "digital_employees": [
-        "id",
-        "name",
-        "avatar",
-        "status",
-        "created_at",
-    ],
-    "skills": [
-        "id",
-        "code",
-        "name",
-        "skill_type",
-        "status",
-    ],
-}
-
-
 class AskQueryHandler(AskBaseHandler):
-    def _public_schema_hint(self) -> str:
-        hints = []
-        for table in sorted(ALLOWED_TABLES):
-            cols = _TABLE_COLUMNS.get(table)
-            if cols:
-                hints.append(f"{table}({', '.join(cols)})")
-        return "; ".join(hints)
-
     async def post(self) -> None:
         key = f"ask_query:ip:{self.request.remote_ip}"
         if not check_rate_limit(key, 20, 60):
             self.set_status(429)
+            self.set_header("Content-Type", "application/json")
             return self.write({"ok": False, "error": "请求过于频繁，请稍后再试"})
 
         try:
             payload = json.loads(self.request.body or b"{}")
         except json.JSONDecodeError:
+            self.set_header("Content-Type", "application/json")
             return self.write({"ok": False, "error": "请求格式错误"})
 
         nl_query = (payload.get("query") or "").strip()
         if not nl_query:
+            self.set_header("Content-Type", "application/json")
             return self.write({"ok": False, "error": "请输入查询内容"})
         if len(nl_query) > 500:
+            self.set_header("Content-Type", "application/json")
             return self.write({"ok": False, "error": "查询内容过长"})
 
         model_row = ModelRepository.get_default_model()
         if not model_row:
+            self.set_header("Content-Type", "application/json")
             return self.write({"ok": False, "error": "未配置默认模型"})
         if not model_row.get("api_key"):
+            self.set_header("Content-Type", "application/json")
             return self.write(
-                {
-                    "ok": False,
-                    "error": "模型 API Key 未设置或已失效，请联系管理员更新模型配置",
-                }
+                {"ok": False, "error": "模型 API Key 未设置或已失效，请联系管理员更新模型配置"}
             )
 
-        schema = self._public_schema_hint()
-        prompt = (
-            f"数据库表结构（只读，只能查询以下表）：{schema}\n\n"
-            f"请将以下自然语言转换为 SQLite SELECT 语句，只返回 SQL，不要解释：\n{nl_query}"
+        # SSE streaming Agentic query
+        self.set_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.set_header("Cache-Control", "no-cache")
+        self.set_header("X-Accel-Buffering", "no")
+
+        from app.agents.agent_loop import run as agent_run
+
+        system_prompt = (
+            "你是数据分析助手。使用 warehouse_query 工具查询数据库，"
+            "然后以清晰的中文总结查询结果。如果查询出错，分析错误原因并重试。"
         )
-        sql = ""
-        try:
-            resp = await chat_complete(
-                model_row["base_url"],
-                model_row["api_key"],
-                model_row["model_id"],
-                [{"role": "user", "content": prompt}],
-                temperature=0.1,
-                max_tokens=512,
-                stream=False,
-            )
-            raw = await resp.aread()
-            parsed = parse_chat_response(raw)
-            sql = str(parsed.get("content", "")).strip()
-            # Strip markdown code fences if present
-            if sql.startswith("```"):
-                sql = sql.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-        except Exception as e:
-            log_error("AskQueryHandler model call", e)
-            return self.write({"ok": False, "error": "模型调用失败，请稍后重试"})
 
-        rows, cols, err = WarehouseRepository.execute_query(sql)
-        if err:
-            log_error("AskQueryHandler SQL execution", Exception(str(err)[:200]))
-            return self.write({"ok": False, "error": "查询无法执行，请调整问题"})
+        messages: list[dict[str, object]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": nl_query},
+        ]
 
-        # Convert rows to list of dicts
-        dict_rows: list[dict[str, object]] = []
-        if rows and cols:
-            for r in rows:
-                d: dict[str, object] = {}
-                for c in cols:
-                    val = r[c] if c in r.keys() else None
-                    d[c] = val
-                dict_rows.append(d)
+        # Accumulate the final tool result for table/chart rendering
+        final_columns: list[str] = []
+        final_rows: list[dict[str, object]] = []
 
-        # Store in ask_history (SQL kept server-side only)
-        try:
-            with get_connection() as conn:
-                conn.execute(
-                    """INSERT INTO ask_history(user_id, query, generated_sql, result_count, status, model_id)
-                       VALUES((SELECT id FROM users WHERE username=?), ?, ?, ?, 'ok', ?)""",
-                    (self.current_user, nl_query, sql, len(dict_rows), model_row["id"]),
+        async def _sse(event_type: str, data: object) -> None:
+            nonlocal final_columns, final_rows
+            if event_type == "text":
+                self.write(
+                    f"data: {json.dumps({'type': 'text', 'content': str(data)})}\n\n"
                 )
-        except Exception as e:
-            log_error("AskQueryHandler ask_history", e)
+            elif isinstance(data, dict):
+                payload = json.dumps({"type": event_type, **data})
+                self.write(f"data: {payload}\n\n")
+                # Extract columns/rows from warehouse_query tool result
+                if event_type == "tool_result" and data.get("name") == "warehouse_query":
+                    try:
+                        result_data = json.loads(str(data.get("content", "[]")))
+                        if isinstance(result_data, list) and len(result_data) > 0:
+                            first = result_data[0]
+                            if isinstance(first, dict):
+                                final_columns = list(first.keys())
+                                final_rows = result_data
+                    except (json.JSONDecodeError, Exception):
+                        pass
+            else:
+                self.write(
+                    f"data: {json.dumps({'type': event_type, 'data': str(data)})}\n\n"
+                )
+            try:
+                await self.flush()
+            except Exception:
+                pass
 
-        self.set_header("Content-Type", "application/json")
-        self.write({"ok": True, "columns": cols, "rows": dict_rows})
+        try:
+            await agent_run(
+                nl_query,
+                messages,
+                model_row,
+                _sse,
+                allowed_tools=["warehouse_query"],
+            )
+        except Exception as e:
+            log_error("AskQueryHandler agent_run", e)
+            self.write(
+                f"data: {json.dumps({'type': 'error', 'message': f'查询执行失败: {e}'})}\n\n"
+            )
+            await self.flush()
+
+        # Send final result with columns/rows for table + chart
+        self.write(
+            f"data: {json.dumps({'type': 'done', 'columns': final_columns, 'rows': final_rows})}\n\n"
+        )
+        self.write("data: [DONE]\n\n")
+        await self.flush()

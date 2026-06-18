@@ -145,6 +145,9 @@ class AdminSettingsHandler(AdminBaseHandler):
                 ):
                     val = self.get_body_argument(k, "")
                     if k == "mysql_password" and val:
+                        # Guard: do NOT overwrite real password with masked value
+                        if "****" in val and len(val) < 20:
+                            continue
                         val = encrypt(val)
                     elif k == "mysql_password" and not val:
                         continue
