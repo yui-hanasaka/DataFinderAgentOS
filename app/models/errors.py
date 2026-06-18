@@ -21,6 +21,12 @@ def setup_logging() -> None:
         encoding="utf-8",
     )
 
+    # Silence noisy third-party loggers
+    for noisy in ("crawl4ai", "playwright", "httpx", "httpcore", "urllib3"):
+        import logging
+
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
 
 def log_error(context: str, exc: Exception) -> None:
     logger.error("{} — {}", context, exc)

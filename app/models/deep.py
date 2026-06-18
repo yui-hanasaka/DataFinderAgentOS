@@ -186,13 +186,24 @@ class DeepRepository:
 
         # Step 1: Scrape the URL for content (crawl4ai → requests+BS4 fallback)
         content_text = item["content"] or ""
-        if item["url"] and item["url"].startswith("http"):
+        item_url = item["url"] or ""
+        if item_url.startswith("http"):
+            # Skip Baidu redirect links — they just redirect to real pages
+            if "baidu.com/link?url=" in item_url:
+                return {
+                    "ok": True,
+                    "item_id": item_id,
+                    "title": item["title"] or "",
+                    "url": item_url,
+                    "plain_text": item["content"] or "",
+                }
+
             # Primary: crawl4ai — handles JS rendering, anti-bot, produces clean markdown
             try:
                 from crawl4ai import AsyncWebCrawler
 
                 async def _crawl_with(crw) -> str:
-                    result = await crw.arun(url=item["url"])
+                    result = await crw.arun(url=item_url)
                     if result and result.markdown:
                         return result.markdown[:8000]
                     return ""
@@ -204,7 +215,7 @@ class DeepRepository:
                         content_text = await _crawl_with(fresh) or content_text
             except Exception as e:
                 log_error(
-                    f"DeepRepository crawl4ai failed item_id={item_id} url={item['url']}",
+                    f"DeepRepository crawl4ai failed item_id={item_id} url={item_url}",
                     e,
                 )
 
@@ -218,11 +229,11 @@ class DeepRepository:
 
                     def _fetch():
                         resp = requests.get(
-                            item["url"],
+                            item_url,
                             headers={
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                             },
-                            timeout=15,
+                            timeout=8,
                         )
                         soup = BeautifulSoup(resp.content, "html.parser")
                         for tag in soup(["script", "style", "nav", "footer", "header"]):
