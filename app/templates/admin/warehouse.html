@@ -1,58 +1,242 @@
 {% extends "base.html" %}
 {% block head_extra %}
 <style>
-.dw-tabs{display:flex;gap:4px;margin-bottom:16px}
-.dw-tab{padding:10px 24px;border-radius:10px 10px 0 0;background:var(--c-surface,rgba(255,255,255,0.5));color:var(--c-text-soft,#6b778c);font-size:14px;font-weight:500;text-decoration:none;border:1px solid transparent;transition:all var(--spring,.2s)}
-.dw-tab:hover{color:var(--c-accent,#6366f1);border-color:rgba(99,102,241,.15)}
-.dw-tab.active{background:var(--c-bg,rgba(255,255,255,0.8));color:var(--c-accent,#6366f1);font-weight:700;border-color:rgba(99,102,241,.2);border-bottom-color:transparent}
-[data-theme="dark"] .dw-tab{background:rgba(20,18,48,.5);color:rgba(180,180,210,.6)}
-[data-theme="dark"] .dw-tab:hover{color:#818cf8;border-color:rgba(129,140,248,.2)}
-[data-theme="dark"] .dw-tab.active{background:rgba(20,18,48,.8);color:#818cf8;border-color:rgba(129,140,248,.25)}
-.item-title-trunc{max-width:320px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dw-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .dw-tab { padding: 10px 24px; border-radius: 10px 10px 0 0; background: var(--c-surface, rgba(255, 255, 255, 0.5)); color: var(--c-text-soft, #6b778c); font-size: 14px; font-weight: 500; text-decoration: none; border: 1px solid transparent; transition: all var(--spring, 0.2s); }
+  .dw-tab:hover { color: var(--c-accent, #6366f1); border-color: rgba(99, 102, 241, 0.15); }
+  .dw-tab.active { background: var(--c-bg, rgba(255, 255, 255, 0.8)); color: var(--c-accent, #6366f1); font-weight: 700; border-color: rgba(99, 102, 241, 0.2); border-bottom-color: transparent; }
+  [data-theme="dark"] .dw-tab { background: rgba(20, 18, 48, 0.5); color: rgba(180, 180, 210, 0.6); }
+  [data-theme="dark"] .dw-tab:hover { color: #818cf8; border-color: rgba(129, 140, 248, 0.2); }
+  [data-theme="dark"] .dw-tab.active { background: rgba(20, 18, 48, 0.8); color: #818cf8; border-color: rgba(129, 140, 248, 0.25); }
+  .item-title-trunc { max-width: 320px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Filter Grid Styles ── */
+  .admin-search-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+  }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .filter-col {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .filter-col label {
+    font-size: 12px;
+    color: var(--c-text-soft, rgba(180, 180, 210, 0.8));
+    font-weight: 500;
+  }
+  .filter-col input[type="text"],
+  .filter-col input[type="date"],
+  .filter-col select {
+    height: 36px;
+    border: 1px solid rgba(139, 130, 255, 0.2);
+    background: rgba(30, 26, 56, 0.5);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+    transition: all 0.2s;
+  }
+  .filter-col input[type="text"]:focus,
+  .filter-col input[type="date"]:focus,
+  .filter-col select:focus {
+    border-color: var(--neon-cyan);
+    outline: none;
+  }
+  [data-theme="light"] .filter-col input[type="text"],
+  [data-theme="light"] .filter-col input[type="date"],
+  [data-theme="light"] .filter-col select {
+    background: #fff;
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #2d2a4a;
+  }
+  .date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .date-inputs span {
+    font-size: 12px;
+    color: var(--c-text-soft);
+  }
+  .date-inputs input[type="date"] {
+    flex: 1;
+  }
+  .slider-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .slider-inputs span {
+    font-size: 12px;
+    color: var(--c-text-soft);
+  }
+  .slider-inputs input[type="range"] {
+    accent-color: var(--neon-cyan);
+  }
 </style>
 {% end %}
 {% block body %}
 <section class="admin-page-head">
 	<div>
 		<p>智能业务</p>
-		<h1>数据仓库</h1><span>管理预置 SQL 查询，浏览与删除采集数据。</span>
+		<h1>瞭望数据管理</h1><span>管理预置 SQL 查询，浏览与删除采集数据。</span>
 	</div>
 </section>
 <div class="dw-tabs">
-	<a href="/admin/warehouse?tab=queries" class="dw-tab {{ 'active' if tab == 'queries' else '' }}"><i class="fa-solid fa-database"></i> 查询管理</a>
 	<a href="/admin/warehouse?tab=browse" class="dw-tab {{ 'active' if tab == 'browse' else '' }}"><i class="fa-solid fa-table-list"></i> 数据浏览</a>
+	<a href="/admin/warehouse?tab=sql" class="dw-tab {{ 'active' if tab == 'sql' else '' }}"><i class="fa-solid fa-database"></i> 高级SQL</a>
 </div>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
+
 {% if tab == 'browse' %}
 <section class="admin-table-card">
 	<div class="table-title"><strong>采集数据</strong><span>共 {{ items_total }} 条，每页 {{ per_page }} 条</span></div>
-	<form class="admin-search" method="get" action="/admin/warehouse" style="border-bottom:1px solid rgba(99,102,241,0.06);padding:14px 20px">
+	
+	<!-- Multi-Filter Grid -->
+	<form class="admin-search-grid" method="get" action="/admin/warehouse">
 		<input type="hidden" name="tab" value="browse">
-		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索标题/内容">
-		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
-		<a href="/admin/warehouse?tab=browse">重置</a>
+		
+		<div class="filter-row">
+			<div class="filter-col">
+				<label>关键词</label>
+				<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索标题/内容">
+			</div>
+			<div class="filter-col">
+				<label>来源</label>
+				<select name="source_id">
+					<option value="0">全部来源</option>
+					{% for src in sources %}
+					<option value="{{ src['id'] }}" {% if source_id == src['id'] %}selected{% end %}>{{ src['name'] }}</option>
+					{% end %}
+				</select>
+			</div>
+			<div class="filter-col">
+				<label>情感倾向</label>
+				<select name="sentiment">
+					<option value="">全部</option>
+					<option value="positive" {% if sentiment == 'positive' %}selected{% end %}>正面</option>
+					<option value="negative" {% if sentiment == 'negative' %}selected{% end %}>负面</option>
+					<option value="neutral" {% if sentiment == 'neutral' %}selected{% end %}>中性</option>
+				</select>
+			</div>
+			<div class="filter-col">
+				<label>深度采集状态</label>
+				<select name="is_deep_collected">
+					<option value="">全部</option>
+					<option value="1" {% if is_deep_collected == '1' %}selected{% end %}>已采集</option>
+					<option value="0" {% if is_deep_collected == '0' %}selected{% end %}>未采集</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="filter-row">
+			<div class="filter-col" style="flex: 2;">
+				<label>采集时间范围</label>
+				<div class="date-inputs">
+					<input type="date" name="date_from" value="{{ date_from }}">
+					<span>至</span>
+					<input type="date" name="date_to" value="{{ date_to }}">
+				</div>
+			</div>
+			
+			<div class="filter-col" style="flex: 2;">
+				<label>风险指数范围: <span id="riskRangeVal" style="color: var(--neon-cyan); font-weight: 600;">{{ risk_min }} - {{ risk_max }}</span></label>
+				<div class="slider-inputs">
+					<input type="range" name="risk_min" min="0" max="10" value="{{ risk_min }}" id="riskMinSlider" style="width: 45%;">
+					<span>-</span>
+					<input type="range" name="risk_max" min="0" max="10" value="{{ risk_max }}" id="riskMaxSlider" style="width: 45%;">
+				</div>
+			</div>
+			
+			<div class="filter-col" style="justify-content: flex-end; align-items: flex-end; flex-direction: row; gap: 8px;">
+				<a href="/admin/warehouse?tab=browse" class="btn btn-outline-secondary" style="padding: 8px 16px; font-size: 13px; text-decoration: none; border-radius: 8px; border: 1px solid rgba(139, 130, 255, 0.2); color: var(--c-text-soft);">重置</a>
+				<button type="submit" class="btn btn-primary" style="padding: 8px 24px; font-size: 13px; border-radius: 8px; background: var(--neon-cyan); border: none; color: #1a1735; font-weight: 600;"><i class="fa-solid fa-magnifying-glass"></i> 筛选</button>
+			</div>
+		</div>
 	</form>
+
+	<!-- Batch Action Bar -->
+	<div class="batch-action-bar" style="padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.04); border-bottom: 1px solid rgba(99, 102, 241, 0.06);">
+		<div style="display: flex; gap: 10px; align-items: center;">
+			<label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--c-text-soft);">
+				<input type="checkbox" id="selectAllCheckbox"> 全选
+			</label>
+			<span style="font-size: 13px; color: var(--c-text-soft); margin-left: 10px;">已选择 <strong id="selectedCount" style="color: var(--neon-cyan);">0</strong> 项</span>
+		</div>
+		<div style="display: flex; gap: 8px;">
+			<button type="button" class="btn btn-sm" id="batchDeleteBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid #f87171; color: #f87171; background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
+				<i class="fa-solid fa-trash"></i> 批量删除
+			</button>
+			<button type="button" class="btn btn-sm" id="exportJsonBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
+				<i class="fa-solid fa-file-code"></i> 导出选中 JSON
+			</button>
+			<button type="button" class="btn btn-sm" id="exportCsvBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
+				<i class="fa-solid fa-file-csv"></i> 导出选中 CSV
+			</button>
+		</div>
+	</div>
+
+	<!-- Hidden forms for batch operations -->
+	<form id="batchActionForm" method="post" action="/admin/warehouse" style="display:none">
+		{% module xsrf_form_html() %}
+		<input type="hidden" name="action" id="batchActionField">
+		<input type="hidden" name="ids" id="batchIdsField">
+		<input type="hidden" name="format" id="batchFormatField">
+	</form>
+
 	<table class="admin-table">
 		<thead>
 			<tr>
+				<th style="width: 40px; text-align: center;">选择</th>
 				<th>ID</th>
 				<th>标题</th>
 				<th>来源</th>
 				<th>采集时间</th>
 				<th>情感</th>
 				<th>风险</th>
+				<th>深度采集</th>
 				<th>操作</th>
 			</tr>
 		</thead>
 		<tbody>
 		{% for item in items %}
 			<tr>
+				<td style="text-align: center;"><input type="checkbox" class="item-checkbox" data-id="{{ item['id'] }}"></td>
 				<td>{{ item['id'] }}</td>
 				<td><span class="item-title-trunc" title="{{ item['title'] }}">{{ item['title'] or '-' }}</span></td>
 				<td>{{ item['source_name'] or '-' }}</td>
 				<td>{{ item['collected_at'] or '-' }}</td>
-				<td>{{ item['sentiment'] or '-' }}</td>
+				<td>
+					{% if item['sentiment'] == 'positive' %}
+						<span style="color:#10b981; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">正面</span>
+					{% elif item['sentiment'] == 'negative' %}
+						<span style="color:#ef4444; background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">负面</span>
+					{% elif item['sentiment'] == 'neutral' %}
+						<span style="color:#94a3b8; background:rgba(148,163,184,0.1); padding:2px 6px; border-radius:4px; font-size:11px;">中性</span>
+					{% else %}
+						<span style="color:#94a3b8;">-</span>
+					{% end %}
+				</td>
 				<td>{{ item['risk'] or '-' }}</td>
+				<td>
+					{% if item['is_deep_collected'] %}
+						<span style="color:#10b981; font-weight: 500;">已采集</span>
+					{% else %}
+						<span style="color:rgba(180,180,210,0.4);">未采集</span>
+					{% end %}
+				</td>
 				<td class="table-actions">
 					<form method="post" action="/admin/warehouse" data-confirm="确认删除该采集数据？关联的深度采集内容也将一并删除。">
 						{% module xsrf_form_html() %}
@@ -64,23 +248,23 @@
 			</tr>
 		{% end %}
 		{% if not items %}
-			<tr><td colspan="7" style="padding:24px;text-align:center;color:#999">暂无采集数据</td></tr>
+			<tr><td colspan="9" style="padding:24px;text-align:center;color:#999">暂无采集数据</td></tr>
 		{% end %}
 		</tbody>
 	</table>
 	<div class="admin-pagination">
-		{% if page > 1 %}<a href="/admin/warehouse?tab=browse&page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}
+		{% if page > 1 %}<a href="/admin/warehouse?tab=browse&page={{ page - 1 }}&keyword={{ keyword }}&source_id={{ source_id }}&sentiment={{ sentiment }}&risk_min={{ risk_min }}&risk_max={{ risk_max }}&date_from={{ date_from }}&date_to={{ date_to }}&is_deep_collected={{ is_deep_collected }}">上一页</a>{% end %}
 		<span>第 {{ page }} 页</span>
-		{% if page * per_page < items_total %}<a href="/admin/warehouse?tab=browse&page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
+		{% if page * per_page < items_total %}<a href="/admin/warehouse?tab=browse&page={{ page + 1 }}&keyword={{ keyword }}&source_id={{ source_id }}&sentiment={{ sentiment }}&risk_min={{ risk_min }}&risk_max={{ risk_max }}&date_from={{ date_from }}&date_to={{ date_to }}&is_deep_collected={{ is_deep_collected }}">下一页</a>{% end %}
 	</div>
 </section>
 {% else %}
 <section class="admin-table-card">
 	<form class="admin-search" method="get" action="/admin/warehouse" style="border-bottom:1px solid rgba(99,102,241,0.06);padding:14px 20px">
-		<input type="hidden" name="tab" value="queries">
+		<input type="hidden" name="tab" value="sql">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索名称/分类">
 		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
-			href="/admin/warehouse?tab=queries">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i
+			href="/admin/warehouse?tab=sql">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i
 				class="fa-solid fa-plus"></i> 新增查询</button>
 	</form>
 	<div class="table-title"><strong>查询列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
@@ -99,17 +283,17 @@
 				<td>{{ q['name'] }}</td>
 				<td>{{ q['category'] or '-' }}</td>
 				<td>{{ q['description'] or '-' }}</td>
-				<td class="table-actions"><a href="/admin/warehouse?tab=queries&edit={{ q['id'] }}">查看/修改</a>
+				<td class="table-actions"><a href="/admin/warehouse?tab=sql&edit={{ q['id'] }}">查看/修改</a>
 					<button type="button" class="exec-saved-btn" data-id="{{ q['id'] }}">执行</button>
-					<form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+					<form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete_query"><input type="hidden" name="id"
 							value="{{ q['id'] }}"><button type="submit">删除</button></form>
 				</td>
 			</tr>{% end %}</tbody>
 	</table>
 	<div class="admin-pagination">{% if page > 1 %}<a
-			href="/admin/warehouse?tab=queries&page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
+			href="/admin/warehouse?tab=sql&page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
 			页</span>{% if page * per_page < total %}<a
-			href="/admin/warehouse?tab=queries&page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+			href="/admin/warehouse?tab=sql&page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
 </section>
 <section class="admin-table-card" style="margin-top:20px">
 	<div class="table-title"><strong>执行查询</strong><span>输入 SQL 语句或点击列表中的"执行"按钮运行已保存的查询</span></div>
@@ -144,6 +328,7 @@
 			<form method="post" action="/admin/warehouse" data-confirm="确认保存查询信息？">
 				<div class="modal-body">
 					{% module xsrf_form_html() %}
+					<input type="hidden" name="action" value="save_query">
 					{% if edit_query %}<input type="hidden" name="id" value="{{ edit_query['id'] }}">{% end %}
 					<section class="admin-form-section">
 						<div class="admin-grid-form">
@@ -238,4 +423,125 @@
 })();
 </script>
 {% end %}{# end of queries tab #}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 1. Slider logic
+  const riskMinSlider = document.getElementById('riskMinSlider');
+  const riskMaxSlider = document.getElementById('riskMaxSlider');
+  const riskRangeVal = document.getElementById('riskRangeVal');
+  
+  function updateRiskDisplay() {
+    if (riskMinSlider && riskMaxSlider && riskRangeVal) {
+      const min = parseInt(riskMinSlider.value);
+      const max = parseInt(riskMaxSlider.value);
+      if (min > max) {
+        if (this === riskMinSlider) {
+          riskMaxSlider.value = min;
+        } else {
+          riskMinSlider.value = max;
+        }
+      }
+      riskRangeVal.textContent = riskMinSlider.value + ' - ' + riskMaxSlider.value;
+    }
+  }
+  
+  if (riskMinSlider && riskMaxSlider) {
+    riskMinSlider.addEventListener('input', updateRiskDisplay);
+    riskMaxSlider.addEventListener('input', updateRiskDisplay);
+  }
+
+  // 2. Checkboxes & Batch actions logic
+  const selectAll = document.getElementById('selectAllCheckbox');
+  const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+  const selectedCountEl = document.getElementById('selectedCount');
+  
+  const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  
+  const batchActionForm = document.getElementById('batchActionForm');
+  const batchActionField = document.getElementById('batchActionField');
+  const batchIdsField = document.getElementById('batchIdsField');
+  const batchFormatField = document.getElementById('batchFormatField');
+
+  function updateSelectedState() {
+    const checked = document.querySelectorAll('.item-checkbox:checked');
+    const count = checked.length;
+    
+    if (selectedCountEl) selectedCountEl.textContent = count;
+    
+    const disabled = count === 0;
+    if (batchDeleteBtn) {
+      batchDeleteBtn.disabled = disabled;
+      batchDeleteBtn.style.opacity = disabled ? '0.5' : '1';
+    }
+    if (exportJsonBtn) {
+      exportJsonBtn.disabled = disabled;
+      exportJsonBtn.style.opacity = disabled ? '0.5' : '1';
+    }
+    if (exportCsvBtn) {
+      exportCsvBtn.disabled = disabled;
+      exportCsvBtn.style.opacity = disabled ? '0.5' : '1';
+    }
+    
+    if (selectAll) {
+      selectAll.checked = count === itemCheckboxes.length && itemCheckboxes.length > 0;
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      const isChecked = selectAll.checked;
+      itemCheckboxes.forEach(cb => {
+        cb.checked = isChecked;
+      });
+      updateSelectedState();
+    });
+  }
+
+  itemCheckboxes.forEach(cb => {
+    cb.addEventListener('change', updateSelectedState);
+  });
+
+  function getSelectedIds() {
+    const checked = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checked).map(cb => cb.getAttribute('data-id')).join(',');
+  }
+
+  if (batchDeleteBtn) {
+    batchDeleteBtn.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      if (!ids) return;
+      if (confirm('确认要批量删除选中的 ' + ids.split(',').length + ' 条采集数据吗？关联的深度采集数据也将被一并删除。')) {
+        batchActionField.value = 'batch_delete';
+        batchIdsField.value = ids;
+        batchActionForm.submit();
+      }
+    });
+  }
+
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      if (!ids) return;
+      batchActionField.value = 'export';
+      batchIdsField.value = ids;
+      batchFormatField.value = 'json';
+      batchActionForm.submit();
+    });
+  }
+
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      if (!ids) return;
+      batchActionField.value = 'export';
+      batchIdsField.value = ids;
+      batchFormatField.value = 'csv';
+      batchActionForm.submit();
+    });
+  }
+});
+</script>
 {% end %}

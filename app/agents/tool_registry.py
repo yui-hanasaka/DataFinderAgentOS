@@ -85,6 +85,81 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "watchtower_insert",
+            "description": (
+                "向数据瞭望数据库插入一条资讯条目。"
+                "当用户需要保存某条信息到瞭望数据库时使用此工具。"
+                "如果提供了URL，同URL不会重复插入。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "资讯标题"},
+                    "content": {"type": "string", "description": "资讯正文内容"},
+                    "url": {
+                        "type": "string",
+                        "description": "资讯来源URL（可选，提供则自动去重）",
+                    },
+                    "source_name": {
+                        "type": "string",
+                        "description": "来源名称（可选，如'AI采集'，不存在则自动创建）",
+                        "default": "AI采集",
+                    },
+                    "sentiment": {
+                        "type": "string",
+                        "description": "情感倾向：positive/negative/neutral（可选）",
+                    },
+                    "risk": {
+                        "type": "integer",
+                        "description": "风险评分0-10（可选）",
+                    },
+                },
+                "required": ["title", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "watchtower_iterative_search",
+            "description": (
+                "多轮迭代搜索数据瞭望已采集的资讯。适合需要逐步优化关键词、"
+                "跟踪线索、深入探索的场景。每次调用传入当前轮次和优化后的关键词。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keywords": {
+                        "type": "string",
+                        "description": "当前轮次的搜索关键词",
+                    },
+                    "iteration": {
+                        "type": "integer",
+                        "description": "当前迭代轮次（从1开始）",
+                        "default": 1,
+                    },
+                    "max_iterations": {
+                        "type": "integer",
+                        "description": "最大迭代轮次，默认3",
+                        "default": 3,
+                    },
+                    "refinement": {
+                        "type": "string",
+                        "description": "本轮关键词优化说明（可选，记录为何调整关键词）",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回条数，默认20",
+                        "default": 20,
+                    },
+                },
+                "required": ["keywords"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "warehouse_query",
             "description": "对数据仓库进行查询，获取采集数据的统计和分析结果",
             "parameters": {

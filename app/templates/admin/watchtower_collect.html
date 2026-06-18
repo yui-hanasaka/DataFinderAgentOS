@@ -15,6 +15,14 @@
              radial-gradient(ellipse at 30% 70%, rgba(139,92,246,.05) 0, transparent 50%);
 }
 
+/* ── Tab Switcher ── */
+.wtc-tabs { display: flex; gap: 8px; margin-bottom: 24px; position: relative; z-index: 1; }
+.wtc-tab { padding: 10px 24px; border-radius: 10px; background: var(--c-surface, rgba(20,18,48,0.4)); color: var(--c-text-soft, #9090b8); font-size: 14px; font-weight: 500; border: 1px solid rgba(139,130,255,0.12); cursor: pointer; transition: all var(--spring, 0.2s); }
+.wtc-tab:hover { color: var(--c-accent, #818cf8); border-color: rgba(139,130,255,0.3); }
+.wtc-tab.active { background: rgba(99,102,241,0.15); color: #818cf8; border-color: rgba(99,102,241,0.4); box-shadow: 0 0 16px rgba(99,102,241,0.15); font-weight: 700; }
+[data-theme="light"] .wtc-tab { background: rgba(255,255,255,0.5); border-color: rgba(99,102,241,0.1); }
+[data-theme="light"] .wtc-tab.active { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); color: #6366f1; }
+
 /* ── Search Hero ── */
 .wtc-hero { position:relative; z-index:1; width:min(720px, 100%); text-align:center; margin-bottom:32px; }
 .wtc-hero h1 { margin:0 0 8px; font-size:32px; font-weight:800; letter-spacing:.04em;
@@ -65,6 +73,10 @@
   background:rgba(18,16,38,.5); color:var(--c-text, #e0e0f8); font-size:14px; outline:none;
   transition:border-color .2s; }
 .wtc-params input:focus { border-color:rgba(139,130,255,.4); }
+[data-theme="light"] .wtc-params { background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.1); }
+[data-theme="light"] .wtc-params label { color: #4d4a70; }
+[data-theme="light"] .wtc-params input { background: rgba(255,255,255,.8); border-color: rgba(99,102,241,.2); color: #2d2a4a; }
+[data-theme="light"] .wtc-params input:focus { border-color: rgba(99,102,241,.4); }
 
 /* ── Status ── */
 .wtc-status { position:relative; z-index:1; width:min(720px, 100%); text-align:center;
@@ -138,19 +150,62 @@
 [data-theme="light"] .wtc-src-toggle { background:rgba(255,255,255,.5); }
 [data-theme="light"] .wtc-card { background:rgba(255,255,255,.7); }
 [data-theme="light"] .wtc-toolbar { background:rgba(255,255,255,.85); }
+
+/* AI search specific overrides */
+.ai-round-card {
+  background: rgba(30, 26, 56, 0.3);
+  border: 1px solid rgba(139, 130, 255, 0.15);
+}
+[data-theme="light"] .ai-round-card {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+[data-theme="light"] .ai-round-header strong {
+  color: #2d2a4a !important;
+}
+
+/* Light-mode AI search input */
+[data-theme="light"] .ai-search-container {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(99, 102, 241, 0.15) !important;
+}
+[data-theme="light"] .ai-search-textarea {
+  color: #2d2a4a !important;
+}
+[data-theme="light"] .ai-search-textarea::placeholder {
+  color: #9a96c8 !important;
+}
 </style>
 {% end %}
 
 {% block body %}
 <div class="wtc-shell">
+  <!-- Tab Switcher -->
+  <div class="wtc-tabs">
+    <button class="wtc-tab active" id="tabTradBtn" onclick="switchTab('trad')"><i class="fa-solid fa-magnifying-glass"></i> 传统搜索</button>
+    <button class="wtc-tab" id="tabAiBtn" onclick="switchTab('ai')"><i class="fa-solid fa-robot"></i> AI迭代搜索</button>
+  </div>
+
   <!-- Hero -->
   <div class="wtc-hero">
     <h1>🔭 智能瞭望采集</h1>
-    <span>选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库</span>
-    <div class="wtc-search-box">
+    <span id="wtcHeroSubtitle">选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库</span>
+    
+    <!-- Trad Search Box -->
+    <div class="wtc-search-box" id="tradSearchPanel">
       <input type="text" id="searchKeyword" placeholder="输入搜索关键词，如「西华师范大学」" autofocus
              onkeydown="if(event.key==='Enter')doSearch()">
       <button id="btnSearch" onclick="doSearch()">开始采集</button>
+    </div>
+
+    <!-- AI Search Box -->
+    <div id="aiSearchPanel" style="display:none; margin-top:20px; text-align:left;">
+      <div class="ai-search-container" style="background:var(--c-surface, rgba(20,18,48,.7)); backdrop-filter:blur(24px); border:1px solid rgba(139,130,255,.15); border-radius:16px; padding:16px; box-shadow:0 8px 40px rgba(0,0,0,.2);">
+        <textarea id="aiDescription" rows="4" class="ai-search-textarea" style="width:100%; border:none; background:transparent; color:var(--c-text, #e0e0f8); font-size:15px; outline:none; resize:none;" placeholder="描述您需要收集的信息，AI 将会多轮迭代优化关键词进行采集，例如：「西华师范大学近期在人工智能和科研方面的最新动态，包括合作、项目、获奖情况」"></textarea>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+        <button id="btnAiSearch" class="wtc-btn-primary" style="height:44px; padding:0 32px;" onclick="doAiSearch()">开始 AI 迭代搜索</button>
+      </div>
     </div>
   </div>
 
@@ -201,10 +256,59 @@
 </div>
 
 <script>
-/* global showAdmToast */  /* defined in admin/base.html — ESLint can't see template inheritance */
+/* global showAdmToast */  /* defined in admin/base.html */
 var collectedItems = [];
 var selectedIds = new Set();
 var xsrf = (document.cookie.match(/_xsrf=([^;]+)/)||[])[1]||'';
+var activeTab = 'trad';
+var activeEventSource = null;
+
+/* ── Tab Switcher JS ── */
+window.switchTab = function(type) {
+  if (activeEventSource) {
+    activeEventSource.close();
+    activeEventSource = null;
+  }
+  
+  activeTab = type;
+  const tabTradBtn = document.getElementById('tabTradBtn');
+  const tabAiBtn = document.getElementById('tabAiBtn');
+  const tradSearchPanel = document.getElementById('tradSearchPanel');
+  const aiSearchPanel = document.getElementById('aiSearchPanel');
+  const wtcParams = document.querySelector('.wtc-params');
+  const wtcHeroSubtitle = document.getElementById('wtcHeroSubtitle');
+  const btnSearch = document.getElementById('btnSearch');
+  const btnAiSearch = document.getElementById('btnAiSearch');
+
+  btnSearch.disabled = false;
+  btnAiSearch.disabled = false;
+  document.getElementById('spinner').classList.remove('active');
+
+  if (type === 'trad') {
+    tabTradBtn.classList.add('active');
+    tabAiBtn.classList.remove('active');
+    tradSearchPanel.style.display = 'flex';
+    aiSearchPanel.style.display = 'none';
+    if (wtcParams) wtcParams.style.display = 'flex';
+    wtcHeroSubtitle.textContent = '选择采集源 · 输入关键词 · 预览结果 · 保存到数据仓库';
+    document.getElementById('statusText').textContent = '输入关键词开始智能采集';
+  } else {
+    tabTradBtn.classList.remove('active');
+    tabAiBtn.classList.add('active');
+    tradSearchPanel.style.display = 'none';
+    aiSearchPanel.style.display = 'block';
+    if (wtcParams) wtcParams.style.display = 'none';
+    wtcHeroSubtitle.textContent = '选择采集源 · 输入信息需求 · AI流式多轮迭代采集 · 保存到数据仓库';
+    document.getElementById('statusText').textContent = '描述信息需求开始 AI 迭代搜索';
+  }
+
+  // Reset page results
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('toolbar').style.display = 'none';
+  collectedItems = [];
+  selectedIds.clear();
+};
 
 /* ── Source Toggle ── */
 document.querySelectorAll('#sourceToggles .wtc-src-toggle').forEach(function(el){
@@ -273,6 +377,122 @@ async function doSearch() {
   }
 }
 
+/* ── AI Iterative Search SSE ── */
+function doAiSearch() {
+  var desc = document.getElementById('aiDescription').value.trim();
+  if (!desc) { return showAdmToast('请输入信息需求描述'); }
+
+  var srcIds = getSelectedSourceIds();
+  if (!srcIds.length) { return showAdmToast('请选择至少一个采集源'); }
+
+  if (activeEventSource) {
+    activeEventSource.close();
+  }
+
+  var btn = document.getElementById('btnAiSearch');
+  btn.disabled = true; btn.textContent = 'AI 搜索中…';
+  document.getElementById('spinner').classList.add('active');
+  document.getElementById('statusText').textContent = '初始化 AI 规划中…';
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  collectedItems = [];
+  selectedIds.clear();
+
+  var sseUrl = window.location.pathname + 
+               '?action=ai_search&desc=' + encodeURIComponent(desc) + 
+               '&source_ids=' + encodeURIComponent(srcIds.join(','));
+
+  activeEventSource = new EventSource(sseUrl);
+
+  activeEventSource.onmessage = function(e) {
+    try {
+      var data = JSON.parse(e.data);
+      if (data.type === 'iteration_start') {
+        var roundCard = document.createElement('div');
+        roundCard.className = 'ai-round-card';
+        roundCard.id = 'ai-round-' + data.iteration;
+        roundCard.style.cssText = 'width:100%; grid-column: 1 / -1; margin-bottom: 24px; border-radius: 12px; padding: 20px; box-sizing: border-box;';
+        
+        roundCard.innerHTML = `
+          <div class="ai-round-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid rgba(139,130,255,0.1); padding-bottom:10px;">
+            <span style="font-weight:700; color:var(--neon-cyan); font-size:15px;"><i class="fa-solid fa-microchip"></i> 第 ${data.iteration} 轮 AI 迭代</span>
+            <span style="font-size:13px; color:rgba(180,180,210,0.7);">搜索关键词：<strong style="color:#fff;">${escHtml(data.keywords)}</strong></span>
+          </div>
+          <div class="ai-round-body wtc-gallery" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; width:100%;">
+            <div class="loading-placeholder" style="grid-column: 1 / -1; padding: 20px; text-align: center; color: rgba(180,180,210,0.5); font-size: 13px;">正在智能检索并抓取中...</div>
+          </div>
+        `;
+        document.getElementById('gallery').appendChild(roundCard);
+        document.getElementById('statusText').textContent = '正在执行第 ' + data.iteration + ' 轮 AI 迭代搜索（关键词: ' + data.keywords + '）…';
+      } 
+      else if (data.type === 'results') {
+        var roundCard = document.getElementById('ai-round-' + data.iteration);
+        if (roundCard) {
+          var body = roundCard.querySelector('.ai-round-body');
+          body.innerHTML = '';
+          
+          if (!data.items || data.items.length === 0) {
+            body.innerHTML = '<div style="grid-column: 1 / -1; padding: 12px; text-align: center; color: rgba(180,180,210,0.4); font-size: 13px;">本轮未检索到新数据（可能遭遇反爬或无更多结果）</div>';
+          } else {
+            var html = '';
+            data.items.forEach(function(item) {
+              var idx = collectedItems.length;
+              collectedItems.push(item);
+              
+              var sel = selectedIds.has(idx) ? ' selected' : '';
+              var checkMark = selectedIds.has(idx) ? '✓' : '';
+              html += '<div class="wtc-card' + sel + '" data-index="' + idx + '" onclick="toggleCard(' + idx + ')">';
+              html += '<div class="check">' + checkMark + '</div>';
+              html += '<div class="src-badge">' + escHtml(item.source_name || '来源') + '</div>';
+              html += '<div class="card-title">' + escHtml(item.title || '(无标题)') + '</div>';
+              html += '<div class="card-snippet">' + escHtml(item.snippet || item.content || '') + '</div>';
+              html += '<div class="card-meta">';
+              html += '<span>' + escHtml(item.published_time || item.published_at || '') + '</span>';
+              if (item.url) {
+                html += '<a class="card-link" href="' + escHtml(item.url) + '" target="_blank" onclick="event.stopPropagation()" title="' + escHtml(item.url) + '">🔗 ' + escHtml(item.source || '链接') + '</a>';
+              }
+              html += '</div></div>';
+            });
+            body.innerHTML = html;
+          }
+        }
+      } 
+      else if (data.type === 'done') {
+        activeEventSource.close();
+        activeEventSource = null;
+        btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
+        document.getElementById('spinner').classList.remove('active');
+        document.getElementById('statusText').innerHTML = 'AI 迭代搜索完成，共收集到 <span class="count">' + data.total + '</span> 条结果';
+        if (collectedItems.length > 0) {
+          document.getElementById('toolbar').style.display = 'flex';
+          document.getElementById('totalCount').textContent = collectedItems.length;
+          updateToolbar();
+        }
+      }
+      else if (data.type === 'error') {
+        activeEventSource.close();
+        activeEventSource = null;
+        btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
+        document.getElementById('spinner').classList.remove('active');
+        document.getElementById('statusText').textContent = '✗ ' + data.message;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  activeEventSource.onerror = function() {
+    if (activeEventSource) {
+      activeEventSource.close();
+      activeEventSource = null;
+    }
+    btn.disabled = false; btn.textContent = '开始 AI 迭代搜索';
+    document.getElementById('spinner').classList.remove('active');
+    document.getElementById('statusText').textContent = '✗ AI 迭代流连接异常，请重试';
+  };
+}
+
 /* ── Gallery ── */
 function renderGallery() {
   var gallery = document.getElementById('gallery');
@@ -305,7 +525,7 @@ function renderGallery() {
 function toggleCard(idx) {
   if (selectedIds.has(idx)) { selectedIds.delete(idx); }
   else { selectedIds.add(idx); }
-  /* refresh visual */
+  
   var card = document.querySelector('.wtc-card[data-index="' + idx + '"]');
   if (!card) return;
   if (selectedIds.has(idx)) {
@@ -327,7 +547,7 @@ function toggleSelectAll() {
     collectedItems.forEach(function(_, i) { selectedIds.add(i); });
     btn.textContent = '取消全选';
   }
-  /* refresh all cards */
+  
   document.querySelectorAll('.wtc-card').forEach(function(card){
     var idx = parseInt(card.dataset.index);
     if (selectedIds.has(idx)) {
@@ -366,9 +586,9 @@ async function saveSelected() {
     var data = await saveResp.json();
     if (data.ok) {
       showAdmToast('✓ 成功保存 ' + data.saved + ' / ' + data.total + ' 条数据到数据仓库');
-      /* deselect saved */
+      
       ids.forEach(function(i) { selectedIds.delete(i); });
-      /* visually update */
+      
       ids.forEach(function(i) {
         var card = document.querySelector('.wtc-card[data-index="' + i + '"]');
         if (card) { card.classList.remove('selected'); card.querySelector('.check').textContent = ''; }

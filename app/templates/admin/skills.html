@@ -1,20 +1,58 @@
 {% extends "base.html" %}
 {% block body %}
+<style>
+  .param-row input[type="text"], .param-row select {
+    width: 100%;
+    border: 1px solid rgba(139, 130, 255, 0.2);
+    background: rgba(30, 26, 56, 0.5);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .param-row input[type="text"]:focus, .param-row select:focus {
+    border-color: var(--neon-cyan);
+    outline: none;
+  }
+  [data-theme="light"] .param-row input[type="text"], [data-theme="light"] .param-row select {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #2d2a4a;
+  }
+  [data-theme="light"] .param-row input[type="text"]:focus, [data-theme="light"] .param-row select:focus {
+    border-color: var(--neon-blue);
+  }
+  .btn-delete-param {
+    background: transparent;
+    border: none;
+    color: #f87171;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px;
+    transition: transform 0.2s;
+  }
+  .btn-delete-param:hover {
+    transform: scale(1.15);
+  }
+</style>
+
 <section class="admin-page-head">
 	<div>
 		<p>智能业务</p>
-		<h1>技能管理</h1><span>维护内置技能与外部 API 技能，供数字员工绑定使用。</span>
+		<h1>工具注册</h1><span>维护内置工具与外部 API 工具，供数字员工绑定使用。</span>
 	</div>
 	<form class="admin-search" method="get" action="/admin/skills">
-		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索技能名称/编码">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索工具名称/编码">
 		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
 			href="/admin/skills">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#skillModal"><i
-				class="fa-solid fa-plus"></i> 新增技能</button>
+				class="fa-solid fa-plus"></i> 新增工具</button>
 	</form>
 </section>
 {% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
 <section class="admin-table-card">
-	<div class="table-title"><strong>技能列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
+	<div class="table-title"><strong>工具列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
 		<thead>
 			<tr>
@@ -22,6 +60,8 @@
 				<th>编码</th>
 				<th>名称</th>
 				<th>类型</th>
+				<th>描述</th>
+				<th>API地址</th>
 				<th>状态</th>
 				<th>操作</th>
 			</tr>
@@ -31,9 +71,11 @@
 				<td>{{ skill['code'] }}</td>
 				<td>{{ skill['name'] }}</td>
 				<td>{{ '内置' if skill['skill_type'] == 'builtin' else '外部API' }}</td>
+				<td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ skill['description'] }}">{{ skill['description'] }}</td>
+				<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ skill['api_url'] }}">{{ skill['api_url'] }}</td>
 				<td>{{ skill['status'] }}</td>
 				<td class="table-actions"><a href="/admin/skills?edit={{ skill['id'] }}">查看/修改</a>
-					<form method="post" action="/admin/skills" data-confirm="确认删除该技能？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
+					<form method="post" action="/admin/skills" data-confirm="确认删除该工具？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
 							value="{{ skill['id'] }}"><button type="submit">删除</button></form>
 				</td>
 			</tr>{% end %}</tbody>
@@ -43,29 +85,31 @@
 		if page * per_page < total %}<a href="/admin/skills?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
 	</div>
 </section>
+
 <div class="modal fade admin-edit-modal" id="skillModal" tabindex="-1" {% if edit_skill %}data-auto-open="true" {% end %}>
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content">
 			<div class="modal-header">
 				<div>
-					<h5 class="modal-title">{% if edit_skill %}修改技能{% else %}新增技能{% end %}</h5>
-					<small class="field-hint">配置技能基础信息与调用参数。<span class="required-tip">* 为必填项</span></small>
+					<h5 class="modal-title">{% if edit_skill %}修改工具{% else %}新增工具{% end %}</h5>
+					<small class="field-hint">配置工具基础信息与调用参数。<span class="required-tip">* 为必填项</span></small>
 				</div>
 				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			</div>
-			<form method="post" action="/admin/skills" data-confirm="确认保存技能信息？">
+			<form method="post" action="/admin/skills" data-confirm="确认保存工具信息？">
 				<div class="modal-body">
 					{% module xsrf_form_html() %}
 					{% if edit_skill %}<input type="hidden" name="id" value="{{ edit_skill['id'] }}">{% end %}
+					
 					<section class="admin-form-section">
 						<div class="admin-form-section-title">基础信息</div>
 						<div class="admin-grid-form">
 							<label class="required"><span>编码</span><input type="text" name="code"
 									value="{{ edit_skill['code'] if edit_skill else '' }}" {% if edit_skill %}readonly{% end %} placeholder="唯一标识，字母数字下划线" required></label>
 							<label class="required"><span>名称</span><input type="text" name="name"
-									value="{{ edit_skill['name'] if edit_skill else '' }}" placeholder="技能显示名称"
+									value="{{ edit_skill['name'] if edit_skill else '' }}" placeholder="工具显示名称"
 									required></label>
-							<label class="required"><span>类型</span><select name="skill_type">
+							<label class="required"><span>类型</span><select name="skill_type" id="skillTypeSelect">
 									<option value="builtin" {% if not edit_skill or edit_skill['skill_type']=='builtin' %}selected{% end %}>内置</option>
 									<option value="api" {% if edit_skill and edit_skill['skill_type']=='api' %}selected{% end %}>外部API</option>
 								</select></label>
@@ -73,8 +117,65 @@
 									<option value="enabled" {% if not edit_skill or edit_skill['status']=='enabled' %}selected{% end %}>启用</option>
 									<option value="disabled" {% if edit_skill and edit_skill['status']=='disabled' %}selected{% end %}>禁用</option>
 								</select></label>
-							<label class="form-wide"><span>配置 JSON</span><textarea name="config_json" rows="6"
-									placeholder='{"endpoint": "", "method": "POST", "params": {}}'>{{ edit_skill['config_json'] if edit_skill else '' }}</textarea></label>
+							<label class="form-wide"><span>描述</span><textarea name="description" rows="3"
+									placeholder="工具描述，供 AI 选择工具时阅读参考">{{ edit_skill['description'] if edit_skill else '' }}</textarea></label>
+						</div>
+					</section>
+
+					<section class="admin-form-section" id="apiConfigSection" style="display:none">
+						<div class="admin-form-section-title">API 配置</div>
+						<div class="admin-grid-form">
+							<label class="form-wide"><span>接口地址</span><input type="text" name="api_url"
+									value="{{ edit_skill['api_url'] if edit_skill else '' }}" placeholder="https://api.example.com/v1/action"></label>
+							<label><span>请求方法</span><select name="http_method">
+									<option value="GET" {% if edit_skill and edit_skill['http_method']=='GET' %}selected{% end %}>GET</option>
+									<option value="POST" {% if not edit_skill or edit_skill['http_method']=='POST' %}selected{% end %}>POST</option>
+									<option value="PUT" {% if edit_skill and edit_skill['http_method']=='PUT' %}selected{% end %}>PUT</option>
+									<option value="DELETE" {% if edit_skill and edit_skill['http_method']=='DELETE' %}selected{% end %}>DELETE</option>
+								</select></label>
+							<label class="form-wide"><span>自定义请求头 (JSON)</span><textarea name="headers_json" rows="3"
+									placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'>{{ edit_skill['headers_json'] if edit_skill else '{}' }}</textarea></label>
+						</div>
+					</section>
+
+					<section class="admin-form-section">
+						<div class="admin-form-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+							<span>参数定义</span>
+							<button type="button" class="btn btn-sm btn-outline-primary" id="addParamBtn" style="padding: 4px 12px; font-size: 12px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; border-radius: 4px; cursor: pointer;">
+								<i class="fa-solid fa-plus"></i> 添加参数
+							</button>
+						</div>
+						<input type="hidden" name="parameters_json" id="parametersJson" value="{{ edit_skill['parameters_json'] if edit_skill else '[]' }}">
+						
+						<div class="admin-table-card" style="margin-top: 10px; box-shadow: none; border: 1px solid rgba(139, 130, 255, 0.1); background: transparent;">
+							<table class="admin-table" style="margin: 0; background: transparent;">
+								<thead>
+									<tr>
+										<th>参数名</th>
+										<th>类型</th>
+										<th style="width: 80px; text-align: center;">必填</th>
+										<th>描述</th>
+										<th>默认值</th>
+										<th style="width: 60px; text-align: center;">操作</th>
+									</tr>
+								</thead>
+								<tbody id="paramsTableBody">
+									<!-- Dynamic Rows -->
+								</tbody>
+							</table>
+						</div>
+					</section>
+
+					<section class="admin-form-section">
+						<div class="admin-form-section-title" onclick="toggleConfigJson()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+							<span>高级配置 (JSON)</span>
+							<span id="configToggleArrow">▼</span>
+						</div>
+						<div id="configJsonWrapper" style="display: none; margin-top: 10px;">
+							<div class="admin-grid-form">
+								<label class="form-wide"><span>通用配置 JSON</span><textarea name="config_json" rows="4"
+										placeholder='{"timeout": 30}'>{{ edit_skill['config_json'] if edit_skill else '{}' }}</textarea></label>
+							</div>
 						</div>
 					</section>
 				</div>
@@ -85,4 +186,138 @@
 		</div>
 	</div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. API Config section toggle based on skill type
+    const skillTypeSelect = document.getElementById('skillTypeSelect');
+    const apiConfigSection = document.getElementById('apiConfigSection');
+    
+    function toggleApiConfig() {
+      if (skillTypeSelect && skillTypeSelect.value === 'api') {
+        apiConfigSection.style.display = 'block';
+      } else if (apiConfigSection) {
+        apiConfigSection.style.display = 'none';
+      }
+    }
+    
+    if (skillTypeSelect && apiConfigSection) {
+      skillTypeSelect.addEventListener('change', toggleApiConfig);
+      toggleApiConfig(); // Initial check
+    }
+
+    // 2. High level config JSON toggle
+    const configToggleArrow = document.getElementById('configToggleArrow');
+    const configJsonWrapper = document.getElementById('configJsonWrapper');
+    
+    window.toggleConfigJson = function() {
+      if (configJsonWrapper.style.display === 'none') {
+        configJsonWrapper.style.display = 'block';
+        configToggleArrow.textContent = '▲';
+      } else {
+        configJsonWrapper.style.display = 'none';
+        configToggleArrow.textContent = '▼';
+      }
+    };
+
+    // 3. Dynamic parameters logic
+    const addParamBtn = document.getElementById('addParamBtn');
+    const paramsTableBody = document.getElementById('paramsTableBody');
+    const parametersJsonInput = document.getElementById('parametersJson');
+
+    // Deserialization on edit
+    let initialParams = [];
+    try {
+      initialParams = JSON.parse(parametersJsonInput.value || '[]');
+    } catch (e) {
+      initialParams = [];
+    }
+
+    initialParams.forEach(param => {
+      addParamRow(param);
+    });
+
+    if (addParamBtn) {
+      addParamBtn.addEventListener('click', function() {
+        addParamRow({ name: '', type: 'string', required: false, description: '', default: '' });
+      });
+    }
+
+    function addParamRow(param) {
+      const tr = document.createElement('tr');
+      tr.className = 'param-row';
+      
+      const checkedAttr = param.required ? 'checked' : '';
+      
+      tr.innerHTML = `
+        <td><input type="text" class="param-name" value="${escHtml(param.name)}" placeholder="参数名" required></td>
+        <td>
+          <select class="param-type">
+            <option value="string" ${param.type === 'string' ? 'selected' : ''}>string</option>
+            <option value="integer" ${param.type === 'integer' ? 'selected' : ''}>integer</option>
+            <option value="boolean" ${param.type === 'boolean' ? 'selected' : ''}>boolean</option>
+            <option value="array" ${param.type === 'array' ? 'selected' : ''}>array</option>
+            <option value="object" ${param.type === 'object' ? 'selected' : ''}>object</option>
+          </select>
+        </td>
+        <td style="text-align: center;"><input type="checkbox" class="param-required" ${checkedAttr}></td>
+        <td><input type="text" class="param-desc" value="${escHtml(param.description || '')}" placeholder="参数说明"></td>
+        <td><input type="text" class="param-default" value="${escHtml(param.default || '')}" placeholder="默认值"></td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-delete-param" title="删除"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+
+      tr.querySelector('.btn-delete-param').addEventListener('click', function() {
+        tr.remove();
+        syncParameters();
+      });
+
+      // Bind input changes to update parameters_json hidden input
+      tr.querySelectorAll('input, select').forEach(elem => {
+        elem.addEventListener('change', syncParameters);
+        elem.addEventListener('input', syncParameters);
+      });
+
+      paramsTableBody.appendChild(tr);
+      syncParameters();
+    }
+
+    function syncParameters() {
+      const rows = paramsTableBody.querySelectorAll('.param-row');
+      const params = [];
+      rows.forEach(row => {
+        const name = row.querySelector('.param-name').value.trim();
+        if (name) {
+          params.push({
+            name: name,
+            type: row.querySelector('.param-type').value,
+            required: row.querySelector('.param-required').checked,
+            description: row.querySelector('.param-desc').value.trim(),
+            default: row.querySelector('.param-default').value.trim()
+          });
+        }
+      });
+      parametersJsonInput.value = JSON.stringify(params);
+    }
+
+    // Handle form submit verification
+    const form = parametersJsonInput.closest('form');
+    if (form) {
+      form.addEventListener('submit', function() {
+        syncParameters();
+      });
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  });
+</script>
 {% end %}

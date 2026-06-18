@@ -44,12 +44,19 @@ class SkillRepository:
         try:
             with get_connection() as conn:
                 conn.execute(
-                    "INSERT INTO skills(code, name, skill_type, config_json, status) VALUES(?,?,?,?,?)",
+                    "INSERT INTO skills(code, name, skill_type, description,"
+                    " api_url, http_method, parameters_json, headers_json,"
+                    " config_json, status) VALUES(?,?,?,?,?,?,?,?,?,?)",
                     (
                         data["code"],
                         data["name"],
                         data["skill_type"],
-                        data["config_json"],
+                        data.get("description", ""),
+                        data.get("api_url", ""),
+                        data.get("http_method", "GET"),
+                        data.get("parameters_json", "[]"),
+                        data.get("headers_json", "{}"),
+                        data.get("config_json", "{}"),
                         data["status"],
                     ),
                 )
@@ -62,16 +69,26 @@ class SkillRepository:
         try:
             with get_connection() as conn:
                 conn.execute(
-                    "UPDATE skills SET name=?, skill_type=?, config_json=?, status=? WHERE id=?",
+                    "UPDATE skills SET name=?, skill_type=?, description=?,"
+                    " api_url=?, http_method=?, parameters_json=?, headers_json=?,"
+                    " config_json=?, status=?, updated_at=datetime('now')"
+                    " WHERE id=?",
                     (
                         data["name"],
                         data["skill_type"],
-                        data["config_json"],
+                        data.get("description", ""),
+                        data.get("api_url", ""),
+                        data.get("http_method", "GET"),
+                        data.get("parameters_json", "[]"),
+                        data.get("headers_json", "{}"),
+                        data.get("config_json", "{}"),
                         data["status"],
                         skill_id,
                     ),
                 )
             return True, None
+        except sqlite3.IntegrityError as e:
+            return False, str(e)
         except Exception as e:
             return False, str(e)
 

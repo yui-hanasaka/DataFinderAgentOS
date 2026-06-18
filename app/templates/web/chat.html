@@ -1250,9 +1250,78 @@
     100% { height: 12px; }
   }
 
+  /* ── Autocomplete Menu ── */
+  .autocomplete-menu {
+    position: fixed;
+    z-index: 99999;
+    width: 280px;
+    background: rgba(20, 18, 48, 0.95);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(139, 130, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-sizing: border-box;
+  }
+  
+  [data-theme="light"] .autocomplete-menu {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
+  }
+
+  .autocomplete-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #c0c0e8;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  [data-theme="light"] .autocomplete-item {
+    color: #4d4a70;
+  }
+
+  .autocomplete-item strong {
+    color: #fff;
+  }
+
+  [data-theme="light"] .autocomplete-item strong {
+    color: #2d2a4a;
+  }
+
+  .autocomplete-item:hover, .autocomplete-item.active {
+    background: rgba(99, 102, 241, 0.25);
+    color: #fff;
+  }
+  
+  .autocomplete-item:hover strong, .autocomplete-item.active strong {
+    color: #00f2fe;
+  }
+
+  [data-theme="light"] .autocomplete-item:hover strong,
+  [data-theme="light"] .autocomplete-item.active strong {
+    color: #4f46e5;
+  }
+
 </style>
 
 <div class="glass-shell">
+  <!-- Autocomplete Menu (fixed-position, top-level to escape stacking contexts) -->
+  <div id="autocompleteMenu" class="autocomplete-menu" style="display:none">
+    <div class="autocomplete-item active" data-value="@weather "><strong>@weather</strong> (查询天气)</div>
+    <div class="autocomplete-item" data-value="@music "><strong>@music</strong> (搜索并播放音乐)</div>
+    <div class="autocomplete-item" data-value="/task "><strong>/task</strong> (多步任务模式)</div>
+    <div class="autocomplete-item" data-value="\search "><strong>\search</strong> (联网网页搜索)</div>
+  </div>
   <!-- ═══════════════ Sidebar ═══════════════ -->
   <div class="glass-sidebar">
     <a class="side-brand" href="/home" title="返回首页">
@@ -1372,8 +1441,7 @@
       </div>
       <div class="glass-input-row">
         <textarea id="msgInput"
-          placeholder="输入消息… Enter 发送，Shift+Enter 换行" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!_abortController)send()}"></textarea>
+          placeholder="输入消息… Enter 发送，Shift+Enter 换行" rows="1"></textarea>
         <button class="btn-send-glass" id="sendBtn" onclick="send()">发送</button>
         <button class="btn-stop-glass" id="stopBtn" onclick="stopSend()" style="display:none">⏹ 停止</button>
         <button type="button" class="btn-task-glass"
@@ -1701,6 +1769,8 @@
                   _newTurn = false;
                 }
                 if (!_currentBubble) {
+                  // Collapse all tool cards when a new text bubble appears
+                  document.querySelectorAll('.tool-card.expanded').forEach(function(c) { c.classList.remove('expanded'); });
                   _currentBubble = appendAssistantMsg('');
                   _currentBubble.classList.add('streaming');
                 }
@@ -2138,15 +2208,31 @@
     });
   }
 
+  function toggleToolCard(cardEl) {
+    if (cardEl.classList.contains('expanded')) {
+      cardEl.classList.remove('expanded');
+    } else {
+      document.querySelectorAll('.tool-card.expanded').forEach(function(otherCard) {
+        otherCard.classList.remove('expanded');
+      });
+      cardEl.classList.add('expanded');
+    }
+  }
+  window.toggleToolCard = toggleToolCard;
+
   function appendToolCard(evt) {
     clearEmptyState();
+    document.querySelectorAll('.tool-card.expanded').forEach(function(otherCard) {
+      otherCard.classList.remove('expanded');
+    });
+
     const card = document.createElement('div');
     card.className = 'tool-card expanded';
     card.id = 'tool-' + evt.call_id;
     _toolCards[evt.call_id] = card;
     const argsStr = evt.args ? JSON.stringify(evt.args, null, 2) : '';
     card.innerHTML =
-      '<div class="tool-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
+      '<div class="tool-card-header" onclick="toggleToolCard(this.parentElement)">' +
         '<span class="tool-icon">🔧</span>' +
         '<span class="tool-name">' + escHtml(evt.name || 'tool') + '</span>' +
         '<span class="tool-spinner"></span>' +
@@ -2223,6 +2309,139 @@
     }
     inp.focus();
   }
+
+  /* ── Autocomplete Menu JS Triggers ── */
+  (function initAutocomplete() {
+    const input = document.getElementById('msgInput');
+    const menu = document.getElementById('autocompleteMenu');
+    if (!input || !menu) return;
+    
+    let activeIndex = 0;
+    let filteredCommands = [];
+
+    const COMMANDS = [
+      { value: '@weather ', display: '<strong>@weather</strong> (查询天气)' },
+      { value: '@music ', display: '<strong>@music</strong> (搜索并播放音乐)' },
+      { value: '/task ', display: '<strong>/task</strong> (多步任务模式)' },
+      { value: '\\search ', display: '<strong>\\search</strong> (联网网页搜索)' }
+    ];
+
+    function updateAutocomplete() {
+      const text = input.value;
+      const pos = input.selectionStart;
+      
+      const slice = text.slice(0, pos);
+      const match = slice.match(/(?:^|\s)([@/\\][^\s]*)$/);
+      
+      if (match) {
+        const query = match[1];
+        
+        filteredCommands = COMMANDS.filter(cmd => {
+          return cmd.value.toLowerCase().startsWith(query.toLowerCase());
+        });
+        
+        if (filteredCommands.length > 0) {
+          menu.innerHTML = filteredCommands.map((cmd, idx) => {
+            const activeClass = idx === activeIndex ? 'active' : '';
+            return `<div class="autocomplete-item ${activeClass}" data-index="${idx}" data-value="${cmd.value}">${cmd.display}</div>`;
+          }).join('');
+          
+          menu.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', function() {
+              const idx = parseInt(this.getAttribute('data-index'));
+              selectAutocompleteItem(idx);
+            });
+          });
+          
+          menu.style.display = 'flex';
+          // Position fixed relative to textarea viewport coords
+          var rect = input.getBoundingClientRect();
+          menu.style.left = rect.left + 'px';
+          menu.style.top = (rect.top - menu.offsetHeight - 8) + 'px';
+          return;
+        }
+      }
+      hideAutocomplete();
+    }
+
+    function hideAutocomplete() {
+      menu.style.display = 'none';
+      filteredCommands = [];
+      activeIndex = 0;
+    }
+
+    function selectAutocompleteItem(index) {
+      if (index < 0 || index >= filteredCommands.length) return;
+      const cmd = filteredCommands[index];
+      const text = input.value;
+      const pos = input.selectionStart;
+      
+      const slice = text.slice(0, pos);
+      const match = slice.match(/(?:^|\s)([@/\\][^\s]*)$/);
+      if (match) {
+        const matchIndex = slice.lastIndexOf(match[1]);
+        const before = text.slice(0, matchIndex);
+        const after = text.slice(pos);
+        input.value = before + cmd.value + after;
+        const newCursorPos = matchIndex + cmd.value.length;
+        input.setSelectionRange(newCursorPos, newCursorPos);
+      }
+      hideAutocomplete();
+      input.focus();
+    }
+
+    function updateActiveItem() {
+      const items = menu.querySelectorAll('.autocomplete-item');
+      items.forEach((item, idx) => {
+        if (idx === activeIndex) {
+          item.classList.add('active');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    }
+
+    input.addEventListener('keydown', function(event) {
+      if (menu.style.display === 'flex' && filteredCommands.length > 0) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          activeIndex = (activeIndex + 1) % filteredCommands.length;
+          updateActiveItem();
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          activeIndex = (activeIndex - 1 + filteredCommands.length) % filteredCommands.length;
+          updateActiveItem();
+        } else if (event.key === 'Tab' || event.key === 'Enter') {
+          event.preventDefault();
+          selectAutocompleteItem(activeIndex);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          hideAutocomplete();
+        }
+      } else {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (!_abortController) {
+            send();
+          }
+        }
+      }
+    });
+
+    input.addEventListener('input', function() {
+      activeIndex = 0;
+      updateAutocomplete();
+    });
+
+    input.addEventListener('click', function() {
+      updateAutocomplete();
+    });
+
+    input.addEventListener('blur', function() {
+      setTimeout(hideAutocomplete, 250);
+    });
+  })();
 
 </script>
 {% end %}

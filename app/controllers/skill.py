@@ -39,18 +39,36 @@ class AdminSkillHandler(AdminBaseHandler):
         code = self.get_body_argument("code", "").strip()
         name = self.get_body_argument("name", "").strip()
         skill_type = self.get_body_argument("skill_type", "builtin")
+        description = self.get_body_argument("description", "").strip()
+        api_url = self.get_body_argument("api_url", "").strip()
+        http_method = self.get_body_argument("http_method", "GET").strip()
+        parameters_json = self.get_body_argument("parameters_json", "[]").strip()
+        headers_json = self.get_body_argument("headers_json", "{}").strip()
         config_json = self.get_body_argument("config_json", "{}").strip()
-        try:
-            json.loads(config_json)
-        except json.JSONDecodeError:
-            return self._redirect_with_message(
-                "/admin/skills", "config_json 格式无效，请输入有效的 JSON"
-            )
+
+        # Validate JSON fields
+        for field_name, field_val in [
+            ("parameters_json", parameters_json),
+            ("headers_json", headers_json),
+            ("config_json", config_json),
+        ]:
+            try:
+                json.loads(field_val)
+            except json.JSONDecodeError:
+                return self._redirect_with_message(
+                    "/admin/skills", f"{field_name} 格式无效，请输入有效的 JSON"
+                )
+
         status = self.get_body_argument("status", "enabled")
         data: dict[str, object] = {
             "code": code,
             "name": name,
             "skill_type": skill_type,
+            "description": description,
+            "api_url": api_url,
+            "http_method": http_method,
+            "parameters_json": parameters_json,
+            "headers_json": headers_json,
             "config_json": config_json,
             "status": status,
         }

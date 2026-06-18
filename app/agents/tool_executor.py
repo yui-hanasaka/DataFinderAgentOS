@@ -326,14 +326,167 @@ def _watchtower_search(keywords: str, limit: int = 20) -> str:
     try:
         with get_connection() as conn:
             rows = conn.execute(
-                "SELECT title, url, content, sentiment FROM watchtower_items"
-                " WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT ?",
-                (f"%{keywords}%", f"%{keywords}%", limit),
+                "SELECT title, url, content, sentiment, summary FROM watchtower_items"
+                " WHERE title LIKE ? OR content LIKE ? OR summary LIKE ?"
+                " ORDER BY id DESC LIMIT ?",
+                (f"%{keywords}%", f"%{keywords}%", f"%{keywords}%", limit),
             ).fetchall()
         return json.dumps([dict(r) for r in rows], ensure_ascii=False)
     except Exception as exc:
         log_error("tool_executor watchtower_search", exc)
         return f"搜索失败: {exc}"
+
+
+def _watchtower_insert(
+    title: str,
+    content: str,
+    url: str = "",
+    source_name: str = "AI采集",
+    sentiment: str = "",
+    risk: int = 0,
+) -> str:
+    """Insert an item into watchtower_items, auto-creating source if needed."""
+    if not title.strip() or not content.strip():
+        return json.dumps({"error": "标题和内容不能为空"}, ensure_ascii=False)
+    try:
+        with get_connection() as conn:
+            # Find or create source
+            source_id: int | None = None
+            if source_name.strip():
+                row = conn.execute(
+                    "SELECT id FROM watchtower_sources WHERE name=? LIMIT 1",
+                    (source_name.strip(),),
+                ).fetchone()
+                if row:
+                    source_id = int(row["id"])
+                else:
+                    cur = conn.execute(
+                        "INSERT INTO watchtower_sources(name, source_type, url, status)"
+                        " VALUES(?,?,?,?)",
+                        (source_name.strip(), "generic", "", "enabled"),
+                    )
+                    source_id = int(cur.lastrowid)
+
+            # Insert item (skip duplicate URLs)
+            try:
+                cur = conn.execute(
+                    "INSERT INTO watchtower_items(source_id, title, content, url,"
+                    " sentiment, risk, collected_at)"
+                    " VALUES(?,?,?,?,?,?,datetime('now'))",
+                    (
+                        source_id,
+                        title.strip(),
+                        content.strip(),
+                        url.strip(),
+                        sentiment.strip() or "neutral",
+                        risk,
+                    ),
+                )
+                item_id = int(cur.lastrowid)
+                return json.dumps(
+                    {
+                        "ok": True,
+                        "item_id": item_id,
+                        "source_name": source_name,
+                        "title": title.strip(),
+                        "action": "created",
+                    },
+                    ensure_ascii=False,
+                )
+            except Exception:
+                # Likely duplicate URL — try to find existing
+                if url.strip():
+                    row = conn.execute(
+                        "SELECT id, title FROM watchtower_items WHERE url=? LIMIT 1",
+                        (url.strip(),),
+                    ).fetchone()
+                    if row:
+                        return json.dumps(
+                            {
+                                "ok": True,
+                                "item_id": int(row["id"]),
+                                "title": row["title"],
+                                "action": "skipped_duplicate",
+                            },
+                            ensure_ascii=False,
+                        )
+                raise
+    except Exception as exc:
+        log_error("tool_executor watchtower_insert", exc)
+        return json.dumps({"error": f"插入失败: {exc}"}, ensure_ascii=False)
+
+
+def _watchtower_iterative_search(
+    keywords: str,
+    iteration: int = 1,
+    max_iterations: int = 3,
+    refinement: str = "",
+    limit: int = 20,
+) -> str:
+    """Multi-turn iterative search with refinement tracking."""
+    results = _watchtower_search(keywords, limit)
+    try:
+        result_data = json.loads(results)
+    except json.JSONDecodeError:
+        result_data = []
+    count = len(result_data) if isinstance(result_data, list) else 0
+
+    # Log iteration to DB if session tracking is available
+    try:
+        with get_connection() as conn:
+            # Try to find or create session (best-effort)
+            if iteration == 1:
+                cur = conn.execute(
+                    "INSERT INTO watchtower_ai_search_sessions(query) VALUES(?)",
+                    (keywords,),
+                )
+                session_id = int(cur.lastrowid)
+            else:
+                row = conn.execute(
+                    "SELECT id FROM watchtower_ai_search_sessions"
+                    " ORDER BY id DESC LIMIT 1"
+                ).fetchone()
+                session_id = int(row["id"]) if row else None
+
+            if session_id:
+                conn.execute(
+                    "INSERT INTO watchtower_ai_search_iterations"
+                    "(session_id, iteration, keywords, results_count, refinement)"
+                    " VALUES(?,?,?,?,?)",
+                    (session_id, iteration, keywords, count, refinement),
+                )
+                conn.execute(
+                    "UPDATE watchtower_ai_search_sessions"
+                    " SET iterations=iterations+1, total_results=total_results+?"
+                    " WHERE id=?",
+                    (count, session_id),
+                )
+                if iteration >= max_iterations:
+                    conn.execute(
+                        "UPDATE watchtower_ai_search_sessions"
+                        " SET status='completed', finished_at=datetime('now')"
+                        " WHERE id=?",
+                        (session_id,),
+                    )
+    except Exception as exc:
+        log_error("tool_executor watchtower_iterative_search log", exc)
+
+    return json.dumps(
+        {
+            "iteration": iteration,
+            "max_iterations": max_iterations,
+            "keywords": keywords,
+            "results_count": count,
+            "results": result_data,
+            "hint": (
+                f"第{iteration}轮搜索完成，找到{count}条结果。"
+                f"如需优化关键词继续搜索，请增加 iteration 参数。"
+                if count > 0
+                else f"第{iteration}轮未找到结果。建议更换关键词重试。"
+            ),
+        },
+        ensure_ascii=False,
+    )
 
 
 # Public tables accessible via AI warehouse query — only collected/warehouse data
@@ -801,6 +954,23 @@ async def execute(name: str, args: dict[str, Any]) -> str:
         case "watchtower_search":
             return _watchtower_search(
                 str(args.get("keywords", "")), int(args.get("limit", 20))
+            )
+        case "watchtower_insert":
+            return _watchtower_insert(
+                str(args.get("title", "")),
+                str(args.get("content", "")),
+                str(args.get("url", "")),
+                str(args.get("source_name", "AI采集")),
+                str(args.get("sentiment", "")),
+                int(args.get("risk", 0)),
+            )
+        case "watchtower_iterative_search":
+            return _watchtower_iterative_search(
+                str(args.get("keywords", "")),
+                int(args.get("iteration", 1)),
+                int(args.get("max_iterations", 3)),
+                str(args.get("refinement", "")),
+                int(args.get("limit", 20)),
             )
         case "warehouse_query":
             return await _warehouse_query(str(args.get("question", "")))

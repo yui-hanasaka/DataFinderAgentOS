@@ -460,9 +460,15 @@ def _init_business_tables(conn: sqlite3.Connection) -> None:
             code TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL,
             skill_type TEXT NOT NULL DEFAULT 'builtin',
+            description TEXT DEFAULT '',
+            api_url TEXT DEFAULT '',
+            http_method TEXT NOT NULL DEFAULT 'GET',
+            parameters_json TEXT NOT NULL DEFAULT '[]',
+            headers_json TEXT NOT NULL DEFAULT '{}',
             config_json TEXT NOT NULL DEFAULT '{}',
             status TEXT NOT NULL DEFAULT 'enabled',
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT
         );
         CREATE TABLE IF NOT EXISTS chat_sessions(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -645,13 +651,55 @@ def _init_business_tables(conn: sqlite3.Connection) -> None:
 
 def _seed_business_data(conn: sqlite3.Connection) -> None:
     builtin_skills = [
-        ("weather", "天气查询", "builtin", '{"prefix": "@weather"}'),
-        ("music", "音乐播放", "builtin", '{"prefix": "@music"}'),
-        ("campus", "西师妹校园助手", "builtin", '{"prefix": "@西师妹"}'),
-        ("websearch", "网络搜索", "builtin", '{"prefix": "\\\\search"}'),
+        (
+            "weather",
+            "天气查询",
+            "builtin",
+            "",
+            "",
+            "GET",
+            "[]",
+            "{}",
+            '{"prefix": "@weather"}',
+        ),
+        (
+            "music",
+            "音乐播放",
+            "builtin",
+            "",
+            "",
+            "GET",
+            "[]",
+            "{}",
+            '{"prefix": "@music"}',
+        ),
+        (
+            "campus",
+            "西师妹校园助手",
+            "builtin",
+            "",
+            "",
+            "GET",
+            "[]",
+            "{}",
+            '{"prefix": "@西师妹"}',
+        ),
+        (
+            "websearch",
+            "网络搜索",
+            "builtin",
+            "",
+            "",
+            "GET",
+            "[]",
+            "{}",
+            '{"prefix": "\\\\search"}',
+        ),
     ]
     conn.executemany(
-        "INSERT OR IGNORE INTO skills(code, name, skill_type, config_json) VALUES(?,?,?,?)",
+        "INSERT OR IGNORE INTO skills(code, name, skill_type, description,"
+        " api_url, http_method, parameters_json, headers_json, config_json)"
+        " VALUES(?,?,?,?,?,?,?,?,?)",
         builtin_skills,
     )
     default_employee = conn.execute(
@@ -992,6 +1040,43 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         "v4_drop_url_unique_index",
         "DROP INDEX IF EXISTS idx_watchtower_items_url_unique;",
     )
+    _migrate(
+        conn,
+        "v5_ai_search_sessions",
+        """
+        CREATE TABLE IF NOT EXISTS watchtower_ai_search_sessions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            iterations INTEGER NOT NULL DEFAULT 0,
+            total_results INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'running',
+            result_summary TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            finished_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS watchtower_ai_search_iterations(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER REFERENCES watchtower_ai_search_sessions(id),
+            iteration INTEGER NOT NULL,
+            keywords TEXT NOT NULL,
+            results_count INTEGER NOT NULL DEFAULT 0,
+            refinement TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        """,
+    )
+    _migrate(
+        conn,
+        "v6_skill_tool_fields",
+        """
+        ALTER TABLE skills ADD COLUMN description TEXT DEFAULT '';
+        ALTER TABLE skills ADD COLUMN api_url TEXT DEFAULT '';
+        ALTER TABLE skills ADD COLUMN http_method TEXT NOT NULL DEFAULT 'GET';
+        ALTER TABLE skills ADD COLUMN parameters_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE skills ADD COLUMN headers_json TEXT NOT NULL DEFAULT '{}';
+        ALTER TABLE skills ADD COLUMN updated_at TEXT;
+        """,
+    )
 
     # Indexes (idempotent)
     indexes = [
@@ -1041,9 +1126,9 @@ def init_db() -> None:
         _seed_admin_data(conn)
         _init_model_tables(conn)
         _init_business_tables(conn)
+        _run_migrations(conn)
         _seed_business_data(conn)
         _init_agent_tables(conn)
-        _run_migrations(conn)
 
     # Check if MySQL is configured
     row = None
@@ -1170,9 +1255,15 @@ def _init_mysql_tables() -> None:
         "code TEXT NOT NULL UNIQUE,"
         "name TEXT NOT NULL,"
         "skill_type TEXT NOT NULL DEFAULT 'builtin',"
+        "description TEXT DEFAULT '',"
+        "api_url TEXT DEFAULT '',"
+        "http_method TEXT NOT NULL DEFAULT 'GET',"
+        "parameters_json TEXT NOT NULL DEFAULT '[]',"
+        "headers_json TEXT NOT NULL DEFAULT '{}',"
         "config_json TEXT NOT NULL DEFAULT '{}',"
         "status TEXT NOT NULL DEFAULT 'enabled',"
-        "created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "updated_at TEXT)",
         "CREATE TABLE IF NOT EXISTS chat_sessions("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "user_id INTEGER NOT NULL DEFAULT 0,"

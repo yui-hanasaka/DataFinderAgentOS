@@ -120,7 +120,10 @@ async def run(
         "再用 code_execute + BeautifulSoup 解析提取正文内容\n"
         "4. httpx 已预配置 Edge UA 和中文 Accept-Language，可绕过大部分反爬；"
         "如需更高级的反反爬（Cookie、Referer、延迟），可在代码中自行设置\n"
-        "5. 文件保存在工作区目录，跨轮次持久化，可逐步处理大型网站"
+        "5. 文件保存在工作区目录，跨轮次持久化，可逐步处理大型网站\n"
+        "【瞭望数据库】你可以用 watchtower_insert 将搜索结果存入瞭望数据库持久化；"
+        "用 watchtower_search 搜索已采集的数据；"
+        "用 watchtower_iterative_search 进行多轮关键词优化搜索。"
     )
     time_msg = {
         "role": "system",

@@ -290,6 +290,110 @@ class ItemRepository:
             return False, "删除采集数据失败"
 
     @staticmethod
+    def batch_delete_items(item_ids: list[int]) -> tuple[bool, str | None]:
+        """批量删除采集条目及其关联的深度采集内容。"""
+        try:
+            with get_connection() as conn:
+                for item_id in item_ids:
+                    conn.execute(
+                        "DELETE FROM deep_contents WHERE item_id=?", (item_id,)
+                    )
+                    conn.execute("DELETE FROM watchtower_items WHERE id=?", (item_id,))
+            return True, None
+        except Exception as e:
+            log_error("Watchtower.batch_delete_items", e)
+            return False, "批量删除失败"
+
+    @staticmethod
+    def list_items_filtered(
+        keyword: str = "",
+        source_id: int = 0,
+        sentiment: str = "",
+        risk_min: int = 0,
+        risk_max: int = 10,
+        is_deep_collected: int | None = None,
+        date_from: str = "",
+        date_to: str = "",
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[sqlite3.Row], int]:
+        """Filtered + paginated item listing for the data management page."""
+        conditions: list[str] = []
+        params: list[object] = []
+
+        if keyword:
+            like = f"%{keyword}%"
+            conditions.append(
+                "(i.title LIKE ? OR i.content LIKE ? OR i.summary LIKE ?)"
+            )
+            params.extend([like, like, like])
+        if source_id > 0:
+            conditions.append("i.source_id = ?")
+            params.append(source_id)
+        if sentiment:
+            conditions.append("i.sentiment = ?")
+            params.append(sentiment)
+        if risk_min > 0:
+            conditions.append("i.risk >= ?")
+            params.append(risk_min)
+        if risk_max < 10:
+            conditions.append("i.risk <= ?")
+            params.append(risk_max)
+        if is_deep_collected is not None:
+            conditions.append("i.is_deep_collected = ?")
+            params.append(is_deep_collected)
+        if date_from:
+            conditions.append("i.collected_at >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("i.collected_at <= ?")
+            params.append(date_to + " 23:59:59")
+
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        offset = (page - 1) * per_page
+
+        with get_connection() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM watchtower_items i{where}", params
+            ).fetchone()[0]
+            rows = conn.execute(
+                f"SELECT i.*, s.name AS source_name FROM watchtower_items i"
+                f" LEFT JOIN watchtower_sources s ON i.source_id=s.id"
+                f"{where}"
+                f" ORDER BY i.id DESC LIMIT ? OFFSET ?",
+                params + [per_page, offset],
+            ).fetchall()
+        return rows, total
+
+    @staticmethod
+    def list_all_sources() -> list[sqlite3.Row]:
+        """List enabled sources for filter dropdown."""
+        with get_connection() as conn:
+            return conn.execute(
+                "SELECT id, name FROM watchtower_sources"
+                " WHERE status='enabled' ORDER BY name"
+            ).fetchall()
+
+    @staticmethod
+    def export_items(
+        item_ids: list[int],
+    ) -> tuple[list[sqlite3.Row] | None, str | None]:
+        """Export selected items as rows for JSON/CSV download."""
+        try:
+            with get_connection() as conn:
+                placeholders = ",".join("?" for _ in item_ids)
+                rows = conn.execute(
+                    f"SELECT i.*, s.name AS source_name FROM watchtower_items i"
+                    f" LEFT JOIN watchtower_sources s ON i.source_id=s.id"
+                    f" WHERE i.id IN ({placeholders}) ORDER BY i.id DESC",
+                    item_ids,
+                ).fetchall()
+            return rows, None
+        except Exception as e:
+            log_error("Watchtower.export_items", e)
+            return None, str(e)
+
+    @staticmethod
     def batch_add_items(items: list[dict]) -> tuple[int, list[int]]:
         """批量保存采集条目，返回 (成功插入数量, 新插入的ID列表)。
 
