@@ -640,7 +640,7 @@
       _chartInstance = chart;
 
       var catCol = currentColumns[0];
-      // Detect columns with actual numeric values (not just string-fallback)
+      // Detect columns with actual numeric values
       var numCols = currentColumns.slice(1).filter(function(c) {
         return currentRows.some(function(r) {
           var v = r[c];
@@ -649,14 +649,15 @@
           return !isNaN(parseFloat(v));
         });
       });
+
+      // If no natural numeric columns found, inject a synthetic "条数" column
+      // so the chart always has at least one visible bar series per category.
+      // This handles plain-text search results (like keyword lookups) where
+      // every column is a string.
       if (!numCols.length) {
-        // No numeric column to chart — clean up and show a clear message
-        _disposeChart();
-        chartEl.style.display = 'none';
-        chartInfo.style.display = 'none';
-        errorArea.textContent = '当前查询结果无可绘图的数值列，图表仅支持数值型数据的可视化。可尝试使用统计类查询（如"按来源统计数量"）。';
-        errorArea.style.display = 'block';
-        return;
+        currentRows.forEach(function(r) { r['条数'] = 1; });
+        currentColumns.push('条数');
+        numCols = ['条数'];
       }
 
       var isLight = document.documentElement.getAttribute('data-theme') === 'light';

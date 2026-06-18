@@ -18,6 +18,9 @@ class AskBaseHandler(BaseHandler):
 
 class AskHomeHandler(AskBaseHandler):
     def get(self) -> None:
+        self.set_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.set_header("Pragma", "no-cache")
+        self.set_header("Expires", "0")
         self.render(
             "web/ask.html",
             title="问数",
