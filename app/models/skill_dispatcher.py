@@ -140,7 +140,8 @@ async def _weather(city: str, api_key: str | None = None) -> str:
                     f"- 湿度：{humidity}%"
                 )
             log_error(
-                f"weather OpenWeatherMap status={r.status_code} body={str(data)[:300]}"
+                f"weather OpenWeatherMap status={r.status_code} body={str(data)[:300]}",
+                RuntimeError(f"HTTP {r.status_code}"),
             )
             # Fall through to wttr.in
         except Exception as exc:
@@ -157,7 +158,10 @@ async def _weather(city: str, api_key: str | None = None) -> str:
         ) as client:
             r = await client.get(url, follow_redirects=True)
         if r.status_code != 200:
-            log_error(f"weather wttr.in HTTP {r.status_code} city={city}")
+            log_error(
+                f"weather wttr.in HTTP {r.status_code} city={city}",
+                RuntimeError(f"HTTP {r.status_code}"),
+            )
             return f"【天气查询】城市：{city}\n（天气服务返回 {r.status_code}，请稍后重试）"
 
         data = r.json()
