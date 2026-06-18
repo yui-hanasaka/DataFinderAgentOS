@@ -66,25 +66,62 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
 
 
 async def _weather(city: str, api_key: str | None = None) -> str:
-    if not api_key:
-        return f"【天气查询】城市：{city}\n（未配置天气API Key，请在接口管理中配置 weather 类型的 API Key）"
+    if api_key:
+        # OpenWeatherMap when key is configured
+        try:
+            url = (
+                f"https://api.openweathermap.org/data/2.5/weather"
+                f"?q={city}&appid={api_key}&units=metric&lang=zh_cn"
+            )
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+                r = await client.get(url)
+            data = r.json()
+            if r.status_code == 200:
+                desc = data["weather"][0]["description"]
+                temp = data["main"]["temp"]
+                feels = data["main"]["feels_like"]
+                humidity = data["main"]["humidity"]
+                return (
+                    f"🌤 **{city}天气**\n"
+                    f"- 天气：{desc}\n"
+                    f"- 温度：{temp}°C（体感{feels}°C）\n"
+                    f"- 湿度：{humidity}%"
+                )
+            return f"【天气查询】无法获取 {city} 的天气信息：{data.get('message', '未知错误')}"
+        except Exception as exc:
+            log_error(f"weather OpenWeatherMap failed city={city}", exc)
+            # Fall through to wttr.in
+
+    # wttr.in — free, no API key required, supports Chinese city names
     try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=zh_cn"
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
-            r = await client.get(url)
+        encoded = urllib.parse.quote(city)
+        url = f"https://wttr.in/{encoded}?format=j1"
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(10),
+            headers={"Accept-Language": "zh-CN,zh;q=0.9"},
+        ) as client:
+            r = await client.get(url, follow_redirects=True)
         data = r.json()
-        if r.status_code == 200:
-            desc = data["weather"][0]["description"]
-            temp = data["main"]["temp"]
-            feels = data["main"]["feels_like"]
-            humidity = data["main"]["humidity"]
-            return f"🌤 **{city}天气**\n- 天气：{desc}\n- 温度：{temp}°C（体感{feels}°C）\n- 湿度：{humidity}%"
+        cur = data["current_condition"][0]
+        desc = cur.get("lang_zh", [{}])[0].get("value") or cur.get("weatherDesc", [{}])[
+            0
+        ].get("value", "")
+        temp = cur["temp_C"]
+        feels = cur["FeelsLikeC"]
+        humidity = cur["humidity"]
+        wind = cur["windspeedKmph"]
+        area = data.get("nearest_area", [{}])[0]
+        area_name = area.get("areaName", [{}])[0].get("value", city) if area else city
         return (
-            f"【天气查询】无法获取 {city} 的天气信息：{data.get('message', '未知错误')}"
+            f"🌤 **{area_name}天气**（via wttr.in）\n"
+            f"- 天气：{desc}\n"
+            f"- 温度：{temp}°C（体感{feels}°C）\n"
+            f"- 湿度：{humidity}%\n"
+            f"- 风速：{wind} km/h"
         )
     except Exception as exc:
-        log_error(f"weather API request failed for city={city}", exc)
-        return "【天气查询】请求失败，请稍后重试"
+        log_error(f"weather wttr.in failed city={city}", exc)
+        return f"【天气查询】城市：{city}\n（天气服务暂时不可用，请稍后重试）"
 
 
 def _music_html() -> str:
