@@ -105,6 +105,15 @@ async def run(
 
     Returns the full text reply.
     """
+    # Inject time context for tool-use awareness (only agent path, not normal chat)
+    from app.models.skill_dispatcher import _time_context
+
+    time_msg = {"role": "system", "content": _time_context()}
+    if messages and messages[0]["role"] == "system":
+        messages.insert(1, time_msg)
+    else:
+        messages.insert(0, time_msg)
+
     # Filter tools based on employee's allowed_tools
     active_tools = TOOLS
     if allowed_tools is not None:

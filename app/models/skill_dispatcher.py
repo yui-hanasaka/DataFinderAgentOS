@@ -1,10 +1,28 @@
 import re
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 
 from app.models.errors import log_error
+
+
+def _time_context() -> str:
+    """Return a time-awareness prompt for search/agent tool use.
+
+    Injected only when search or agent tool calls are involved — does NOT
+    pollute normal conversations.
+    """
+    _now = datetime.now(timezone(timedelta(hours=8)))
+    return (
+        f"【当前时间】服务器本地时间是 {_now.strftime('%Y-%m-%d %H:%M:%S')}"
+        f"（{_now.strftime('UTC%z')}，北京时间）。"
+        "处理“今天、最新、近期、今年”等相对时间、"
+        "生成搜索词和筛选搜索结果时，必须以此时间为准；"
+        "请核对搜索结果的发布日期，不要把模型训练数据中的日期当作当前日期。"
+    )
+
 
 DispatchResult = dict[str, Any]
 
@@ -53,7 +71,10 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
             "processed_content": query,
             "skill_meta": {
                 "search_results": snippets,
-                "inject_prompt": f"以下是网络搜索结果：\n{snippets}\n\n请基于以上信息回答：{query}",
+                "inject_prompt": (
+                    f"{_time_context()}\n\n"
+                    f"以下是网络搜索结果：\n{snippets}\n\n请基于以上信息回答：{query}"
+                ),
             },
         }
 
