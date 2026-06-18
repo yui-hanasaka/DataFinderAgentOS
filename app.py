@@ -179,4 +179,7 @@ if __name__ == "__main__":
 
     _watchtower = WatchtowerAgent()
     tornado.ioloop.PeriodicCallback(_watchtower.tick, 30 * 60 * 1000).start()
-    tornado.ioloop.IOLoop.current().start()
+    try:
+        tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        print("\n🛑 Server shutting down...", flush=True)
