@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from datetime import datetime
@@ -134,8 +135,8 @@ class DeepRepository:
         with get_connection() as conn:
             cur = conn.execute(
                 """INSERT INTO deep_tasks(name, target_url, depth, status,
-                   target_item_ids, total_items, progress)
-                   VALUES(?, ?, 1, 'running', ?, ?, 0)""",
+                   target_item_ids, total_items, progress, started_at)
+                   VALUES(?, ?, 1, 'running', ?, ?, 0, datetime('now'))""",
                 (
                     f"深度采集任务 {datetime.now().strftime('%m-%d %H:%M')}",
                     "",
@@ -460,3 +461,80 @@ class DeepRepository:
                 "UPDATE deep_tasks SET logs=? WHERE id=?",
                 (json.dumps(logs, ensure_ascii=False), task_id),
             )
+
+
+async def run_deep_collect_task(task_id: int, item_ids: list[int]) -> None:
+    """Standalone coroutine for running a deep collection task.
+
+    Extracted from AdminDeepHandler so both the HTTP handler and the
+    WatchtowerAgent can schedule it via IOLoop.add_callback / create_task
+    without depending on the handler class.
+
+    Shares a single crawl4ai browser across all items for efficiency;
+    falls back to per-item (no-crawler) mode if crawl4ai is unavailable
+    or fails to initialise.  Each item's failure is isolated — a crash on
+    one item never aborts the rest of the batch.
+    """
+    model = DeepRepository.get_default_model()
+    completed = 0
+    failed = 0
+
+    async def _process_one(item_id: int, crawler=None) -> None:
+        nonlocal completed, failed
+        try:
+            DeepRepository.add_task_log(task_id, f"正在采集条目 #{item_id}...")
+            result = await DeepRepository.collect_single_item(item_id, model, crawler)
+            if result["ok"]:
+                DeepRepository.save_deep_result(item_id, task_id, result)
+                completed += 1
+                DeepRepository.add_task_log(
+                    task_id,
+                    f"条目 #{item_id} 采集成功: {result.get('title', '')[:30]}",
+                )
+            else:
+                failed += 1
+                DeepRepository.add_task_log(
+                    task_id,
+                    f"条目 #{item_id} 采集失败: {result.get('error', '未知错误')}",
+                )
+        except Exception as exc:
+            failed += 1
+            DeepRepository.add_task_log(
+                task_id, f"条目 #{item_id} 异常: {str(exc)[:100]}"
+            )
+        DeepRepository.update_task_progress(task_id, completed, failed)
+        await asyncio.sleep(1)
+
+    # Primary: shared crawl4ai browser for all items.
+    # Use BaseException so asyncio.CancelledError (Python 3.11+ BaseException)
+    # is caught and we fall through to the per-item fallback instead of
+    # aborting the entire batch.
+    crawler_ok = False
+    try:
+        from crawl4ai import AsyncWebCrawler
+
+        async with AsyncWebCrawler(verbose=False) as crawler:
+            crawler_ok = True
+            for item_id in item_ids:
+                await _process_one(item_id, crawler)
+    except BaseException as crawler_err:
+        if crawler_ok:
+            # Crawler was alive but died mid-batch; re-raise to avoid silent data loss
+            DeepRepository.add_task_log(
+                task_id, f"共享爬虫运行中断: {str(crawler_err)[:100]}"
+            )
+        else:
+            DeepRepository.add_task_log(
+                task_id, f"共享爬虫初始化失败，降级为独立模式: {str(crawler_err)[:100]}"
+            )
+        if not crawler_ok:
+            for item_id in item_ids:
+                await _process_one(item_id)
+
+    if failed == 0:
+        DeepRepository.complete_task(task_id)
+    else:
+        DeepRepository.complete_task(task_id)
+        DeepRepository.add_task_log(
+            task_id, f"采集完成: 成功 {completed} 条, 失败 {failed} 条"
+        )

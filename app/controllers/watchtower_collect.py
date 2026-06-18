@@ -80,6 +80,7 @@ class WatchtowerCollectHandler(AdminBaseHandler):
         )
 
         all_items = []
+        errors: list[dict] = []
         for src_id in source_ids:
             source = SourceRepository.get_source(src_id)
             if not source or source["status"] != "enabled":
@@ -92,12 +93,28 @@ class WatchtowerCollectHandler(AdminBaseHandler):
                     item["source_id"] = src_id
                     item["source_name"] = source["name"]
                 all_items.extend(items)
+                if not items:
+                    errors.append(
+                        {
+                            "source_id": src_id,
+                            "source_name": source["name"],
+                            "msg": "采集结果为空（可能遭遇反爬或选择器失效）",
+                        }
+                    )
             except Exception as e:
                 log_error(f"采集源 {src_id} 抓取失败", e)
-                # Skip failed sources, continue with others
+                errors.append(
+                    {
+                        "source_id": src_id,
+                        "source_name": source["name"],
+                        "msg": str(e)[:200],
+                    }
+                )
 
         self.set_header("Content-Type", "application/json; charset=utf-8")
-        self.write({"ok": True, "items": all_items, "total": len(all_items)})
+        self.write(
+            {"ok": True, "items": all_items, "total": len(all_items), "errors": errors}
+        )
 
     async def _handle_save(self, content_type: str = ""):
         if "application/json" in content_type:

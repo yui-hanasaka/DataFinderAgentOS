@@ -5,6 +5,7 @@ Called by Tornado PeriodicCallback in app.py. Each tick() gathers corpus
 statistics, asks the default LLM for scheduling decisions, and executes them.
 """
 
+import asyncio
 import json
 
 from app.models.db import get_connection
@@ -115,7 +116,7 @@ class WatchtowerAgent:
                         int(i) for i in (action.get("item_ids") or [])[:5]
                     ]
                     if item_ids:
-                        self._execute_trigger_deep_collect(item_ids)
+                        await self._execute_trigger_deep_collect(item_ids)
                 case "scrape_source":
                     await self._execute_scrape_source(action)
                 case "log_observation":
@@ -125,12 +126,15 @@ class WatchtowerAgent:
         except Exception as exc:
             log_error(f"WatchtowerAgent._execute_action {action_type}", exc)
 
-    def _execute_trigger_deep_collect(self, item_ids: list[int]) -> None:
-        """实际执行深度采集：创建 deep task 并记录决策。"""
-        from app.models.deep import DeepRepository
+    async def _execute_trigger_deep_collect(self, item_ids: list[int]) -> None:
+        """创建 deep task 并通过 IOLoop 调度实际爬虫协程。"""
+        from tornado.ioloop import IOLoop
+
+        from app.models.deep import DeepRepository, run_deep_collect_task
 
         try:
             task_id = DeepRepository.start_deep_collect(item_ids)
+            IOLoop.current().add_callback(run_deep_collect_task, task_id, item_ids)
             self._log_decision(
                 "trigger_deep_collect",
                 json.dumps({"item_ids": item_ids, "task_id": task_id}),
@@ -177,11 +181,11 @@ class WatchtowerAgent:
                 saved, new_ids = ItemRepository.batch_add_items(items)
             SourceRepository.mark_fetched(source_id)
 
-            # Trigger background AI analysis for newly saved items
+            # Trigger background AI analysis without blocking the agent tick
             if new_ids:
                 from app.models.watchtower import analyze_items_sentiment
 
-                await analyze_items_sentiment(new_ids)
+                asyncio.create_task(analyze_items_sentiment(new_ids))
 
             self._log_decision(
                 "scrape_source",

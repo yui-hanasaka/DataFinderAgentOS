@@ -53,27 +53,42 @@ class WatchtowerScraper:
 
     @staticmethod
     def _scrape_baidu_news(soup: BeautifulSoup) -> list:
-        """抓取百度新闻搜索结果"""
+        """抓取百度新闻搜索结果 — 多选择器回退应对布局变更"""
         items = []
-        for div in soup.select(".result-op"):
-            title_elem = div.select_one("h3 a")
+        # Try multiple Baidu layout variants (class names change frequently)
+        containers = soup.select(
+            ".result-op, #content_left .c-container, .result.c-container, "
+            ".result, div[tpl], div[class*='result']"
+        )
+        for div in containers:
+            title_elem = div.select_one(
+                "h3 a, .c-title a, .news-title a, a.c-link[href], h3.t a"
+            )
             if not title_elem:
                 continue
+            href = title_elem.get("href", "")
+            if not href or href == "#":
+                continue
 
-            snippet_elem = div.select_one(".c-font-normal")
-            source_elem = div.select_one(".c-color-gray")
-            time_elem = div.select_one(".c-color-gray2")
+            snippet_elem = div.select_one(
+                ".c-font-normal, .c-abstract, .content-right_8Zs40,"
+                " .c-gap-top-small, .c-span9, p.c-author"
+            )
+            source_elem = div.select_one(
+                ".c-color-gray, .c-author, .source, .c-gap-top-xsmall span"
+            )
+            time_elem = div.select_one(".c-color-gray2, .c-gray, time, .c-gap-right")
 
             items.append(
                 {
                     "title": title_elem.get_text(strip=True),
-                    "url": title_elem.get("href", ""),
+                    "url": href,
                     "snippet": snippet_elem.get_text(strip=True)
                     if snippet_elem
                     else "",
                     "source": source_elem.get_text(strip=True)
                     if source_elem
-                    else "百度新闻",
+                    else "百度",
                     "published_time": time_elem.get_text(strip=True)
                     if time_elem
                     else "",
@@ -530,6 +545,37 @@ class WatchtowerScraper:
         return WatchtowerScraper._scrape_baidu_news(soup)
 
     @staticmethod
+    async def _scrape_with_crawl4ai(url: str, source_type: str, config: dict) -> list:
+        """Fallback: use crawl4ai headless browser to fetch and parse a page.
+
+        Called when requests+BS4 returns empty results for an HTML search source
+        (bot detection, JS rendering required, etc.).
+        Returns empty list if crawl4ai is not installed or fails.
+        """
+        try:
+            from crawl4ai import AsyncWebCrawler
+
+            async with AsyncWebCrawler(verbose=False) as crawler:
+                result = await crawler.arun(url=url)
+                if not result or not result.html:
+                    return []
+                soup = BeautifulSoup(result.html, "html.parser")
+                if source_type == "baidu_news":
+                    return WatchtowerScraper._scrape_baidu_news(soup)
+                if source_type == "bing_web":
+                    return WatchtowerScraper._scrape_bing_web(soup)
+                if source_type == "bing_news":
+                    return WatchtowerScraper._scrape_bing_news(soup)
+                if source_type == "duckduckgo":
+                    return WatchtowerScraper._scrape_duckduckgo(soup)
+                if source_type == "sogou_web":
+                    return WatchtowerScraper._scrape_sogou_web(soup)
+                # generic
+                return WatchtowerScraper._scrape_generic(soup, config)
+        except Exception:
+            return []
+
+    @staticmethod
     async def scrape_source_async(
         source_id: int, keyword: str, pages: int, limit: int
     ) -> list:
@@ -574,6 +620,15 @@ class WatchtowerScraper:
                 ]
             return items[:limit]
 
+        # HTML search engine types: requests first, crawl4ai fallback on 0 results
+        _html_types = {
+            "baidu_news",
+            "bing_web",
+            "bing_news",
+            "duckduckgo",
+            "sogou_web",
+            "generic",
+        }
         all_items = []
         from tornado.ioloop import IOLoop
 
@@ -591,6 +646,12 @@ class WatchtowerScraper:
                 source_type,
                 config_json,
             )
+
+            # crawl4ai fallback when requests+BS4 returns nothing (bot protection / JS rendering)
+            if not items and source_type in _html_types:
+                items = await WatchtowerScraper._scrape_with_crawl4ai(
+                    url, source_type, config_json
+                )
 
             all_items.extend(items[:limit])
 
