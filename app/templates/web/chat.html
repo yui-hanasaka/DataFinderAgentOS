@@ -1608,11 +1608,19 @@
     if (!content) return;
     input.value = '';
 
+    const isDirectMusic = /^@(?:music|音乐)\b/i.test(content);
+
     // Initialize telemetry log and state
-    setAgentState('active', 'THINKING (意图分发中...)');
-    updateActionCard('thinking', '理解意图与规划中...', '正在阅读您的输入并规划最佳的执行路径...', 30, '🧠');
-    appendTelemetryLog('router', '收到用户请求: "' + (content.length > 30 ? content.slice(0, 30) + '...' : content) + '"');
-    appendTelemetryLog('engine', '激活智能体引擎...');
+    if (isDirectMusic) {
+      setAgentState('active', 'LOADING MUSIC (加载音乐中)');
+      updateActionCard('thinking', '加载音乐组件...', '正在提取歌曲名称并载入播放组件...', 50, '🎵');
+      appendTelemetryLog('system', '检测到本地快捷指令，正在直接载入音乐播放模块...');
+    } else {
+      setAgentState('active', 'THINKING (意图分发中...)');
+      updateActionCard('thinking', '理解意图与规划中...', '正在阅读您的输入并规划最佳的执行路径...', 30, '🧠');
+      appendTelemetryLog('router', '收到用户请求: "' + (content.length > 30 ? content.slice(0, 30) + '...' : content) + '"');
+      appendTelemetryLog('engine', '激活智能体引擎...');
+    }
 
     // Auto-create session on first message (lazy init)
     if (!SESSION_ID) {
@@ -1757,7 +1765,7 @@
       // Wait a second then restore standby if not in error state
       setTimeout(() => {
         const statusEl = document.getElementById('brainStatus');
-        if (statusEl && (statusEl.textContent.includes('STREAMING') || statusEl.textContent.includes('PROCESSING'))) {
+        if (statusEl && !statusEl.textContent.includes('ERROR') && !statusEl.textContent.includes('STOPPED')) {
           setAgentState('idle', 'STANDBY (就绪)');
           updateActionCard('standby', '就绪 (Ready)', '数字员工状态良好，随时等待您的指令。', 100, '🟢');
           appendTelemetryLog('system', '遥测链路恢复就绪。');
