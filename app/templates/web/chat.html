@@ -833,7 +833,13 @@
     <div class="glass-messages" id="messages">
       {% if messages %}
       {% for m in messages %}
-      <div class="glass-msg {{ m["role"] }}">{{ m["content"] }}</div>
+      {% if m["role"] == "assistant" and m["skill_meta"] and '"music"' in (m["skill_meta"] or '') %}
+      <div class="glass-msg assistant">{% raw m["content"] %}</div>
+      {% elif m["role"] == "assistant" %}
+      <div class="glass-msg assistant" data-md="1">{{ m["content"] }}</div>
+      {% else %}
+      <div class="glass-msg user">{{ m["content"] }}</div>
+      {% end %}
       {% end %}
       {% else %}
       <div class="empty-state">
@@ -896,6 +902,9 @@
 <script>
   const SESSION_ID = '{{ current_session["id"] if current_session else "" }}';
   initThemeIcon('themeIcon');
+  document.querySelectorAll('.glass-msg.assistant[data-md]').forEach(function(el) {
+    el.innerHTML = renderSafeMarkdown(el.textContent);
+  });
 
   function getCookie(name) {
     const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
