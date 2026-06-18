@@ -646,7 +646,7 @@
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-all;
-    max-height: 120px;
+    max-height: 400px;
     overflow-y: auto;
   }
   .tool-card-body .tool-result {
@@ -657,7 +657,7 @@
     color: #a0a0d0;
     background: rgba(52,211,153,.06);
     border: 1px solid rgba(52,211,153,.1);
-    max-height: 200px;
+    max-height: 500px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-word;
@@ -980,6 +980,11 @@
     input.value = '';
     const btn = document.getElementById('sendBtn');
     btn.disabled = true;
+
+    // Reset tool cards from previous request (prevents overwrite/carryover)
+    var oldCards = document.querySelectorAll('.tool-card');
+    for (var ci = 0; ci < oldCards.length; ci++) oldCards[ci].remove();
+    for (var k in _toolCards) delete _toolCards[k];
 
     appendUserMsg(content);
     appendTyping();

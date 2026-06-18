@@ -15,10 +15,47 @@ from app.models.validators import is_safe_public_url
 
 
 async def _web_search(query: str, max_results: int = 5) -> str:
-    encoded = urllib.parse.quote(query)
-    url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_redirect=1"
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(15)) as client:
+    """Web search with Bing+DDG fallback chain — works in China."""
+
+    async def _bing_search() -> str:
+        url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}&setlang=zh-cn"
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(12),
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "zh-CN,zh;q=0.9",
+            },
+        ) as client:
+            r = await client.get(url, follow_redirects=True)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(r.content, "html.parser")
+        results: list[str] = []
+        for li in soup.select("li.b_algo, .b_results li, ol#b_results > li")[
+            :max_results
+        ]:
+            title_el = li.select_one("h2 a, .b_title a")
+            snippet_el = li.select_one(".b_caption p, .b_lineclamp2, .b_algoSlug, p")
+            title = title_el.get_text(strip=True) if title_el else ""
+            snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+            if title:
+                results.append(f"{title}\n{snippet}" if snippet else title)
+        if results:
+            return "\n\n".join(results)
+        raise RuntimeError("Bing returned empty results")
+
+    async def _ddg_search() -> str:
+        url = (
+            f"https://api.duckduckgo.com/?q={urllib.parse.quote(query)}"
+            f"&format=json&no_redirect=1"
+        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(5)) as client:
             r = await client.get(url, follow_redirects=True)
         data = r.json()
         results: list[str] = []
@@ -29,10 +66,18 @@ async def _web_search(query: str, max_results: int = 5) -> str:
             text = topic.get("Text", "")
             if text:
                 results.append(text)
-        return "\n\n".join(results[:max_results]) or "未找到相关结果"
-    except Exception as exc:
-        log_error("tool_executor web_search", exc)
-        return f"搜索失败: {exc}"
+        if results:
+            return "\n\n".join(results[:max_results])
+        raise RuntimeError("DDG returned empty results")
+
+    for name, fn in [("bing", _bing_search), ("ddg", _ddg_search)]:
+        try:
+            result = await fn()
+            if result:
+                return result
+        except Exception as exc:
+            log_error(f"tool_executor web_search {name}", exc)
+    return "搜索暂时不可用，请稍后重试"
 
 
 def _fetch_url_sync(url: str) -> str:

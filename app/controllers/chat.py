@@ -393,7 +393,7 @@ class ChatSendHandler(ChatBaseHandler):
             except StreamClosedError:
                 raise
             except Exception:
-                pass
+                logger.warning("SSE write failed — client likely disconnected")
 
         try:
             await agent_loop.run(user_text, messages, model_row, _sse)

@@ -65,61 +65,9 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
     }
 
 
-# wttr.in weather code → Chinese description (WW Online codes)
-_WEATHER_CODES_ZH: dict[str, str] = {
-    "113": "晴",
-    "116": "多云",
-    "119": "多云",
-    "122": "阴",
-    "143": "雾",
-    "176": "小雨",
-    "179": "小雪",
-    "182": "雨夹雪",
-    "185": "冻雨",
-    "200": "雷阵雨",
-    "227": "暴风雪",
-    "230": "暴风雪",
-    "248": "雾",
-    "260": "雾",
-    "263": "小雨",
-    "266": "小雨",
-    "281": "冻雨",
-    "284": "冻雨",
-    "293": "小雨",
-    "296": "小雨",
-    "299": "中雨",
-    "302": "中雨",
-    "305": "大雨",
-    "308": "大雨",
-    "311": "冻雨",
-    "314": "冻雨",
-    "317": "雨夹雪",
-    "320": "雨夹雪",
-    "323": "小雪",
-    "326": "小雪",
-    "329": "中雪",
-    "332": "中雪",
-    "335": "大雪",
-    "338": "大雪",
-    "350": "冰雹",
-    "353": "阵雨",
-    "356": "大雨",
-    "359": "暴雨",
-    "362": "雨夹雪",
-    "365": "雨夹雪",
-    "368": "小雪",
-    "371": "大雪",
-    "374": "冰雹",
-    "377": "冰雹",
-    "386": "雷阵雨",
-    "389": "雷暴",
-    "392": "雷暴伴雪",
-    "395": "大雪",
-}
-
-
 async def _weather(city: str, api_key: str | None = None) -> str:
     if api_key:
+        # User configured their own OWM key — use it for richer international data
         try:
             url = (
                 f"https://api.openweathermap.org/data/2.5/weather"
@@ -140,51 +88,64 @@ async def _weather(city: str, api_key: str | None = None) -> str:
                     f"- 湿度：{humidity}%"
                 )
             log_error(
-                f"weather OpenWeatherMap status={r.status_code} body={str(data)[:300]}",
+                f"weather OWM status={r.status_code} body={str(data)[:300]}",
                 RuntimeError(f"HTTP {r.status_code}"),
             )
-            # Fall through to wttr.in
+            # Fall through to uapis.cn
         except Exception as exc:
-            log_error(f"weather OpenWeatherMap city={city}", exc)
-            # Fall through to wttr.in
+            log_error(f"weather OWM city={city}", exc)
+            # Fall through to uapis.cn
 
-    # wttr.in — free, no API key, JSON API
+    # uapis.cn — free public API, Chinese native, no key required
     try:
         encoded = urllib.parse.quote(city)
-        url = f"https://wttr.in/{encoded}?format=j1"
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(12),
-            headers={"User-Agent": "curl/7.88", "Accept-Language": "zh-CN,zh;q=0.9"},
-        ) as client:
-            r = await client.get(url, follow_redirects=True)
+        url = f"https://uapis.cn/api/v1/misc/weather?city={encoded}&extended=true"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+            r = await client.get(url)
+        if r.status_code == 404:
+            return f"【天气查询】未找到「{city}」的天气数据，请检查城市名称"
         if r.status_code != 200:
             log_error(
-                f"weather wttr.in HTTP {r.status_code} city={city}",
+                f"weather uapis.cn HTTP {r.status_code} city={city}",
                 RuntimeError(f"HTTP {r.status_code}"),
             )
             return f"【天气查询】城市：{city}\n（天气服务返回 {r.status_code}，请稍后重试）"
 
         data = r.json()
-        cur = data["current_condition"][0]
-        code = cur.get("weatherCode", "")
-        desc = _WEATHER_CODES_ZH.get(
-            str(code), cur.get("weatherDesc", [{}])[0].get("value", "")
-        )
-        temp = cur["temp_C"]
-        feels = cur["FeelsLikeC"]
-        humidity = cur["humidity"]
-        wind = cur["windspeedKmph"]
-        area = data.get("nearest_area", [{}])[0]
-        area_name = area.get("areaName", [{}])[0].get("value", city) if area else city
-        return (
-            f"🌤 **{area_name}天气**（via wttr.in）\n"
-            f"- 天气：{desc}\n"
-            f"- 温度：{temp}°C（体感{feels}°C）\n"
-            f"- 湿度：{humidity}%\n"
-            f"- 风速：{wind} km/h"
-        )
+        weather = data.get("weather", "")
+        temp = data.get("temperature", "")
+        feels = data.get("feels_like", "")
+        humidity = data.get("humidity", "")
+        wind_dir = data.get("wind_direction", "")
+        wind_power = data.get("wind_power", "")
+        location = data.get("district") or data.get("city", city)
+        province = data.get("province", "")
+
+        lines = [f"🌤 **{province} {location}** 天气"]
+        if weather:
+            lines.append(f"- 天气：{weather}")
+        if temp != "":
+            feel_str = f"（体感{feels}°C）" if feels and feels != temp else ""
+            lines.append(f"- 温度：{temp}°C{feel_str}")
+        if humidity != "":
+            lines.append(f"- 湿度：{humidity}%")
+        if wind_dir or wind_power:
+            wind = f"{wind_dir} {wind_power}".strip()
+            lines.append(f"- 风力：{wind}")
+
+        aqi = data.get("aqi")
+        aqi_cat = data.get("aqi_category")
+        if aqi is not None and aqi != "":
+            aqi_str = f"（{aqi_cat}）" if aqi_cat else ""
+            lines.append(f"- 空气质量：AQI {aqi}{aqi_str}")
+
+        report_time = data.get("report_time", "")
+        if report_time:
+            lines.append(f"- 更新时间：{report_time}")
+
+        return "\n".join(lines)
     except Exception as exc:
-        log_error(f"weather wttr.in city={city}", exc)
+        log_error(f"weather uapis.cn city={city}", exc)
         return f"【天气查询】城市：{city}\n（天气服务暂时不可用，请稍后重试）"
 
 
@@ -268,22 +229,69 @@ def _music_html() -> str:
 
 
 async def _web_search(query: str, _api_key: str | None = None) -> str:
-    try:
-        encoded = urllib.parse.quote(query)
-        url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_redirect=1"
-        async with httpx.AsyncClient(timeout=httpx.Timeout(15)) as client:
-            r = await client.get(url, follow_redirects=True)
-        data = r.json()
-        abstract: str = data.get("AbstractText", "")
-        results: list[str] = []
-        if abstract:
-            results.append(abstract)
-        for topic in (data.get("RelatedTopics") or [])[:3]:
-            if isinstance(topic, dict) and topic.get("Text"):
-                results.append(topic["Text"])
-        if results:
-            return "\n".join(results)
-        return f"（搜索「{query}」未找到直接结果，请尝试更换关键词）"
-    except Exception as exc:
-        log_error(f"web search request failed for query={query}", exc)
-        return "（网络搜索暂时不可用，请稍后重试）"
+    # Bing search (unauthenticated, works in China) with DuckDuckGo fallback
+    backends = [
+        ("bing", _search_bing),
+        ("ddg", _search_duckduckgo),
+    ]
+    for name, fn in backends:
+        try:
+            result = await fn(query)
+            if result and result != "EMPTY":
+                return result
+            log_error(f"_web_search {name} returned empty", RuntimeError("empty"))
+        except Exception as exc:
+            log_error(f"_web_search {name} failed query={query[:40]}", exc)
+    return "（网络搜索暂时不可用，请稍后重试）"
+
+
+async def _search_bing(query: str) -> str:
+    """Bing web search via HTML scraping — no API key, works in China."""
+    encoded = urllib.parse.quote(query)
+    url = f"https://www.bing.com/search?q={encoded}&setlang=zh-cn"
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(12),
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        },
+    ) as client:
+        r = await client.get(url, follow_redirects=True)
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(r.content, "html.parser")
+    results: list[str] = []
+    for li in soup.select("li.b_algo, .b_results li, ol#b_results > li")[:6]:
+        title_el = li.select_one("h2 a, .b_title a")
+        snippet_el = li.select_one(".b_caption p, .b_lineclamp2, .b_algoSlug, p")
+        title = title_el.get_text(strip=True) if title_el else ""
+        snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+        if title:
+            results.append(f"{title}\n{snippet}" if snippet else title)
+    return "\n---\n".join(results) if results else "EMPTY"
+
+
+async def _search_duckduckgo(query: str) -> str:
+    """DuckDuckGo Instant Answer — free, works outside China."""
+    encoded = urllib.parse.quote(query)
+    url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_redirect=1"
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5)) as client:
+        r = await client.get(url, follow_redirects=True)
+    data = r.json()
+    results: list[str] = []
+    abstract: str = data.get("AbstractText", "")
+    if abstract:
+        results.append(abstract)
+    for topic in (data.get("RelatedTopics") or [])[:3]:
+        if isinstance(topic, dict) and topic.get("Text"):
+            results.append(topic["Text"])
+    if results:
+        return "\n".join(results)
+    return "EMPTY"
