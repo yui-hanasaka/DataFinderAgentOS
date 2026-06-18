@@ -1,19 +1,88 @@
 {% extends "base.html" %}
+{% block head_extra %}
+<style>
+.dw-tabs{display:flex;gap:4px;margin-bottom:16px}
+.dw-tab{padding:10px 24px;border-radius:10px 10px 0 0;background:var(--c-surface,rgba(255,255,255,0.5));color:var(--c-text-soft,#6b778c);font-size:14px;font-weight:500;text-decoration:none;border:1px solid transparent;transition:all var(--spring,.2s)}
+.dw-tab:hover{color:var(--c-accent,#6366f1);border-color:rgba(99,102,241,.15)}
+.dw-tab.active{background:var(--c-bg,rgba(255,255,255,0.8));color:var(--c-accent,#6366f1);font-weight:700;border-color:rgba(99,102,241,.2);border-bottom-color:transparent}
+[data-theme="dark"] .dw-tab{background:rgba(20,18,48,.5);color:rgba(180,180,210,.6)}
+[data-theme="dark"] .dw-tab:hover{color:#818cf8;border-color:rgba(129,140,248,.2)}
+[data-theme="dark"] .dw-tab.active{background:rgba(20,18,48,.8);color:#818cf8;border-color:rgba(129,140,248,.25)}
+.item-title-trunc{max-width:320px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+{% end %}
 {% block body %}
 <section class="admin-page-head">
 	<div>
 		<p>智能业务</p>
-		<h1>数据仓库</h1><span>管理预置 SQL 查询，供智能问数模块调用。</span>
+		<h1>数据仓库</h1><span>管理预置 SQL 查询，浏览与删除采集数据。</span>
 	</div>
-	<form class="admin-search" method="get" action="/admin/warehouse">
+</section>
+<div class="dw-tabs">
+	<a href="/admin/warehouse?tab=queries" class="dw-tab {{ 'active' if tab == 'queries' else '' }}"><i class="fa-solid fa-database"></i> 查询管理</a>
+	<a href="/admin/warehouse?tab=browse" class="dw-tab {{ 'active' if tab == 'browse' else '' }}"><i class="fa-solid fa-table-list"></i> 数据浏览</a>
+</div>
+{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
+{% if tab == 'browse' %}
+<section class="admin-table-card">
+	<div class="table-title"><strong>采集数据</strong><span>共 {{ items_total }} 条，每页 {{ per_page }} 条</span></div>
+	<form class="admin-search" method="get" action="/admin/warehouse" style="border-bottom:1px solid rgba(99,102,241,0.06);padding:14px 20px">
+		<input type="hidden" name="tab" value="browse">
+		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索标题/内容">
+		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
+		<a href="/admin/warehouse?tab=browse">重置</a>
+	</form>
+	<table class="admin-table">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>标题</th>
+				<th>来源</th>
+				<th>采集时间</th>
+				<th>情感</th>
+				<th>风险</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>
+		{% for item in items %}
+			<tr>
+				<td>{{ item['id'] }}</td>
+				<td><span class="item-title-trunc" title="{{ item['title'] }}">{{ item['title'] or '-' }}</span></td>
+				<td>{{ item['source_name'] or '-' }}</td>
+				<td>{{ item['collected_at'] or '-' }}</td>
+				<td>{{ item['sentiment'] or '-' }}</td>
+				<td>{{ item['risk'] or '-' }}</td>
+				<td class="table-actions">
+					<form method="post" action="/admin/warehouse" data-confirm="确认删除该采集数据？关联的深度采集内容也将一并删除。">
+						{% module xsrf_form_html() %}
+						<input type="hidden" name="action" value="delete_item">
+						<input type="hidden" name="id" value="{{ item['id'] }}">
+						<button type="submit">删除</button>
+					</form>
+				</td>
+			</tr>
+		{% end %}
+		{% if not items %}
+			<tr><td colspan="7" style="padding:24px;text-align:center;color:#999">暂无采集数据</td></tr>
+		{% end %}
+		</tbody>
+	</table>
+	<div class="admin-pagination">
+		{% if page > 1 %}<a href="/admin/warehouse?tab=browse&page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}
+		<span>第 {{ page }} 页</span>
+		{% if page * per_page < items_total %}<a href="/admin/warehouse?tab=browse&page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}
+	</div>
+</section>
+{% else %}
+<section class="admin-table-card">
+	<form class="admin-search" method="get" action="/admin/warehouse" style="border-bottom:1px solid rgba(99,102,241,0.06);padding:14px 20px">
+		<input type="hidden" name="tab" value="queries">
 		<input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索名称/分类">
 		<button type="submit"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button><a
-			href="/admin/warehouse">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i
+			href="/admin/warehouse?tab=queries">重置</a><button type="button" data-bs-toggle="modal" data-bs-target="#queryModal"><i
 				class="fa-solid fa-plus"></i> 新增查询</button>
 	</form>
-</section>
-{% if msg %}<div class="adm-message" style="margin-bottom:14px">{{ msg }}</div>{% end %}
-<section class="admin-table-card">
 	<div class="table-title"><strong>查询列表</strong><span>共 {{ total }} 条，每页 {{ per_page }} 条</span></div>
 	<table class="admin-table">
 		<thead>
@@ -30,7 +99,7 @@
 				<td>{{ q['name'] }}</td>
 				<td>{{ q['category'] or '-' }}</td>
 				<td>{{ q['description'] or '-' }}</td>
-				<td class="table-actions"><a href="/admin/warehouse?edit={{ q['id'] }}">查看/修改</a>
+				<td class="table-actions"><a href="/admin/warehouse?tab=queries&edit={{ q['id'] }}">查看/修改</a>
 					<button type="button" class="exec-saved-btn" data-id="{{ q['id'] }}">执行</button>
 					<form method="post" action="/admin/warehouse" data-confirm="确认删除该查询？">{% module xsrf_form_html() %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id"
 							value="{{ q['id'] }}"><button type="submit">删除</button></form>
@@ -38,9 +107,9 @@
 			</tr>{% end %}</tbody>
 	</table>
 	<div class="admin-pagination">{% if page > 1 %}<a
-			href="/admin/warehouse?page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
+			href="/admin/warehouse?tab=queries&page={{ page - 1 }}&keyword={{ keyword }}">上一页</a>{% end %}<span>第 {{ page }}
 			页</span>{% if page * per_page < total %}<a
-			href="/admin/warehouse?page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
+			href="/admin/warehouse?tab=queries&page={{ page + 1 }}&keyword={{ keyword }}">下一页</a>{% end %}</div>
 </section>
 <section class="admin-table-card" style="margin-top:20px">
 	<div class="table-title"><strong>执行查询</strong><span>输入 SQL 语句或点击列表中的"执行"按钮运行已保存的查询</span></div>
@@ -168,4 +237,5 @@
 	}
 })();
 </script>
+{% end %}{# end of queries tab #}
 {% end %}
