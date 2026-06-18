@@ -2408,8 +2408,8 @@ body {
 .admin-search input:focus,
 .adm-modal-body input:focus,
 .adm-modal-body select:focus {
-	border-color: var(--neon-cyan) !important;
-	box-shadow: 0 0 10px rgba(0, 242, 254, 0.3) !important;
+	border-color: #6366f1 !important;
+	box-shadow: 0 0 10px rgba(99, 102, 241, 0.25) !important;
 	outline: none;
 	transition: all 0.25s ease;
 }
@@ -2482,7 +2482,7 @@ body {
 	left: 80px;
 	background: rgba(10, 15, 30, 0.85);
 	backdrop-filter: blur(10px);
-	border: 1px solid rgba(0, 242, 254, 0.3);
+	border: 1px solid rgba(99, 102, 241, 0.3);
 	color: #fff;
 	padding: 6px 12px;
 	border-radius: 6px;
@@ -2492,7 +2492,7 @@ body {
 	opacity: 0;
 	transform: translateX(-10px);
 	transition: all 0.25s var(--spring-soft);
-	box-shadow: 0 4px 16px rgba(0, 242, 254, 0.15);
+	box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
 }
 .sidebar-tooltip.show {
 	opacity: 1;
@@ -2525,7 +2525,7 @@ body {
 	background: rgba(10, 15, 30, 0.8);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 16px;
-	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 242, 254, 0.1);
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(99, 102, 241, 0.08);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -2535,7 +2535,7 @@ body {
 
 .adm-cmd-overlay.show .adm-cmd-modal {
 	transform: scale(1) translateY(0);
-	border-color: rgba(0, 242, 254, 0.35);
+	border-color: rgba(99, 102, 241, 0.35);
 }
 
 .adm-cmd-search-wrapper {
@@ -2547,7 +2547,7 @@ body {
 }
 
 .adm-cmd-search-wrapper i {
-	color: var(--neon-cyan);
+	color: #818cf8;
 	font-size: 16px;
 }
 
@@ -2584,9 +2584,9 @@ body {
 }
 
 .adm-cmd-item.active, .adm-cmd-item:hover {
-	background: rgba(0, 242, 254, 0.15);
+	background: rgba(99, 102, 241, 0.15);
 	color: #fff;
-	text-shadow: 0 0 5px rgba(0, 242, 254, 0.5);
+	text-shadow: 0 0 5px rgba(99, 102, 241, 0.3);
 }
 
 .adm-cmd-item .cmd-badge {
@@ -2598,8 +2598,8 @@ body {
 }
 
 .adm-cmd-item.active .cmd-badge {
-	background: rgba(0, 242, 254, 0.25);
-	color: var(--neon-cyan);
+	background: rgba(99, 102, 241, 0.25);
+	color: #818cf8;
 }
 
 .adm-cmd-footer {
@@ -2627,8 +2627,8 @@ input, select, textarea {
 	transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 input:focus, select:focus, textarea:focus {
-	border-color: var(--neon-cyan) !important;
-	box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15), 0 0 10px rgba(0, 242, 254, 0.2) !important;
+	border-color: #6366f1 !important;
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), 0 0 8px rgba(99, 102, 241, 0.15) !important;
 	outline: none;
 }
 [data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus {

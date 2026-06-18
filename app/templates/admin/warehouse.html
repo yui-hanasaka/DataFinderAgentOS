@@ -51,7 +51,7 @@
   .filter-col input[type="text"]:focus,
   .filter-col input[type="date"]:focus,
   .filter-col select:focus {
-    border-color: var(--neon-cyan);
+    border-color: #6366f1;
     outline: none;
   }
   [data-theme="light"] .filter-col input[type="text"],
@@ -83,7 +83,7 @@
     color: var(--c-text-soft);
   }
   .slider-inputs input[type="range"] {
-    accent-color: var(--neon-cyan);
+    accent-color: #6366f1;
   }
 </style>
 {% end %}
@@ -152,7 +152,7 @@
 			</div>
 			
 			<div class="filter-col" style="flex: 2;">
-				<label>风险指数范围: <span id="riskRangeVal" style="color: var(--neon-cyan); font-weight: 600;">{{ risk_min }} - {{ risk_max }}</span></label>
+				<label>风险指数范围: <span id="riskRangeVal" style="color: #818cf8; font-weight: 600;">{{ risk_min }} - {{ risk_max }}</span></label>
 				<div class="slider-inputs">
 					<input type="range" name="risk_min" min="0" max="10" value="{{ risk_min }}" id="riskMinSlider" style="width: 45%;">
 					<span>-</span>
@@ -162,7 +162,7 @@
 			
 			<div class="filter-col" style="justify-content: flex-end; align-items: flex-end; flex-direction: row; gap: 8px;">
 				<a href="/admin/warehouse?tab=browse" class="btn btn-outline-secondary" style="padding: 8px 16px; font-size: 13px; text-decoration: none; border-radius: 8px; border: 1px solid rgba(139, 130, 255, 0.2); color: var(--c-text-soft);">重置</a>
-				<button type="submit" class="btn btn-primary" style="padding: 8px 24px; font-size: 13px; border-radius: 8px; background: var(--neon-cyan); border: none; color: #1a1735; font-weight: 600;"><i class="fa-solid fa-magnifying-glass"></i> 筛选</button>
+				<button type="submit" class="btn btn-primary" style="padding: 8px 24px; font-size: 13px; border-radius: 8px; background: #818cf8; border: none; color: #1a1735; font-weight: 600;"><i class="fa-solid fa-magnifying-glass"></i> 筛选</button>
 			</div>
 		</div>
 	</form>
@@ -173,16 +173,16 @@
 			<label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--c-text-soft);">
 				<input type="checkbox" id="selectAllCheckbox"> 全选
 			</label>
-			<span style="font-size: 13px; color: var(--c-text-soft); margin-left: 10px;">已选择 <strong id="selectedCount" style="color: var(--neon-cyan);">0</strong> 项</span>
+			<span style="font-size: 13px; color: var(--c-text-soft); margin-left: 10px;">已选择 <strong id="selectedCount" style="color: #818cf8;">0</strong> 项</span>
 		</div>
 		<div style="display: flex; gap: 8px;">
 			<button type="button" class="btn btn-sm" id="batchDeleteBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid #f87171; color: #f87171; background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
 				<i class="fa-solid fa-trash"></i> 批量删除
 			</button>
-			<button type="button" class="btn btn-sm" id="exportJsonBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
+			<button type="button" class="btn btn-sm" id="exportJsonBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid #818cf8; color: #818cf8; background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
 				<i class="fa-solid fa-file-code"></i> 导出选中 JSON
 			</button>
-			<button type="button" class="btn btn-sm" id="exportCsvBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
+			<button type="button" class="btn btn-sm" id="exportCsvBtn" disabled style="padding: 6px 12px; font-size: 12px; border: 1px solid #818cf8; color: #818cf8; background: transparent; border-radius: 6px; cursor: pointer; opacity: 0.5;">
 				<i class="fa-solid fa-file-csv"></i> 导出选中 CSV
 			</button>
 		</div>

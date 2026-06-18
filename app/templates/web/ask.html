@@ -1,119 +1,173 @@
 {% extends "base.html" %}
 {% block body %}
 <style>
-  body {
-    background: radial-gradient(ellipse at 50% 50%, #161233 0%, #0c0a1f 60%, #050410 100%) !important;
-    min-height: 100vh;
-    color: #e0e0f8;
-  }
-  .base {
-    background: transparent !important;
+  /* ═══════════════ CSS Variables (mirrors chat.html) ═══════════════ */
+  :root {
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --spring-soft: cubic-bezier(0.25, 1.2, 0.5, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --bg-card: rgba(20, 18, 48, 0.50);
+    --border: rgba(139, 130, 255, 0.10);
+    --border-light: rgba(139, 130, 255, 0.06);
+    --text: #e0e0f8;
+    --text-muted: #9090b8;
+    --bg-input: rgba(18, 16, 38, 0.6);
   }
 
+  [data-theme="light"] {
+    --bg-card: rgba(255, 255, 255, 0.55);
+    --border: rgba(99, 102, 241, 0.10);
+    --border-light: rgba(99, 102, 241, 0.06);
+    --text: #2d2a4a;
+    --text-muted: #6b6b8e;
+    --bg-input: rgba(255, 255, 255, 0.5);
+  }
+
+  /* ── Body ── */
+  body {
+    background: radial-gradient(ellipse at 20% 50%, #1e1b4b 0%, #0f0d22 40%, #09071a 100%) !important;
+    min-height: 100vh;
+    color: var(--text);
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", -apple-system, sans-serif;
+    transition: background 0.5s ease;
+  }
+  [data-theme="light"] body {
+    background: radial-gradient(ellipse at 20% 50%, #f2eeff 0%, #eae4fa 40%, #e0daf2 100%) !important;
+  }
+  .base { background: transparent !important; }
+
+  /* ── Theme Button ── */
+  .theme-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 130, 255, 0.25);
+    background: rgba(30, 26, 58, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    cursor: pointer;
+    font-size: 18px;
+    display: grid;
+    place-items: center;
+    transition: all var(--spring);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+  .theme-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.35), 0 4px 20px rgba(0, 0, 0, 0.4);
+    border-color: rgba(139, 130, 255, 0.5);
+  }
+  [data-theme="light"] .theme-btn {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6);
+  }
+  [data-theme="light"] .theme-btn:hover {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.25), 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ── Layout ── */
   .ask-wrap {
     max-width: 1000px;
     margin: 40px auto;
     padding: 0 16px;
   }
 
+  /* ── Card ── */
   .ask-card {
-    background: rgba(20, 18, 43, 0.75);
-    backdrop-filter: blur(35px) saturate(180%);
-    -webkit-backdrop-filter: blur(35px) saturate(180%);
-    border: 1px solid rgba(139, 130, 255, 0.1);
+    background: var(--bg-card);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 32px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+  }
+  [data-theme="light"] .ask-card {
+    box-shadow: 0 24px 64px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
+  /* ── Header ── */
   .ask-header {
     margin-bottom: 24px;
-    border-bottom: 1px solid rgba(139, 130, 255, 0.08);
+    border-bottom: 1px solid var(--border);
     padding-bottom: 16px;
   }
-
   .ask-header h2 {
     margin: 0 0 6px;
     font-size: 24px;
     font-weight: 700;
-    color: #fff;
-    letter-spacing: 0.05em;
+    color: var(--text);
+    letter-spacing: 0.04em;
   }
+  .ask-subtitle { margin: 0; font-size: 14px; color: var(--text-muted); }
 
-  .ask-subtitle {
-    margin: 0;
-    font-size: 14px;
-    color: #8b949e;
-  }
-
-  .query-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-
+  /* ── Input Row ── */
+  .query-row { display: flex; gap: 12px; margin-bottom: 24px; }
   .query-row input {
     flex: 1;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(139, 130, 255, 0.15);
-    border-radius: 10px;
-    color: #fff;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
     padding: 12px 18px;
     font-size: 15px;
-    transition: all 0.3s ease;
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: all var(--spring-soft);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
   }
-
-  .query-row input::placeholder {
-    color: #58588a;
-  }
-
+  .query-row input::placeholder { color: var(--text-muted); }
   .query-row input:focus {
     outline: none;
-    border-color: var(--neon-cyan);
-    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3), inset 0 2px 6px rgba(0, 0, 0, 0.2);
-    background: rgba(0, 0, 0, 0.35);
+    border-color: #6366f1;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.25), inset 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  [data-theme="light"] .query-row input:focus {
+    border-color: #6366f1;
   }
 
+  /* ── Button ── */
   .btn {
-    padding: 12px 24px;
+    padding: 12px 28px;
     background: linear-gradient(135deg, #6366f1, #7c3aed);
     color: #fff;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     font-weight: 600;
     cursor: pointer;
     font-size: 15px;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    transition: all var(--spring);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
   }
-
   .btn:hover {
     background: linear-gradient(135deg, #4f46e5, #6d28d9);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
     transform: translateY(-1px);
   }
-
   .btn:disabled {
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.2);
+    background: var(--border);
+    color: var(--text-muted);
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
   }
 
-  /* pipeline styling */
+  /* ── Pipeline ── */
   .pipeline-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin: 24px 0;
     padding: 20px;
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(139, 130, 255, 0.06);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
     border-radius: 14px;
+    transition: background 0.5s ease;
   }
-
   .pipeline-step {
     display: flex;
     flex-direction: column;
@@ -122,116 +176,86 @@
     flex: 1;
     text-align: center;
     opacity: 0.3;
-    transition: all 0.4s ease;
+    transition: all var(--spring-soft);
   }
-
-  .pipeline-step.active {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-
+  .pipeline-step.active { opacity: 1; transform: scale(1.08); }
   .pipeline-step.active .step-icon {
     background: rgba(0, 242, 254, 0.15);
     border-color: var(--neon-cyan);
     color: var(--neon-cyan);
     box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
   }
-
-  .pipeline-step.success {
-    opacity: 1;
-  }
-
+  .pipeline-step.success { opacity: 1; }
   .pipeline-step.success .step-icon {
     background: rgba(52, 211, 153, 0.15);
     border-color: var(--neon-green);
     color: var(--neon-green);
     box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
   }
-
-  .pipeline-step.error {
-    opacity: 1;
-  }
-
+  .pipeline-step.error { opacity: 1; }
   .pipeline-step.error .step-icon {
     background: rgba(239, 68, 68, 0.15);
     border-color: #f87171;
     color: #f87171;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
   }
-
   .step-icon {
-    width: 46px;
-    height: 46px;
+    width: 46px; height: 46px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid var(--border);
+    background: var(--bg-card);
     display: grid;
     place-items: center;
     font-size: 20px;
-    transition: all 0.3s ease;
+    transition: all var(--spring-soft);
   }
-
-  .step-label {
-    font-size: 11px;
-    color: #a0a0d0;
-    font-weight: 500;
-  }
-
+  .step-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
   .pipeline-arrow {
     font-size: 16px;
-    color: rgba(255, 255, 255, 0.1);
+    color: var(--border);
     margin-bottom: 20px;
     transition: color 0.4s ease;
   }
-
   .pipeline-arrow.active {
     color: var(--neon-cyan);
     text-shadow: 0 0 8px var(--neon-cyan);
   }
 
+  /* ── Loading ── */
   .loading {
     display: none;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: #c4b5fd;
+    color: var(--text-muted);
     font-size: 14px;
     margin: 24px 0;
     padding: 16px;
-    background: rgba(99, 102, 241, 0.05);
-    border: 1px dashed rgba(99, 102, 241, 0.2);
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
     border-radius: 12px;
-    animation: pulseBg 2s infinite alternate;
   }
-
-  @keyframes pulseBg {
-    from { background: rgba(99, 102, 241, 0.03); }
-    to { background: rgba(99, 102, 241, 0.08); }
-  }
-
   .loading-spinner {
-    width: 20px;
-    height: 20px;
+    width: 20px; height: 20px;
     border: 2.5px solid rgba(0, 242, 254, 0.2);
     border-top-color: var(--neon-cyan);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
+  /* ── Error ── */
   .error {
     color: #f87171;
     margin: 16px 0;
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.2);
     padding: 12px 18px;
     border-radius: 10px;
     font-size: 14px;
   }
 
+  /* ── Result Bar ── */
   .result-bar {
     display: flex;
     align-items: center;
@@ -239,79 +263,107 @@
     gap: 12px;
     margin: 24px 0 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(139, 130, 255, 0.08);
+    border-bottom: 1px solid var(--border);
   }
-
   .result-bar .btn-sm {
-    padding: 6px 14px;
-    font-size: 13px;
-    background: rgba(139, 130, 255, 0.08);
-    border: 1px solid rgba(139, 130, 255, 0.15);
-    color: #c4b5fd;
+    padding: 6px 14px; font-size: 13px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all var(--spring);
     box-shadow: none;
   }
   .result-bar .btn-sm:hover {
-    background: rgba(139, 130, 255, 0.2);
-    border-color: var(--neon-cyan);
-    color: #fff;
+    border-color: #6366f1;
+    color: var(--text);
     transform: translateY(-1px);
-    box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
   }
 
+  /* ── Table ── */
+  .table-wrapper {
+    border-radius: 14px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    margin-bottom: 24px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
   table {
     width: 100%;
-    border-collapse: separate;
+    border-collapse: collapse;
     border-spacing: 0;
-    border-radius: 12px;
-    overflow: hidden;
     font-size: 13px;
-    margin-bottom: 24px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(139, 130, 255, 0.1);
+    background: transparent;
+    border: none;
+    margin: 0;
   }
-
   th {
-    background: rgba(139, 130, 255, 0.12);
+    background: rgba(99, 102, 241, 0.12);
     color: #c4b5fd;
-    padding: 14px 16px;
+    padding: 14px 18px;
     text-align: left;
     font-weight: 600;
-    border-bottom: 1.5px solid rgba(139, 130, 255, 0.18);
-    letter-spacing: 0.02em;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
-
+  [data-theme="light"] th {
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    border-bottom-color: rgba(99, 102, 241, 0.2);
+  }
   td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(139, 130, 255, 0.06);
-    color: #e2e8f0;
-    transition: all 0.2s;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    transition: background 0.15s;
   }
-
-  tr:last-child td {
-    border-bottom: none;
+  /* Zebra striping */
+  tbody tr:nth-child(even) td {
+    background: rgba(99, 102, 241, 0.03);
   }
-
-  tr:hover td {
-    background: rgba(139, 130, 255, 0.06);
+  [data-theme="light"] tbody tr:nth-child(even) td {
+    background: rgba(99, 102, 241, 0.04);
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td {
+    background: rgba(99, 102, 241, 0.1) !important;
     color: #fff;
   }
+  [data-theme="light"] tbody tr:hover td {
+    background: rgba(99, 102, 241, 0.12) !important;
+    color: #2d2a4a;
+  }
 
+  /* ── Chart ── */
   #chart {
-    width: 100%;
-    height: 380px;
-    margin-top: 24px;
-    padding: 16px;
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(139, 130, 255, 0.06);
-    border-radius: 12px;
+    width: 100%; height: 400px;
+    margin-bottom: 24px;
+    padding: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
     display: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   }
 </style>
+
+<button class="theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换主题">🌙</button>
 
 <div class="ask-wrap">
   <div class="ask-card">
     <div class="ask-header">
-      <h2><i class="fa-solid fa-chart-line" style="color: var(--neon-cyan); margin-right: 8px;"></i>数据智能问答</h2>
+      <h2><i class="fa-solid fa-chart-line" style="color: #818cf8; margin-right: 8px;"></i>数据智能问答</h2>
       <p class="ask-subtitle">使用自然语言，即刻分析查询企业内部数据库</p>
     </div>
     <div class="query-row">
@@ -359,17 +411,17 @@
 
     <div id="resultArea"{% if not results %} style="display:none"{% end %}>
       <div class="result-bar">
-        <span id="rowCount" style="color:#a0a0d0;font-size:.88rem"></span>
-        <button class="btn btn-sm" onclick="renderChart()">生成图表</button>
-        <a id="csvLink" href="#" class="btn btn-sm" style="text-decoration:none;display:none">导出CSV</a>
+        <span id="rowCount" style="color:var(--text-muted);font-size:.88rem"></span>
+        <button class="btn btn-sm" onclick="renderChart()">📊 图表</button>
+        <a id="csvLink" href="#" class="btn btn-sm" style="text-decoration:none;display:none">📥 导出CSV</a>
       </div>
-      <div style="overflow-x:auto">
+      <div id="chart"></div>
+      <div class="table-wrapper">
         <table id="resultTable">
           <thead id="thead"></thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
-      <div id="chart"></div>
     </div>
   </div>
 </div>
@@ -381,9 +433,11 @@
   let currentColumns = _askInit.columns || [];
   let currentRows = _askInit.results || [];
 
+  // Init theme icon
+  if (typeof initThemeIcon === 'function') initThemeIcon('themeIcon');
+
   if (currentRows.length) {
     renderTable(currentColumns, currentRows);
-    // On load, since we already have results, light up all steps
     document.querySelectorAll('.pipeline-step').forEach(el => el.classList.add('success'));
     document.querySelectorAll('.pipeline-arrow').forEach(el => el.classList.add('active'));
   }
@@ -485,6 +539,13 @@
         renderTable(currentColumns, currentRows);
         document.getElementById('resultArea').style.display = 'block';
         buildCsvLink(currentColumns, currentRows);
+        // Auto-render chart if there are numeric columns
+        var hasNumeric = currentColumns.slice(1).some(function(c) {
+          return currentRows.some(function(r) { return !isNaN(parseFloat(r[c])); });
+        });
+        if (hasNumeric || currentColumns.length >= 2) {
+          setTimeout(function() { renderChart(); }, 300);
+        }
       }
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
@@ -531,54 +592,107 @@
     link.style.display = 'inline-block';
   }
 
+  var _chartInstance = null;
+
   function renderChart() {
     if (!currentRows.length || !currentColumns.length) return;
-    const chartEl = document.getElementById('chart');
+    var chartEl = document.getElementById('chart');
     chartEl.style.display = 'block';
-    const chart = echarts.init(chartEl);
-    const catCol = currentColumns[0];
-    const numCols = currentColumns.slice(1).filter(function (c) {
+
+    // Dispose old instance for clean re-render
+    if (_chartInstance) { _chartInstance.dispose(); }
+
+    var chart = echarts.init(chartEl);
+    _chartInstance = chart;
+
+    var catCol = currentColumns[0];
+    var numCols = currentColumns.slice(1).filter(function (c) {
       return currentRows.some(function (r) { return !isNaN(parseFloat(r[c])); });
     });
-    const colors = ['#00f2fe', '#a18cd1', '#ec4899', '#34d399', '#fbbf24'];
-    const series = numCols.map(function (c, idx) {
+
+    // If no numeric columns, pick second column and try harder
+    if (!numCols.length && currentColumns.length >= 2) {
+      numCols = [currentColumns[1]];
+    }
+
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    var colors = isLight
+      ? ['#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']
+      : ['#00f2fe', '#a18cd1', '#ec4899', '#34d399', '#fbbf24'];
+    var textColor = isLight ? '#4d4a70' : '#c4b5fd';
+    var axisColor = isLight ? 'rgba(99,102,241,0.25)' : 'rgba(139,130,255,0.25)';
+    var gridColor = isLight ? 'rgba(99,102,241,0.08)' : 'rgba(139,130,255,0.08)';
+    var tooltipBg = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20,18,48,0.95)';
+    var tooltipBorder = isLight ? 'rgba(99,102,241,0.25)' : 'rgba(0,242,254,0.25)';
+    var tooltipText = isLight ? '#2d2a4a' : '#e0e0f8';
+
+    var series = numCols.map(function (c, idx) {
+      var color = colors[idx % colors.length];
       return {
         name: c,
         type: 'bar',
-        itemStyle: {
-          color: colors[idx % colors.length],
-          borderRadius: [4, 4, 0, 0]
+        barWidth: '50%',
+        emphasis: {
+          itemStyle: { shadowBlur: 12, shadowColor: color, shadowOffsetX: 0 }
         },
-        data: currentRows.map(function (r) { return parseFloat(r[c]) || 0; })
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: color },
+            { offset: 1, color: isLight ? colors[idx % colors.length] + '88' : colors[idx % colors.length] + '44' }
+          ]),
+          borderRadius: [6, 6, 0, 0]
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: textColor,
+          fontSize: 11,
+          fontWeight: 600
+        },
+        data: currentRows.map(function (r) {
+          var v = parseFloat(r[c]);
+          return isNaN(v) ? 0 : v;
+        })
       };
     });
+
     chart.setOption({
       backgroundColor: 'transparent',
+      grid: { left: '3%', right: '4%', bottom: '12%', top: '15%', containLabel: true },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(15, 13, 34, 0.85)',
-        borderColor: 'rgba(0, 242, 254, 0.3)',
-        textStyle: { color: '#fff' }
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: 1,
+        textStyle: { color: tooltipText, fontSize: 13 },
+        axisPointer: { type: 'shadow', shadowStyle: { color: gridColor } }
       },
       legend: {
         data: numCols,
-        textStyle: { color: '#e0e0f8' }
+        bottom: 0,
+        textStyle: { color: textColor, fontSize: 12 },
+        itemWidth: 12, itemHeight: 12, itemGap: 20
       },
       xAxis: {
         type: 'category',
-        data: currentRows.map(function (r) { return r[catCol]; }),
-        axisLine: { lineStyle: { color: 'rgba(139, 130, 255, 0.2)' } },
-        axisLabel: { color: '#a0a0d0' }
+        data: currentRows.map(function (r) { return String(r[catCol] != null ? r[catCol] : ''); }),
+        axisLine: { lineStyle: { color: axisColor } },
+        axisTick: { show: false },
+        axisLabel: { color: textColor, fontSize: 11, rotate: currentRows.length > 6 ? 30 : 0 }
       },
       yAxis: {
         type: 'value',
-        splitLine: { lineStyle: { color: 'rgba(139, 130, 255, 0.06)' } },
-        axisLine: { lineStyle: { color: 'rgba(139, 130, 255, 0.2)' } },
-        axisLabel: { color: '#a0a0d0' }
+        splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: textColor, fontSize: 11 }
       },
       series: series
     });
+
     window.addEventListener('resize', function () { chart.resize(); });
+    // Scroll chart into view
+    chartEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 </script>
 {% end %}
