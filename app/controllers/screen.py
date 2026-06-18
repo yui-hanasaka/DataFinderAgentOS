@@ -170,6 +170,7 @@ def _collect_stats() -> dict[str, object]:
 
 class BaiduLinkRedirectHandler(tornado.web.RequestHandler):
     """Handler to redirect local 404 relative Baidu /link?url=... urls back to www.baidu.com"""
+
     def get(self) -> None:
         uri = self.request.uri or ""
         target_url = "https://www.baidu.com" + uri

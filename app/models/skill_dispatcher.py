@@ -275,7 +275,7 @@ async def _search_bing(query: str) -> str:
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/125.0.0.0 Safari/537.36"
+                "Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0"
             ),
             "Accept-Language": "zh-CN,zh;q=0.9",
         },

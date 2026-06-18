@@ -690,6 +690,7 @@ class WatchtowerScraper:
 
         # Normalize relative URLs to absolute URLs using page URL origin
         from urllib.parse import urlparse
+
         try:
             parsed = urlparse(url)
             origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -736,6 +737,7 @@ class WatchtowerScraper:
 
                 # Normalize relative URLs to absolute URLs using page URL origin
                 from urllib.parse import urlparse
+
                 try:
                     parsed = urlparse(url)
                     origin = f"{parsed.scheme}://{parsed.netloc}"
