@@ -163,7 +163,15 @@ async def _deep_collect(url: str) -> str:
                 content_str = "\n".join(
                     lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
                 )
-            result = json.loads(content_str)
+            if not content_str:
+                content_str = "{}"
+            try:
+                result = json.loads(content_str)
+            except json.JSONDecodeError:
+                from app.models.deep import _repair_truncated_json
+
+                content_str = _repair_truncated_json(content_str)
+                result = json.loads(content_str)
             summary = str(result.get("summary", text[:200]))
             keywords = json.dumps(list(result.get("keywords", [])), ensure_ascii=False)
             sentiment = str(result.get("sentiment", ""))

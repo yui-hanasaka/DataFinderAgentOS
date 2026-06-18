@@ -28,7 +28,7 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
             "type": "skill",
             "skill_code": "music",
             "processed_content": _music_html(),
-            "skill_meta": {},
+            "skill_meta": {"skill_code": "music"},
         }
 
     m = re.match(r"^@西师妹\s*(.*)", text.strip())

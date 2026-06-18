@@ -23,4 +23,4 @@ def setup_logging() -> None:
 
 
 def log_error(context: str, exc: Exception) -> None:
-    logger.opt(exception=exc).error("{} — {}", context, exc)
+    logger.error("{} — {}", context, exc)
