@@ -164,6 +164,18 @@
 
   .btn-glass:active { transform: scale(.97) }
 
+  .model-info-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: #a0a0d0; padding: 2px 10px;
+    border-radius: 999px; background: rgba(99,102,241,.08);
+    border: 1px solid rgba(139,130,255,.1); white-space: nowrap;
+  }
+  .model-info-tag span { color: #818cf8; font-weight: 600; }
+  [data-theme="light"] .model-info-tag {
+    color: #5d5a80; background: rgba(99,102,241,.04); border-color: rgba(99,102,241,.06);
+  }
+  [data-theme="light"] .model-info-tag span { color: #6366f1; }
+
   .emp-select-glass {
     width: 100%;
     padding: 10px 12px;
@@ -818,6 +830,9 @@
         </div>
       </div>
 
+      <div style="display:flex;align-items:center;padding:0 0 6px">
+        <span class="model-info-tag" id="modelInfoTag">🤖 <span></span></span>
+      </div>
       <div class="glass-input-row">
         <textarea id="msgInput"
           placeholder="输入消息… Enter 发送，Shift+Enter 换行" rows="1"
@@ -839,6 +854,21 @@
   initThemeIcon('themeIcon');
   document.querySelectorAll('.glass-msg.assistant[data-md]').forEach(function(el) {
     el.innerHTML = renderSafeMarkdown(el.textContent);
+  });
+
+  // Show current employee's bound model name
+  (function updateModelTag() {
+    var sel = document.getElementById('empSelect');
+    var opt = sel && sel.options[sel.selectedIndex];
+    var mn = (opt && opt.dataset.modelName) || '';
+    var span = document.querySelector('#modelInfoTag span');
+    if (span) span.textContent = mn || '';
+  })();
+  document.getElementById('empSelect').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var mn = (opt && opt.dataset.modelName) || '';
+    var span = document.querySelector('#modelInfoTag span');
+    if (span) span.textContent = mn || '';
   });
 
   function getCookie(name) {
@@ -1142,7 +1172,7 @@
           if (item.album) h += '<span style="font-size:0.8em;color:var(--text-muted)">' + escHtml(item.album) + '</span>';
           h += '</a>';
           if (sid) {
-            h += '<audio controls src="https://music.163.com/song/media/outer/url?id=' + escHtml(sid) + '.mp3" style="width:100%;height:36px;margin-top:4px" preload="none"></audio>';
+            h += '<iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width="100%" height="66" src="https://music.163.com/outchain/player?type=2&id=' + escHtml(sid) + '&auto=0&height=66" style="margin-top:4px;border-radius:6px"></iframe>';
           }
           h += '</div>';
         });
