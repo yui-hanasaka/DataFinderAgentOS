@@ -1073,6 +1073,183 @@
   [data-theme="light"] .tool-card-body .tool-args { background: rgba(99,102,241,.03); color: #6b67a0; }
   [data-theme="light"] .tool-card-body .tool-result { background: rgba(52,211,153,.03); border-color: rgba(52,211,153,.06); color: #4d4a70; }
 
+  /* ── Custom Audio Player ── */
+  .custom-audio-player {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 380px;
+    box-sizing: border-box;
+  }
+  
+  [data-theme="light"] .custom-audio-player {
+    background: rgba(99, 102, 241, 0.04);
+    border-color: rgba(99, 102, 241, 0.08);
+  }
+
+  .audio-cover {
+    width: 54px;
+    height: 54px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid rgba(139, 130, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+    transition: transform 0.5s ease;
+  }
+  
+  .custom-audio-player.playing .audio-cover {
+    animation: rotateCover 8s linear infinite;
+  }
+  
+  @keyframes rotateCover {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .audio-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .audio-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  [data-theme="light"] .audio-title {
+    color: #2d2a4a;
+  }
+
+  .audio-artist {
+    font-size: 11px;
+    color: #a0a0c8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  [data-theme="light"] .audio-artist {
+    color: #6b67a0;
+  }
+
+  .audio-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .audio-play-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    color: #fff;
+    font-size: 10px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .audio-play-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.6);
+  }
+
+  .audio-progress-container {
+    flex: 1;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .audio-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  [data-theme="light"] .audio-progress-bar {
+    background: rgba(99, 102, 241, 0.15);
+  }
+
+  .audio-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  .audio-time {
+    font-size: 11px;
+    color: #a5b4fc;
+    font-family: 'Consolas', 'Fira Code', 'SF Mono', monospace;
+    font-weight: 500;
+    flex-shrink: 0;
+    min-width: 75px;
+    text-align: right;
+  }
+  
+  [data-theme="light"] .audio-time {
+    color: #4f46e5;
+  }
+
+  /* ── Audio Wave Bars Equalizer ── */
+  .audio-wave-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  .audio-wave-bars .bar {
+    width: 2px;
+    height: 3px;
+    background-color: var(--neon-cyan);
+    border-radius: 1px;
+    transition: height 0.2s ease;
+  }
+  
+  .custom-audio-player.playing .audio-wave-bars .bar {
+    animation: audioWaveBounce 0.8s ease infinite alternate;
+  }
+
+  .custom-audio-player.playing .audio-wave-bars .bar:nth-child(1) { animation-delay: 0.1s; background-color: #00f2fe; }
+  .custom-audio-player.playing .audio-wave-bars .bar:nth-child(2) { animation-delay: 0.3s; background-color: #4facfe; }
+  .custom-audio-player.playing .audio-wave-bars .bar:nth-child(3) { animation-delay: 0.15s; background-color: #6366f1; }
+  .custom-audio-player.playing .audio-wave-bars .bar:nth-child(4) { animation-delay: 0.4s; background-color: #7c3aed; }
+  .custom-audio-player.playing .audio-wave-bars .bar:nth-child(5) { animation-delay: 0.2s; background-color: #a18cd1; }
+
+  @keyframes audioWaveBounce {
+    0% { height: 3px; }
+    100% { height: 12px; }
+  }
+
 </style>
 
 <div class="glass-shell">
@@ -1535,7 +1712,7 @@
                 _bubbleText += parsed.content || '';
                 _currentBubble.innerHTML = renderSafeMarkdown(_bubbleText);
                 scrollBottom();
-              } else if (parsed.type === 'music_html') {
+              } else if (parsed.type === 'music_audio') {
                 const typing = document.getElementById('typingMsg');
                 if (typing) typing.remove();
 
@@ -1544,9 +1721,57 @@
                   _currentBubble.classList.remove('thinking');
                 }
 
-                appendTelemetryLog('stream', '渲染音乐卡片组件');
+                appendTelemetryLog('stream', '解码并渲染音频播放组件: ' + parsed.title);
                 var musicBubble = appendAssistantMsg('');
-                musicBubble.innerHTML = parsed.html || '';
+
+                var blobUrl = '';
+                try {
+                  var binaryString = window.atob(parsed.base64);
+                  var len = binaryString.length;
+                  var bytes = new Uint8Array(len);
+                  for (var i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  var blob = new Blob([bytes], { type: 'audio/' + (parsed.format || 'mp3') });
+                  blobUrl = URL.createObjectURL(blob);
+                } catch (b64Err) {
+                  appendTelemetryLog('system', '音频数据解码失败: ' + b64Err.message);
+                }
+
+                if (!blobUrl) {
+                  musicBubble.innerHTML = '<div style="padding:10px;color:#f87171">❌ 音频解码失败</div>';
+                } else {
+                  musicBubble.innerHTML = `
+                    <div class="custom-audio-player">
+                      <img class="audio-cover" src="${parsed.cover_url || ''}" alt="cover" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R300x300M000003y847F0W8xJm_1.jpg'" />
+                      <div class="audio-info">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                          <div class="audio-title">${escHtml(parsed.title || '未知歌曲')}</div>
+                          <div class="audio-wave-bars">
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                          </div>
+                        </div>
+                        <div class="audio-artist">${escHtml(parsed.artist || '未知歌手')}</div>
+                        <div class="audio-controls-row">
+                          <button class="audio-play-btn">▶</button>
+                          <div class="audio-progress-container">
+                            <div class="audio-progress-bar">
+                              <div class="audio-progress-fill" style="width: 0%"></div>
+                            </div>
+                          </div>
+                          <div class="audio-time">0:00 / 0:00</div>
+                        </div>
+                      </div>
+                      <audio class="hidden-audio" src="${blobUrl}"></audio>
+                    </div>
+                  `;
+                  var playerDiv = musicBubble.querySelector('.custom-audio-player');
+                  initCustomAudioPlayer(playerDiv);
+                }
 
                 _currentBubble = null;
                 _bubbleText = '';
@@ -1761,22 +1986,156 @@
   });
 
   function playMusic(songId, title, artist) {
-    var info = title;
-    if (artist) info += ' — ' + artist;
     var bubble = document.createElement('div');
     bubble.className = 'glass-msg assistant';
+    bubble.style.minWidth = '300px';
     bubble.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-        '<span style="font-size:18px">🎵</span>' +
-        '<span style="font-weight:600;font-size:14px;color:var(--text)">' + escHtml(info) + '</span>' +
-      '</div>' +
-      '<iframe frameborder="no" border="0" marginwidth="0" marginheight="0" ' +
-        'width="100%" height="80" ' +
-        'src="https://music.163.com/outchain/player?type=2&id=' + escHtml(songId) + '&auto=1&height=66" ' +
-        'style="border-radius:8px">' +
-      '</iframe>';
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px;color:var(--text-muted)">' +
+        '<span style="font-size:18px;animation:toolRadarSpin 1.2s linear infinite;display:inline-block">🎵</span>' +
+        '<span>正在获取 "' + escHtml(title) + '" 音频直链...</span>' +
+      '</div>';
     document.getElementById('messages').appendChild(bubble);
     scrollBottom();
+
+    const detailUrl = 'https://music.chinokou.cn/song/detail?ids=' + songId;
+    const playUrl = 'https://music.chinokou.cn/song/url?id=' + songId;
+
+    Promise.all([
+      fetch(detailUrl).then(r => r.json()).catch(() => ({})),
+      fetch(playUrl).then(r => r.json()).catch(() => ({}))
+    ]).then(results => {
+      const detail = results[0];
+      const urlData = results[1];
+
+      let coverUrl = '';
+      if (detail.songs && detail.songs.length) {
+        const al = detail.songs[0].al || {};
+        coverUrl = al.picUrl || '';
+        if (coverUrl && coverUrl.indexOf('?') === -1) {
+          coverUrl += '?param=300y300';
+        }
+        title = detail.songs[0].name || title;
+        const arList = detail.songs[0].ar || [];
+        artist = arList.map(a => a.name).join(', ') || artist;
+      }
+
+      let audioUrl = '';
+      if (urlData.data && urlData.data.length) {
+        audioUrl = urlData.data[0].url || '';
+      }
+
+      if (!audioUrl) {
+        bubble.innerHTML =
+          '<div style="padding:10px;color:#f87171">' +
+            '❌ 无法播放该歌曲，可能无版权或无法获取音频链接' +
+          '</div>';
+        return;
+      }
+
+      bubble.innerHTML = `
+        <div class="custom-audio-player">
+          <img class="audio-cover" src="${coverUrl || ''}" alt="cover" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R300x300M000003y847F0W8xJm_1.jpg'" />
+          <div class="audio-info">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div class="audio-title">${escHtml(title)}</div>
+              <div class="audio-wave-bars">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+              </div>
+            </div>
+            <div class="audio-artist">${escHtml(artist)}</div>
+            <div class="audio-controls-row">
+              <button class="audio-play-btn">▶</button>
+              <div class="audio-progress-container">
+                <div class="audio-progress-bar">
+                  <div class="audio-progress-fill" style="width: 0%"></div>
+                </div>
+              </div>
+              <div class="audio-time">0:00 / 0:00</div>
+            </div>
+          </div>
+          <audio class="hidden-audio" src="${audioUrl}" crossorigin="anonymous"></audio>
+        </div>
+      `;
+      const playerDiv = bubble.querySelector('.custom-audio-player');
+      initCustomAudioPlayer(playerDiv);
+      scrollBottom();
+    }).catch(err => {
+      bubble.innerHTML =
+        '<div style="padding:10px;color:#f87171">' +
+          '❌ 获取音频直链失败: ' + escHtml(err.message) +
+        '</div>';
+    });
+  }
+
+  function initCustomAudioPlayer(playerDiv) {
+    const audio = playerDiv.querySelector('.hidden-audio');
+    const playBtn = playerDiv.querySelector('.audio-play-btn');
+    const progressFill = playerDiv.querySelector('.audio-progress-fill');
+    const progressContainer = playerDiv.querySelector('.audio-progress-container');
+    const timeDisplay = playerDiv.querySelector('.audio-time');
+
+    function formatTime(secs) {
+      if (isNaN(secs) || secs === Infinity) return '0:00';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    playBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (audio.paused) {
+        document.querySelectorAll('.hidden-audio').forEach(other => {
+          if (other !== audio) {
+            other.pause();
+            const parent = other.closest('.custom-audio-player');
+            if (parent) {
+              parent.classList.remove('playing');
+              const btn = parent.querySelector('.audio-play-btn');
+              if (btn) btn.textContent = '▶';
+            }
+          }
+        });
+        audio.play().catch(() => {});
+        playBtn.textContent = '⏸';
+        playerDiv.classList.add('playing');
+      } else {
+        audio.pause();
+        playBtn.textContent = '▶';
+        playerDiv.classList.remove('playing');
+      }
+    });
+
+    audio.addEventListener('timeupdate', function() {
+      const cur = audio.currentTime;
+      const dur = audio.duration || 0;
+      const pct = dur > 0 ? (cur / dur) * 100 : 0;
+      progressFill.style.width = pct + '%';
+      timeDisplay.textContent = formatTime(cur) + ' / ' + formatTime(dur);
+    });
+
+    audio.addEventListener('loadedmetadata', function() {
+      timeDisplay.textContent = '0:00 / ' + formatTime(audio.duration);
+    });
+
+    audio.addEventListener('ended', function() {
+      playBtn.textContent = '▶';
+      playerDiv.classList.remove('playing');
+      progressFill.style.width = '0%';
+    });
+
+    progressContainer.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const rect = progressContainer.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      const dur = audio.duration || 0;
+      if (dur > 0) {
+        audio.currentTime = pct * dur;
+      }
+    });
   }
 
   function appendToolCard(evt) {

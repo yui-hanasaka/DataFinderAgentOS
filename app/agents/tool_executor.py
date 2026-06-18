@@ -614,24 +614,154 @@ async def _music_search(query: str) -> str:
         return json.dumps({"error": f"音乐搜索失败: {exc}"}, ensure_ascii=False)
 
 
-def _music_play(song_id: int, title: str = "", artist: str = "") -> str:
-    """Generate Netease official iframe player HTML."""
-    iframe = (
-        f'<iframe frameborder="no" border="0" marginwidth="0" marginheight="0" '
-        f'width="100%" height="86" '
-        f'src="//music.163.com/outchain/player?type=2&amp;id={song_id}&amp;auto=1&amp;height=66">'
-        f"</iframe>"
-    )
-    return json.dumps(
-        {
-            "song_id": song_id,
-            "title": title,
-            "artist": artist,
-            "html": iframe,
-            "hint": "播放器已生成，请在界面中查看。",
-        },
-        ensure_ascii=False,
-    )
+async def _music_detail(song_id: int) -> str:
+    """Get song detail including cover art URL via chinokou.cn."""
+    try:
+        url = f"https://music.chinokou.cn/song/detail?ids={song_id}"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+            r = await client.get(url)
+        if r.status_code != 200:
+            return json.dumps(
+                {"error": f"歌曲详情查询返回 {r.status_code}"},
+                ensure_ascii=False,
+            )
+        data = r.json()
+        songs = data.get("songs") or []
+        if not songs:
+            return json.dumps(
+                {"error": f"未找到歌曲 ID={song_id} 的详情"},
+                ensure_ascii=False,
+            )
+        s = songs[0]
+        al = s.get("al") or {}
+        ar_list = s.get("ar") or [{}]
+        cover_url = al.get("picUrl") or ""
+        # Apply image resize param for consistent size
+        if cover_url and "?" not in cover_url:
+            cover_url = f"{cover_url}?param=300y300"
+        return json.dumps(
+            {
+                "song_id": s.get("id"),
+                "title": s.get("name", ""),
+                "artist": ", ".join(a.get("name", "") for a in ar_list),
+                "album": al.get("name", ""),
+                "cover_url": cover_url,
+                "duration_ms": int(s.get("dt") or 0),
+                "duration_sec": int(s.get("dt") or 0) // 1000,
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        log_error(f"tool_executor music_detail song_id={song_id}", exc)
+        return json.dumps({"error": f"歌曲详情查询失败: {exc}"}, ensure_ascii=False)
+
+
+async def _music_play(song_id: int, title: str = "", artist: str = "") -> str:
+    """Download audio via chinokou.cn song/url, base64-encode, return to frontend."""
+    if not song_id:
+        return json.dumps({"error": "请提供歌曲ID"}, ensure_ascii=False)
+    try:
+        import base64
+
+        # 1. Get audio URL from song/url
+        url_api = f"https://music.chinokou.cn/song/url?id={song_id}"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+            r = await client.get(url_api)
+        if r.status_code != 200:
+            return json.dumps(
+                {"error": f"获取音频地址返回 {r.status_code}"},
+                ensure_ascii=False,
+            )
+        url_data = r.json()
+        url_entries = url_data.get("data") or []
+        if not url_entries:
+            return json.dumps(
+                {"error": "未获取到音频下载地址，可能无版权"},
+                ensure_ascii=False,
+            )
+        audio_url = url_entries[0].get("url", "")
+        if not audio_url:
+            return json.dumps(
+                {"error": "音频链接为空，可能无版权或需登录"},
+                ensure_ascii=False,
+            )
+        br = url_entries[0].get("br", 0)
+        content_type = url_entries[0].get("type", "mp3")
+
+        # 2. Download audio
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(30),
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                ),
+                "Referer": "https://music.163.com/",
+            },
+            follow_redirects=True,
+        ) as client:
+            audio_resp = await client.get(audio_url)
+        if audio_resp.status_code != 200:
+            return json.dumps(
+                {"error": f"下载音频失败 HTTP {audio_resp.status_code}"},
+                ensure_ascii=False,
+            )
+        audio_bytes = audio_resp.content
+        audio_size = len(audio_bytes)
+
+        # 3. Get cover art from song/detail
+        cover_url = ""
+        try:
+            detail_url = f"https://music.chinokou.cn/song/detail?ids={song_id}"
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+                detail_r = await client.get(detail_url)
+            if detail_r.status_code == 200:
+                detail_data = detail_r.json()
+                songs = detail_data.get("songs") or []
+                if songs:
+                    s = songs[0]
+                    title = s.get("name") or title
+                    al = s.get("al") or {}
+                    cover_url = al.get("picUrl") or ""
+                    if cover_url and "?" not in cover_url:
+                        cover_url = f"{cover_url}?param=300y300"
+                    ar_list = s.get("ar") or [{}]
+                    artist = artist or ", ".join(a.get("name", "") for a in ar_list)
+        except Exception:
+            pass  # detail fetch is best-effort; play still works without it
+
+        # 4. Base64 encode
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+
+        # 5. Save to workspace for persistence
+        from app.agents.code_sandbox import _ensure_workspace, _WORKSPACE_ROOT
+
+        _ensure_workspace()
+        ext = content_type if content_type else "mp3"
+        out_path = _WORKSPACE_ROOT / "output" / f"song_{song_id}.{ext}"
+        out_path.write_bytes(audio_bytes)
+
+        return json.dumps(
+            {
+                "song_id": song_id,
+                "title": title,
+                "artist": artist,
+                "cover_url": cover_url,
+                "audio_base64": audio_b64,
+                "format": content_type,
+                "bitrate": br,
+                "size_bytes": audio_size,
+                "hint": (
+                    f"音频已下载并base64编码（{audio_size // 1024}KB）。"
+                    "前端可通过解码base64创建Blob URL播放。"
+                ),
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        log_error(f"tool_executor music_play song_id={song_id}", exc)
+        return json.dumps({"error": f"播放失败: {exc}"}, ensure_ascii=False)
 
 
 def _env_info() -> str:
@@ -690,8 +820,10 @@ async def execute(name: str, args: dict[str, Any]) -> str:
             )
         case "music_search":
             return await _music_search(str(args.get("query", "")))
+        case "music_detail":
+            return await _music_detail(int(args.get("song_id", 0)))
         case "music_play":
-            return _music_play(
+            return await _music_play(
                 int(args.get("song_id", 0)),
                 str(args.get("title", "")),
                 str(args.get("artist", "")),

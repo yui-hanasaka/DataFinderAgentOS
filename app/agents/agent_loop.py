@@ -213,28 +213,37 @@ async def run(
             else:
                 result = f"工具调用已拒绝: {rev.reason}"
 
+            # music_play returns audio base64 — emit as music_audio event
+            # so the frontend can decode and play (bypasses markdown)
+            if name == "music_play" and rev.approved:
+                try:
+                    data = json.loads(result)
+                    audio_b64 = data.get("audio_base64", "")
+                    if audio_b64:
+                        await stream_cb(
+                            "music_audio",
+                            {
+                                "song_id": data.get("song_id"),
+                                "title": data.get("title", ""),
+                                "artist": data.get("artist", ""),
+                                "cover_url": data.get("cover_url", ""),
+                                "base64": audio_b64,
+                                "format": data.get("format", "mp3"),
+                                "size_bytes": data.get("size_bytes", 0),
+                            },
+                        )
+                        # Remove base64 payload to avoid cluttering tool card logs / LLM context
+                        clean_data = dict(data)
+                        clean_data.pop("audio_base64", None)
+                        result = json.dumps(clean_data, ensure_ascii=False)
+                except (json.JSONDecodeError, Exception):
+                    pass
+
             await stream_cb(
                 "tool_result",
                 {"name": name, "content": result, "call_id": call_id},
             )
 
-            # music_play returns iframe HTML — emit as music_html event
-            # so the frontend renders it directly (bypasses markdown)
-            if name == "music_play" and rev.approved:
-                try:
-                    data = json.loads(result)
-                    html = data.get("html", "")
-                    if html:
-                        await stream_cb(
-                            "music_html",
-                            {
-                                "html": html,
-                                "title": data.get("title", ""),
-                                "artist": data.get("artist", ""),
-                            },
-                        )
-                except (json.JSONDecodeError, Exception):
-                    pass
             messages.append(
                 {"role": "tool", "tool_call_id": call_id, "content": result}
             )

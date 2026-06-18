@@ -203,10 +203,31 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "music_detail",
+            "description": (
+                "获取歌曲详细信息，包括封面图URL、时长、歌手头像等。"
+                "在播放歌曲前可调用此工具获取封面图用于前端展示。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "song_id": {
+                        "type": "integer",
+                        "description": "歌曲ID（从 music_search 结果中获取）",
+                    },
+                },
+                "required": ["song_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "music_play",
             "description": (
-                "根据歌曲ID生成网易云音乐官方播放器iframe。"
-                "用户确认要播放某首歌后调用此工具展示播放器。"
+                "播放指定歌曲。获取音频下载链接，下载音频文件并转为base64传输到前端。"
+                "返回封面图URL、音频base64数据、歌曲信息。"
+                "用户确认要播放某首歌后调用此工具。"
             ),
             "parameters": {
                 "type": "object",
