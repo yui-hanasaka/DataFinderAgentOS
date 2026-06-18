@@ -34,16 +34,20 @@ class AdminDbMigrationHandler(AdminBaseHandler):
             msg=self._message(),
         )
 
-    def post(self) -> None:
+    async def post(self) -> None:
         action = self.get_body_argument("action", "")
         if action == "export_schema":
-            return self._export_schema()
+            self._export_schema()
+            return
         if action == "migrate_data":
-            return self._migrate_data()
+            await self._migrate_data()
+            return
         if action == "switch_to_mysql":
-            return self._switch_to_mysql()
+            self._switch_to_mysql()
+            return
         if action == "switch_to_sqlite":
-            return self._switch_to_sqlite()
+            self._switch_to_sqlite()
+            return
         self.set_status(400)
         self.write({"error": "未知操作"})
 
