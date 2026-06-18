@@ -33,12 +33,33 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
     m = re.match(r"^@(?:weather|天气)\s+(.+)", text.strip(), re.IGNORECASE)
     if m:
         city = m.group(1).strip()
-        result = await _weather(city, keys.get("weather"))
         return {
-            "type": "skill",
+            "type": "ai",
             "skill_code": "weather",
-            "processed_content": result,
-            "skill_meta": {"city": city},
+            "processed_content": f"查询{city}天气",
+            "skill_meta": {
+                "inject_prompt": (
+                    f"{_time_context()}\n\n"
+                    f"请使用 weather_query 工具查询「{city}」的实时天气，"
+                    f"然后以友好的语气展示结果。"
+                ),
+            },
+        }
+
+    m2 = re.match(r"^@(?:music|音乐)\s+(.+)", text.strip(), re.IGNORECASE)
+    if m2:
+        query = m2.group(1).strip()
+        return {
+            "type": "ai",
+            "skill_code": "music",
+            "processed_content": f"搜索歌曲：{query}",
+            "skill_meta": {
+                "inject_prompt": (
+                    f"请使用 music_search 工具搜索「{query}」的歌曲。"
+                    f"返回结果后，列出歌曲让用户选择（每条显示序号、歌名、歌手）。"
+                    f"等用户告诉你想听哪首后，使用 music_play 工具播放。"
+                ),
+            },
         }
 
     if re.match(r"^@(?:music|音乐)\b", text.strip(), re.IGNORECASE):
@@ -57,7 +78,12 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
             "skill_code": "campus",
             "processed_content": question,
             "skill_meta": {
-                "system_override": "你是西南师范大学的校园助手「西师妹」，请用友好活泼的语气回答校园相关问题。"
+                "system_override": (
+                    "你是西南师范大学的校园助手「西师妹」，请用友好活泼的语气回答校园相关问题。"
+                    "重要：当用户询问实时信息、新闻、天气、动态等内容时，必须先使用工具搜索，"
+                    "展示'正在查找相关信息…'，然后调用 web_search / code_execute 获取信息，"
+                    "最后基于搜索结果回答。不要在没有搜索的情况下直接说找不到。"
+                ),
             },
         }
 
@@ -65,16 +91,28 @@ async def dispatch(text: str, api_keys: dict[str, str] | None = None) -> Dispatc
     if m:
         query = m.group(1).strip()
         snippets = await _web_search(query, keys.get("websearch"))
+        if "不可用" in snippets or "未找到" in snippets:
+            # Pre-search failed — instruct the Agent to use its own tools instead
+            inject_prompt = (
+                f"{_time_context()}\n\n"
+                f"请使用 web_search 工具搜索：{query}\n"
+                "如果 web_search 返回空，请用 code_execute 编写 Python 爬虫，"
+                "向 Bing (https://www.bing.com/search?q=关键词) 或 Baidu "
+                "(https://www.baidu.com/s?wd=关键词) 发送 httpx 请求，用 BeautifulSoup 解析结果。"
+                "请先展示'正在搜索相关信息…'，然后调用工具，不要直接说搜不到。"
+            )
+        else:
+            inject_prompt = (
+                f"{_time_context()}\n\n"
+                f"以下是网络搜索结果：\n{snippets}\n\n请基于以上信息回答：{query}"
+            )
         return {
             "type": "ai",
             "skill_code": "websearch",
             "processed_content": query,
             "skill_meta": {
                 "search_results": snippets,
-                "inject_prompt": (
-                    f"{_time_context()}\n\n"
-                    f"以下是网络搜索结果：\n{snippets}\n\n请基于以上信息回答：{query}"
-                ),
+                "inject_prompt": inject_prompt,
             },
         }
 
@@ -258,11 +296,35 @@ async def _web_search(query: str, _api_key: str | None = None) -> str:
         try:
             result = await fn(query)
             if result and result != "EMPTY":
+                # Validate: Bing sometimes returns anti-bot filler (wholly
+                # irrelevant English results for a Chinese query).  If every
+                # result block contains zero CJK characters while the query
+                # does, treat it as garbage and fall through.
+                if name == "bing" and _bing_results_are_garbage(result, query):
+                    log_error(
+                        f"_web_search {name} garbage results — falling through",
+                        RuntimeError("garbage"),
+                    )
+                    continue
                 return result
             log_error(f"_web_search {name} returned empty", RuntimeError("empty"))
         except Exception as exc:
             log_error(f"_web_search {name} failed query={query[:40]}", exc)
     return "（网络搜索暂时不可用，请稍后重试）"
+
+
+def _bing_results_are_garbage(results: str, query: str) -> bool:
+    """Detect Bing anti-bot filler (all-English results for a CJK query)."""
+    import re
+
+    has_cjk = bool(re.search(r"[一-鿿]", query))
+    if not has_cjk:
+        return False
+    blocks = results.split("\n---\n")
+    if not blocks:
+        return False
+    # If every block is CJK-free, it's almost certainly anti-bot filler
+    return all(not re.search(r"[一-鿿]", b) for b in blocks)
 
 
 async def _search_bing(query: str) -> str:

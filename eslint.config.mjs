@@ -39,6 +39,7 @@ export default [
                 initThemeIcon: "readonly",
                 renderSafeMarkdown: "readonly",
                 escapeHtml: "readonly",
+                AbortController: "readonly",
             },
         },
         rules: {

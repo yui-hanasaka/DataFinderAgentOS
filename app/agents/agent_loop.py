@@ -105,10 +105,27 @@ async def run(
 
     Returns the full text reply.
     """
-    # Inject time context for tool-use awareness (only agent path, not normal chat)
+    # Inject time context + web scraping guidance for tool-use awareness
     from app.models.skill_dispatcher import _time_context
 
-    time_msg = {"role": "system", "content": _time_context()}
+    search_guidance = (
+        "【搜索策略 — 重要】web_search 工具可能因反爬虫机制返回空结果。"
+        "当你发现 web_search 返回空或失败时，请直接用 code_execute 编写 Python 爬虫：\n"
+        "1. **直接向搜索引擎官网发请求**：用 httpx 构造搜索URL并请求，"
+        "示例 — Bing: https://www.bing.com/search?q=关键词, "
+        "Baidu: https://www.baidu.com/s?wd=关键词, "
+        "DuckDuckGo: https://html.duckduckgo.com/html/?q=关键词\n"
+        "2. **解析搜索结果**：用 BeautifulSoup 提取标题、摘要、链接，返回结构化数据\n"
+        "3. **抓取具体网页**：先用 web_fetch 下载目标 URL 的 HTML 到工作区，"
+        "再用 code_execute + BeautifulSoup 解析提取正文内容\n"
+        "4. httpx 已预配置 Edge UA 和中文 Accept-Language，可绕过大部分反爬；"
+        "如需更高级的反反爬（Cookie、Referer、延迟），可在代码中自行设置\n"
+        "5. 文件保存在工作区目录，跨轮次持久化，可逐步处理大型网站"
+    )
+    time_msg = {
+        "role": "system",
+        "content": _time_context() + "\n\n" + search_guidance,
+    }
     if messages and messages[0]["role"] == "system":
         messages.insert(1, time_msg)
     else:
@@ -200,6 +217,24 @@ async def run(
                 "tool_result",
                 {"name": name, "content": result, "call_id": call_id},
             )
+
+            # music_play returns iframe HTML — emit as music_html event
+            # so the frontend renders it directly (bypasses markdown)
+            if name == "music_play" and rev.approved:
+                try:
+                    data = json.loads(result)
+                    html = data.get("html", "")
+                    if html:
+                        await stream_cb(
+                            "music_html",
+                            {
+                                "html": html,
+                                "title": data.get("title", ""),
+                                "artist": data.get("artist", ""),
+                            },
+                        )
+                except (json.JSONDecodeError, Exception):
+                    pass
             messages.append(
                 {"role": "tool", "tool_call_id": call_id, "content": result}
             )

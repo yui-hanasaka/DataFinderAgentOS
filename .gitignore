@@ -221,5 +221,8 @@ __marimo__/
 database/
 dist/
 
+# Agent workspace (temp scripts, downloads, output)
+temp/
+
 # ESLint
 node_modules/

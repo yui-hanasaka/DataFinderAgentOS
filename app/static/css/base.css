@@ -2441,9 +2441,11 @@ body {
 
 .adm-sidebar.collapsed .adm-brand strong,
 .adm-sidebar.collapsed .adm-brand span,
+.adm-sidebar.collapsed .adm-brand div,
 .adm-sidebar.collapsed .adm-nav-label,
 .adm-sidebar.collapsed .adm-nav a span.nav-text,
 .adm-sidebar.collapsed .adm-sidebar-footer span.adm-user,
+.adm-sidebar.collapsed .adm-sidebar-footer form,
 .adm-sidebar.collapsed .adm-sidebar-footer form button {
 	display: none !important;
 }
@@ -2460,6 +2462,7 @@ body {
 .adm-sidebar.collapsed .adm-nav a {
 	justify-content: center;
 	padding: 10px 0 !important;
+	font-size: 0 !important;
 }
 
 .adm-sidebar.collapsed .adm-nav a .nav-icon {

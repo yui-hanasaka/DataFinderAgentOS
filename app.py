@@ -166,9 +166,19 @@ def app() -> tornado.web.Application:
     )
 
 
+def _init_agent_workspace() -> None:
+    """Create persistent workspace directories for agent scripts and downloads."""
+    from pathlib import Path
+
+    root = Path(__file__).parent / "temp" / "agent_workspace"
+    for sub in ("scripts", "downloads", "output"):
+        (root / sub).mkdir(parents=True, exist_ok=True)
+
+
 if __name__ == "__main__":
     init_db()
     setup_logging()
+    _init_agent_workspace()
     application = app()
     server = HTTPServer(
         application,

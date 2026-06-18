@@ -14,6 +14,83 @@ from app.models.errors import log_error
 from app.models.validators import is_safe_public_url
 
 
+async def _web_fetch(url: str, save_html: bool = True) -> str:
+    """Download a URL's HTML content and save to agent workspace.
+
+    Returns JSON with file_path, content_preview, content_length, status_code.
+    The agent can then use code_execute + BeautifulSoup to parse the saved file.
+    """
+    if not url or not is_safe_public_url(url):
+        return json.dumps(
+            {"error": "URL 不安全，拒绝访问内网地址", "url": url},
+            ensure_ascii=False,
+        )
+
+    import time as _time
+    from urllib.parse import urlparse as _urlparse
+
+    from app.agents.code_sandbox import _ensure_workspace, _WORKSPACE_ROOT
+
+    _ensure_workspace()
+    downloads_dir = _WORKSPACE_ROOT / "downloads"
+
+    parsed = _urlparse(url)
+    host = (parsed.hostname or "unknown").replace(".", "_")
+    ts = str(int(_time.time() * 1_000_000))
+    filename = f"{host}_{ts}.html"
+    filepath = downloads_dir / filename
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(15),
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            },
+            follow_redirects=True,
+        ) as client:
+            r = await client.get(url)
+        content = r.text
+        content_type = r.headers.get("content-type", "")
+
+        preview = content[:3000]
+        if save_html:
+            filepath.write_text(content, encoding="utf-8")
+            saved_path = str(filepath)
+        else:
+            saved_path = ""
+
+        return json.dumps(
+            {
+                "url": url,
+                "status_code": r.status_code,
+                "content_type": content_type,
+                "content_length": len(content),
+                "file_path": saved_path,
+                "content_preview": preview,
+                "hint": (
+                    "HTML已保存到工作区。"
+                    "请用 code_execute 工具编写 BeautifulSoup 脚本解析此文件，"
+                    f"文件路径: {saved_path}"
+                    if saved_path
+                    else "HTML未保存。请用 code_execute 工具直接分析 content_preview。"
+                ),
+            },
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        log_error(f"tool_executor web_fetch url={url[:60]}", exc)
+        return json.dumps(
+            {"error": f"下载失败: {exc}", "url": url},
+            ensure_ascii=False,
+        )
+
+
 async def _web_search(query: str, max_results: int = 5) -> str:
     """Web search with Bing+DDG fallback chain — works in China."""
 
@@ -74,10 +151,31 @@ async def _web_search(query: str, max_results: int = 5) -> str:
         try:
             result = await fn()
             if result:
+                # Bing anti-bot garbage detector: if query is CJK but all
+                # results are CJK-free, treat as empty and fall through.
+                if name == "bing" and _bing_garbage(result, query):
+                    log_error(
+                        f"tool_executor web_search {name} garbage — falling through",
+                        RuntimeError("garbage"),
+                    )
+                    continue
                 return result
         except Exception as exc:
             log_error(f"tool_executor web_search {name}", exc)
     return "搜索暂时不可用，请稍后重试"
+
+
+def _bing_garbage(results: str, query: str) -> bool:
+    """True when Bing returned anti-bot filler (zero CJK in any block
+    for a query that contains CJK characters)."""
+    import re
+
+    if not re.search(r"[一-鿿]", query):
+        return False
+    blocks = [b for b in results.split("\n\n") if b.strip()]
+    if not blocks:
+        return False
+    return all(not re.search(r"[一-鿿]", b) for b in blocks)
 
 
 def _fetch_url_sync(url: str) -> str:
@@ -356,6 +454,186 @@ async def _warehouse_query(question: str) -> str:
         return f"查询失败: {exc}"
 
 
+async def _weather_query(
+    city: str = "",
+    adcode: str = "",
+    forecast: bool = True,
+    hourly: bool = True,
+    minutely: bool = True,
+    indices: bool = True,
+    lang: str = "zh",
+) -> str:
+    """Query weather via uapis.cn free API — no key required.
+
+    Supports: city name, adcode, or auto-IP-location (when both empty).
+    Returns all modules by default (extended, forecast, hourly, minutely, indices).
+    """
+    try:
+        import urllib.parse
+
+        params = []
+        if adcode.strip():
+            params.append(f"adcode={urllib.parse.quote(adcode.strip())}")
+        elif city.strip():
+            params.append(f"city={urllib.parse.quote(city.strip())}")
+        # else: neither → auto IP location
+
+        params.append("extended=true")
+        if forecast:
+            params.append("forecast=true")
+        if hourly:
+            params.append("hourly=true")
+        if minutely:
+            params.append("minutely=true")
+        if indices:
+            params.append("indices=true")
+        if lang and lang != "zh":
+            params.append(f"lang={urllib.parse.quote(lang)}")
+
+        url = f"https://uapis.cn/api/v1/misc/weather?{'&'.join(params)}"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+            r = await client.get(url)
+        if r.status_code == 404:
+            loc = adcode or city or "当前IP位置"
+            return json.dumps(
+                {"error": f"未找到「{loc}」的天气数据，请检查城市名称或行政区划代码"},
+                ensure_ascii=False,
+            )
+        if r.status_code != 200:
+            return json.dumps(
+                {"error": f"天气服务返回 {r.status_code}，请稍后重试"},
+                ensure_ascii=False,
+            )
+        data = r.json()
+
+        # Build a concise but complete response
+        result: dict[str, Any] = {
+            "location": {
+                "province": data.get("province", ""),
+                "city": data.get("city", ""),
+                "district": data.get("district", ""),
+                "adcode": data.get("adcode", ""),
+            },
+            "current": {
+                "weather": data.get("weather", ""),
+                "weather_icon": data.get("weather_icon", ""),
+                "temperature": data.get("temperature"),
+                "feels_like": data.get("feels_like"),
+                "humidity": data.get("humidity"),
+                "wind_direction": data.get("wind_direction", ""),
+                "wind_power": data.get("wind_power", ""),
+                "visibility": data.get("visibility"),
+                "pressure": data.get("pressure"),
+                "uv": data.get("uv"),
+                "precipitation": data.get("precipitation"),
+                "cloud": data.get("cloud"),
+                "report_time": data.get("report_time", ""),
+            },
+        }
+
+        # Air quality
+        if data.get("aqi") is not None:
+            result["air_quality"] = {
+                "aqi": data.get("aqi"),
+                "level": data.get("aqi_level"),
+                "category": data.get("aqi_category", ""),
+                "primary_pollutant": data.get("aqi_primary", ""),
+                "pollutants": data.get("air_pollutants"),
+            }
+
+        # Weather alerts
+        alerts = data.get("alerts")
+        if alerts:
+            result["alerts"] = alerts
+
+        # Daily temperature range
+        if data.get("temp_max") is not None:
+            result["today_range"] = {
+                "temp_max": data.get("temp_max"),
+                "temp_min": data.get("temp_min"),
+            }
+
+        # 7-day forecast
+        if forecast and data.get("forecast"):
+            result["forecast"] = data["forecast"]
+
+        # 24-hour hourly forecast
+        if hourly and data.get("hourly_forecast"):
+            result["hourly_forecast"] = data["hourly_forecast"]
+
+        # Minute-level precipitation
+        if minutely and data.get("minutely_precip"):
+            result["minutely_precip"] = data["minutely_precip"]
+
+        # 18 life indices
+        if indices and data.get("life_indices"):
+            result["life_indices"] = data["life_indices"]
+
+        return json.dumps(result, ensure_ascii=False)
+    except Exception as exc:
+        loc = adcode or city or "auto"
+        log_error(f"tool_executor weather_query loc={loc}", exc)
+        return json.dumps({"error": f"天气查询失败: {exc}"}, ensure_ascii=False)
+
+
+async def _music_search(query: str) -> str:
+    """Search songs via chinokou.cn Netease API."""
+    if not query.strip():
+        return json.dumps({"error": "请提供搜索关键词"}, ensure_ascii=False)
+    try:
+        import urllib.parse
+
+        encoded = urllib.parse.quote(query.strip())
+        url = f"https://music.chinokou.cn/cloudsearch?keywords={encoded}"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10)) as client:
+            r = await client.get(url)
+        if r.status_code != 200:
+            return json.dumps(
+                {"error": f"音乐搜索返回 {r.status_code}，请稍后重试"},
+                ensure_ascii=False,
+            )
+        data = r.json()
+        songs = []
+        raw_songs = (data.get("result") or {}).get("songs") or []
+        for s in raw_songs[:10]:
+            ar = (s.get("ar") or [{}])[0].get("name", "")
+            songs.append(
+                {
+                    "id": s.get("id"),
+                    "title": s.get("name", ""),
+                    "artist": ar,
+                    "album": (s.get("al") or {}).get("name", ""),
+                }
+            )
+        return json.dumps(
+            {"query": query, "count": len(songs), "songs": songs},
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        log_error(f"tool_executor music_search query={query}", exc)
+        return json.dumps({"error": f"音乐搜索失败: {exc}"}, ensure_ascii=False)
+
+
+def _music_play(song_id: int, title: str = "", artist: str = "") -> str:
+    """Generate Netease official iframe player HTML."""
+    iframe = (
+        f'<iframe frameborder="no" border="0" marginwidth="0" marginheight="0" '
+        f'width="100%" height="86" '
+        f'src="//music.163.com/outchain/player?type=2&amp;id={song_id}&amp;auto=1&amp;height=66">'
+        f"</iframe>"
+    )
+    return json.dumps(
+        {
+            "song_id": song_id,
+            "title": title,
+            "artist": artist,
+            "html": iframe,
+            "hint": "播放器已生成，请在界面中查看。",
+        },
+        ensure_ascii=False,
+    )
+
+
 def _env_info() -> str:
     info = [f"Python {sys.version}", f"平台: {sys.platform}"]
     pkgs = [
@@ -385,6 +663,11 @@ async def execute(name: str, args: dict[str, Any]) -> str:
             )
         case "code_execute":
             return await sandbox_execute(str(args.get("code", "")))
+        case "web_fetch":
+            return await _web_fetch(
+                str(args.get("url", "")),
+                bool(args.get("save_html", True)),
+            )
         case "watchtower_search":
             return _watchtower_search(
                 str(args.get("keywords", "")), int(args.get("limit", 20))
@@ -395,5 +678,23 @@ async def execute(name: str, args: dict[str, Any]) -> str:
             return await _deep_collect(str(args.get("url", "")))
         case "env_info":
             return _env_info()
+        case "weather_query":
+            return await _weather_query(
+                str(args.get("city", "")),
+                str(args.get("adcode", "")),
+                bool(args.get("forecast", True)),
+                bool(args.get("hourly", True)),
+                bool(args.get("minutely", True)),
+                bool(args.get("indices", True)),
+                str(args.get("lang", "zh")),
+            )
+        case "music_search":
+            return await _music_search(str(args.get("query", "")))
+        case "music_play":
+            return _music_play(
+                int(args.get("song_id", 0)),
+                str(args.get("title", "")),
+                str(args.get("artist", "")),
+            )
         case _:
             return f"未知工具: {name}"

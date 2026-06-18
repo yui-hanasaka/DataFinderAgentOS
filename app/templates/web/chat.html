@@ -363,7 +363,7 @@
   .glass-msg.assistant {
     align-self: flex-start;
     color: #d0d0f0;
-    background: rgba(23, 21, 46, .8);
+    background: linear-gradient(135deg, rgba(23, 21, 46, .8) 0%, rgba(139, 130, 255, 0.05) 100%);
     backdrop-filter: blur(28px) saturate(150%);
     -webkit-backdrop-filter: blur(28px) saturate(150%);
     border: 1px solid rgba(139, 130, 255, .1);
@@ -380,9 +380,9 @@
 
   /* ── Typing indicator ── */
   .typing-indicator { display: flex; gap: 6px; padding: 4px 2px; align-items: center; }
-  .typing-indicator span { width: 7px; height: 7px; border-radius: 50%; background: #818cf8; animation: typingDot 1.4s infinite; box-shadow: 0 0 6px rgba(129, 140, 248, .4); }
-  .typing-indicator span:nth-child(2) { animation-delay: .2s }
-  .typing-indicator span:nth-child(3) { animation-delay: .4s }
+  .typing-indicator span.typing-dot { width: 7px; height: 7px; border-radius: 50%; background: #818cf8; animation: typingDot 1.4s infinite; box-shadow: 0 0 6px rgba(129, 140, 248, .4); }
+  .typing-indicator span.typing-dot:nth-child(2) { animation-delay: .2s }
+  .typing-indicator span.typing-dot:nth-child(3) { animation-delay: .4s }
 
   /* ═══════════════ Input Area — Deep Glass ═══════════════ */
   .glass-input-area {
@@ -610,10 +610,11 @@
     flex: 1;
     overflow-y: auto;
     list-style: none;
-    font-size: 10px;
-    line-height: 1.5;
+    font-size: 11px;
+    line-height: 1.6;
     padding-right: 4px;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Consolas', 'Fira Code', 'SF Mono', 'Courier New', monospace;
+    font-weight: 500;
   }
   
   .console-log-list::-webkit-scrollbar { width: 3px; }
@@ -624,22 +625,22 @@
     white-space: pre-wrap;
     margin-bottom: 4px;
     display: block;
-    opacity: 0.9;
+    opacity: 0.95;
     animation: logFadeIn 0.25s ease-out both;
   }
   
   @keyframes logFadeIn {
     from { opacity: 0; transform: translateY(3px); }
-    to { opacity: 0.9; transform: translateY(0); }
+    to { opacity: 0.95; transform: translateY(0); }
   }
   
-  .console-item.router { color: #818cf8; }
-  .console-item.engine { color: #a18cd1; }
-  .console-item.tool { color: var(--neon-cyan); }
-  .console-item.safety { color: var(--neon-yellow); }
-  .console-item.output { color: var(--neon-green); }
-  .console-item.stream { color: var(--neon-pink); }
-  .console-item.system { color: #6b6b9e; }
+  .console-item.router { color: #a5b4fc; }
+  .console-item.engine { color: #d8b4fe; }
+  .console-item.tool { color: #67e8f9; }
+  .console-item.safety { color: #fde047; }
+  .console-item.output { color: #86efac; }
+  .console-item.stream { color: #f472b6; }
+  .console-item.system { color: #cbd5e1; }
 
   /* ── Typing Animation Wave ── */
   .typing-wave {
@@ -670,12 +671,25 @@
   }
   
   .typing-text {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--neon-cyan);
-    font-family: monospace;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
     letter-spacing: 0.05em;
     text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
     white-space: nowrap;
+    font-weight: 600;
+  }
+
+  @keyframes gradientFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes assistantGlow {
+    0% { border-color: rgba(139, 130, 255, 0.1); box-shadow: 0 8px 28px rgba(0, 0, 0, .2); }
+    50% { border-color: rgba(99, 102, 241, 0.4); box-shadow: 0 0 15px rgba(99, 102, 241, 0.15), 0 8px 28px rgba(0, 0, 0, .2); }
+    100% { border-color: rgba(139, 130, 255, 0.1); box-shadow: 0 8px 28px rgba(0, 0, 0, .2); }
   }
 
   /* ── Assistant Bubble Streaming Glow ── */
@@ -684,9 +698,73 @@
     50% { border-color: rgba(0, 242, 254, 0.4); box-shadow: 0 0 15px rgba(0, 242, 254, 0.15), 0 8px 28px rgba(0, 0, 0, .2); }
     100% { border-color: rgba(139, 130, 255, 0.1); box-shadow: 0 8px 28px rgba(0, 0, 0, .2); }
   }
+
+  @keyframes toolGlow {
+    0% { border-color: rgba(0, 242, 254, 0.25); box-shadow: 0 0 6px rgba(0, 242, 254, 0.1), 0 6px 20px rgba(0,0,0,.15); }
+    50% { border-color: rgba(0, 242, 254, 0.5); box-shadow: 0 0 15px rgba(0, 242, 254, 0.25), 0 6px 20px rgba(0,0,0,.15); }
+    100% { border-color: rgba(0, 242, 254, 0.25); box-shadow: 0 0 6px rgba(0, 242, 254, 0.1), 0 6px 20px rgba(0,0,0,.15); }
+  }
+
+  @keyframes toolGlowLight {
+    0% { border-color: rgba(99, 102, 241, 0.2); box-shadow: 0 0 6px rgba(99, 102, 241, 0.08), 0 6px 20px rgba(99, 102, 241, 0.04); }
+    50% { border-color: rgba(99, 102, 241, 0.45); box-shadow: 0 0 15px rgba(99, 102, 241, 0.2), 0 6px 20px rgba(99, 102, 241, 0.04); }
+    100% { border-color: rgba(99, 102, 241, 0.2); box-shadow: 0 0 6px rgba(99, 102, 241, 0.08), 0 6px 20px rgba(99, 102, 241, 0.04); }
+  }
+
+  @keyframes streamingGlowLight {
+    0% { border-color: rgba(99, 102, 241, 0.15); box-shadow: 0 8px 28px rgba(99, 102, 241, .04); }
+    50% { border-color: rgba(99, 102, 241, 0.45); box-shadow: 0 0 15px rgba(99, 102, 241, 0.18), 0 8px 28px rgba(99, 102, 241, .04); }
+    100% { border-color: rgba(99, 102, 241, 0.15); box-shadow: 0 8px 28px rgba(99, 102, 241, .04); }
+  }
+
+  @keyframes assistantGlowLight {
+    0% { border-color: rgba(99, 102, 241, 0.15); box-shadow: 0 8px 28px rgba(99, 102, 241, .04); }
+    50% { border-color: rgba(99, 102, 241, 0.4); box-shadow: 0 0 15px rgba(99, 102, 241, 0.15), 0 8px 28px rgba(99, 102, 241, .04); }
+    100% { border-color: rgba(99, 102, 241, 0.15); box-shadow: 0 8px 28px rgba(99, 102, 241, .04); }
+  }
   
   .glass-msg.assistant.streaming {
-    animation: streamingGlow 1.5s infinite ease-in-out;
+    background: linear-gradient(135deg, rgba(23, 21, 46, .8) 0%, rgba(99, 102, 241, 0.12) 50%, rgba(23, 21, 46, .8) 100%);
+    background-size: 200% 200%;
+    animation: gradientFlow 3s ease infinite, streamingGlow 1.5s infinite ease-in-out;
+  }
+  
+  .glass-msg.assistant.thinking {
+    background: linear-gradient(135deg, rgba(23, 21, 46, .8) 0%, rgba(0, 242, 254, 0.12) 50%, rgba(23, 21, 46, .8) 100%);
+    background-size: 200% 200%;
+    animation: gradientFlow 3s ease infinite, assistantGlow 2s infinite ease-in-out;
+  }
+
+  /* Light Theme overrides for streaming/thinking */
+  [data-theme="light"] .glass-msg.assistant.streaming {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .75) 0%, rgba(99, 102, 241, 0.15) 50%, rgba(255, 255, 255, .75) 100%);
+    background-size: 200% 200%;
+    animation: gradientFlow 3s ease infinite, streamingGlowLight 1.5s infinite ease-in-out;
+    border-color: rgba(99, 102, 241, 0.2);
+  }
+  
+  [data-theme="light"] .glass-msg.assistant.thinking {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .75) 0%, rgba(0, 242, 254, 0.12) 50%, rgba(255, 255, 255, .75) 100%);
+    background-size: 200% 200%;
+    animation: gradientFlow 3s ease infinite, assistantGlowLight 2s infinite ease-in-out;
+    border-color: rgba(99, 102, 241, 0.15);
+  }
+
+  /* Active Tool Card High-tech Background Flow */
+  .tool-card:not(.completed) {
+    background: linear-gradient(135deg, rgba(20, 18, 44, .75) 0%, rgba(0, 242, 254, 0.12) 50%, rgba(20, 18, 44, .75) 100%);
+    background-size: 200% 200%;
+    border-color: rgba(0, 242, 254, 0.35);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.15), 0 6px 20px rgba(0,0,0,.15);
+    animation: msgSlideUp .45s var(--spring-soft), gradientFlow 3s ease infinite, toolGlow 2s infinite ease-in-out;
+  }
+
+  [data-theme="light"] .tool-card:not(.completed) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, .72) 0%, rgba(99, 102, 241, 0.12) 50%, rgba(255, 255, 255, .72) 100%);
+    background-size: 200% 200%;
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.12), 0 6px 20px rgba(99, 102, 241, 0.04);
+    animation: msgSlideUp .45s var(--spring-soft), gradientFlow 3s ease infinite, toolGlowLight 2s infinite ease-in-out;
   }
 
   /* ── Tool Card High-tech Spinners ── */
@@ -886,7 +964,7 @@
   [data-theme="light"] .glass-session.active { background: linear-gradient(135deg, rgba(99, 102, 241, .08), rgba(139, 92, 246, .04)); border-color: rgba(99, 102, 241, .15); color: #2d2a4a; box-shadow: 0 4px 18px rgba(99, 102, 241, .06), inset 0 1px 0 rgba(255, 255, 255, .3); }
   [data-theme="light"] .chat-theme-btn { border-color: rgba(99, 102, 241, .15); background: rgba(99, 102, 241, .04); color: #b08830 }
   [data-theme="light"] .chat-theme-btn:hover { border-color: rgba(99, 102, 241, .3); background: rgba(99, 102, 241, .1) }
-  [data-theme="light"] .glass-msg.assistant { background: rgba(255, 255, 255, .72); backdrop-filter: blur(28px) saturate(150%); border-color: rgba(99, 102, 241, .05); color: #3d3a60; box-shadow: 0 8px 28px rgba(99, 102, 241, .04), inset 0 1px 0 rgba(255, 255, 255, .5); }
+  [data-theme="light"] .glass-msg.assistant { background: linear-gradient(135deg, rgba(255, 255, 255, .72) 0%, rgba(99, 102, 241, 0.04) 100%); backdrop-filter: blur(28px) saturate(150%); border-color: rgba(99, 102, 241, .05); color: #3d3a60; box-shadow: 0 8px 28px rgba(99, 102, 241, .04), inset 0 1px 0 rgba(255, 255, 255, .5); }
   [data-theme="light"] .glass-msg strong { color: #6366f1 }
   [data-theme="light"] .glass-msg pre { background: rgba(99, 102, 241, .04); border-color: rgba(99, 102, 241, .06) }
   [data-theme="light"] .glass-input-area { background: rgba(255, 255, 255, .7); backdrop-filter: blur(40px) saturate(180%); border-top-color: rgba(99, 102, 241, .04); box-shadow: 0 -8px 48px rgba(99, 102, 241, .05), inset 0 1px 0 rgba(255, 255, 255, .4); }
@@ -982,15 +1060,7 @@
   }
   .tool-card-body .tool-review.approved { color: #52d89a; background: rgba(52,211,153,.06); }
   .tool-card-body .tool-review.denied { color: #f87171; background: rgba(248,113,113,.06); }
-  .tool-spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid rgba(139,130,255,.15);
-    border-top-color: #818cf8;
-    border-radius: 50%;
-    animation: spin .7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+
   .tool-card.completed .tool-status { color: #52d89a; }
 
   /* Light theme — tool cards */
@@ -1418,10 +1488,7 @@
         try { var j = JSON.parse(errBody); if (j.error) errMsg = j.error; } catch (e2) { /* not json */ }
         throw new Error(errMsg);
       }
-      const typing = document.getElementById('typingMsg');
-      if (typing) typing.remove();
-      var _currentBubble = appendAssistantMsg('');
-      _currentBubble.classList.add('streaming');
+      var _currentBubble = null;
       var _bubbleText = '';
 
       const reader = resp.body.getReader();
@@ -1444,11 +1511,21 @@
             try {
               var parsed = JSON.parse(payload);
               if (parsed.type === 'text') {
+                const typing = document.getElementById('typingMsg');
+                if (typing) typing.remove();
+
                 if (_newTurn) {
-                  _currentBubble = appendAssistantMsg('');
-                  _currentBubble.classList.add('streaming');
+                  if (_currentBubble) {
+                    _currentBubble.classList.remove('streaming');
+                    _currentBubble.classList.remove('thinking');
+                  }
+                  _currentBubble = null;
                   _bubbleText = '';
                   _newTurn = false;
+                }
+                if (!_currentBubble) {
+                  _currentBubble = appendAssistantMsg('');
+                  _currentBubble.classList.add('streaming');
                 }
                 if (_bubbleText === '') {
                   appendTelemetryLog('stream', '开始流式输出回复内容...');
@@ -1459,10 +1536,31 @@
                 _currentBubble.innerHTML = renderSafeMarkdown(_bubbleText);
                 scrollBottom();
               } else if (parsed.type === 'music_html') {
+                const typing = document.getElementById('typingMsg');
+                if (typing) typing.remove();
+
+                if (_currentBubble) {
+                  _currentBubble.classList.remove('streaming');
+                  _currentBubble.classList.remove('thinking');
+                }
+
                 appendTelemetryLog('stream', '渲染音乐卡片组件');
-                _currentBubble.innerHTML = parsed.html || '';
+                var musicBubble = appendAssistantMsg('');
+                musicBubble.innerHTML = parsed.html || '';
+
+                _currentBubble = null;
+                _bubbleText = '';
+                _newTurn = false;
                 scrollBottom();
               } else if (parsed.type === 'tool_call') {
+                if (!document.getElementById('typingMsg')) {
+                  appendTyping();
+                }
+                const typingTextEl = document.querySelector('#typingMsg .typing-text');
+                if (typingTextEl) {
+                  typingTextEl.textContent = 'Agent 正在执行工具: ' + (parsed.name || 'tool') + '...';
+                }
+
                 appendTelemetryLog('tool', '意图触发工具调用: ' + parsed.name + ' - 参数: ' + JSON.stringify(parsed.args || {}));
                 setAgentState('active', 'EXECUTING TOOL (' + parsed.name + ')');
                 updateActionCard('tool_call', '调用外部技能...', '正在调用内置工具 [' + parsed.name + '] 获取最新数据...', 60, '🛠');
@@ -1475,6 +1573,11 @@
                 updateToolReview(parsed);
               } else if (parsed.type === 'tool_result') {
                 _newTurn = true;
+                const typingTextEl = document.querySelector('#typingMsg .typing-text');
+                if (typingTextEl) {
+                  typingTextEl.textContent = 'Agent 正在处理工具返回结果...';
+                }
+
                 appendTelemetryLog('output', '工具执行返回: 数据长度 = ' + (parsed.content ? parsed.content.length : 0) + ' 字节');
                 setAgentState('active', 'PROCESSING RESULT');
                 updateActionCard('thinking', '处理数据返回...', '成功获取工具响应，正在提取和整合信息...', 80, '📥');
@@ -1502,6 +1605,8 @@
       _abortController = null;
       document.getElementById('stopBtn').style.display = 'none';
       document.getElementById('sendBtn').style.display = '';
+      const typing = document.getElementById('typingMsg');
+      if (typing) typing.remove();
       if (_currentBubble) {
         _currentBubble.classList.remove('streaming');
         _currentBubble.classList.remove('thinking');

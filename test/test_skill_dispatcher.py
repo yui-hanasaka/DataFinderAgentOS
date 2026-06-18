@@ -11,16 +11,11 @@ def test_weather_skill() -> None:
     from app.models.skill_dispatcher import dispatch
 
     async def _test():
-        with patch(
-            "app.models.skill_dispatcher._weather",
-            new_callable=AsyncMock,
-            return_value="mock weather",
-        ):
-            result = await dispatch("@weather 重庆")
-        assert result["type"] == "skill"
+        result = await dispatch("@weather 重庆")
+        assert result["type"] == "ai"
         assert result["skill_code"] == "weather"
         meta: dict[str, Any] = result["skill_meta"]
-        assert meta.get("city") == "重庆"
+        assert "重庆" in str(meta.get("inject_prompt"))
 
     _run(_test())
 
@@ -82,12 +77,8 @@ def test_case_insensitive_weather() -> None:
     from app.models.skill_dispatcher import dispatch
 
     async def _test():
-        with patch(
-            "app.models.skill_dispatcher._weather",
-            new_callable=AsyncMock,
-            return_value="mock weather",
-        ):
-            result = await dispatch("@Weather 北京")
+        result = await dispatch("@Weather 北京")
         assert result["skill_code"] == "weather"
+        assert result["type"] == "ai"
 
     _run(_test())
