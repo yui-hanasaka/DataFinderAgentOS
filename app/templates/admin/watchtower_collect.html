@@ -184,9 +184,10 @@
 .ai-thread {
   position: relative; z-index: 1;
   width: min(960px, 100%);
-  max-height: 52vh; overflow-y: auto;
+  max-height: 55vh; min-height: 120px;
+  overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; gap: 14px;
-  padding: 12px 0; margin-top: 16px;
+  padding: 12px 4px; margin-top: 16px;
 }
 .ai-thread::-webkit-scrollbar { width: 4px; }
 .ai-thread::-webkit-scrollbar-thumb {
@@ -201,6 +202,7 @@
   font-size: 14px; color: var(--c-text, #e0e0f8);
   line-height: 1.7; animation: aiMsgSlideUp .35s cubic-bezier(.34,1.56,.64,1);
   position: relative; overflow: hidden;
+  flex-shrink: 0;
 }
 .ai-think-bubble.streaming {
   border-color: rgba(99,102,241,.3);
@@ -247,6 +249,7 @@
   border-radius: 12px; overflow: hidden;
   animation: aiMsgSlideUp .3s cubic-bezier(.34,1.56,.64,1);
   transition: border-color .3s, box-shadow .3s, background .3s;
+  flex-shrink: 0;
 }
 .ai-tool-card.expanded {
   border-color: rgba(139,130,255,.2);
@@ -802,7 +805,7 @@ async function doAiSearch() {
   _aiNewTurn = false;
 
   // Create initial think bubble
-  appendAiThinkBubble();
+  _aiCurrentBubble = appendAiThinkBubble();
   updateAiStatus('tool_call', 'Agent 正在规划搜索策略…');
 
   var sseUrl = window.location.pathname +
@@ -841,32 +844,36 @@ async function doAiSearch() {
 
 function handleAiSseEvent(parsed) {
   if (parsed.type === 'text') {
-    // Remove typing wave from current bubble
-    var typingWave = document.querySelector('#aiThread .ai-typing-wave');
-    if (typingWave) typingWave.style.display = 'none';
-    var typingText = document.querySelector('#aiThread .ai-typing-text');
-    if (typingText) typingText.style.display = 'none';
-
     if (_aiNewTurn) {
-      if (_aiCurrentBubble) { _aiCurrentBubble.classList.remove('streaming'); }
-      _aiCurrentBubble = null;
-      _aiBubbleText = '';
-      _aiNewTurn = false;
-    }
-
-    if (!_aiCurrentBubble) {
-      // Collapse all tool cards
+      // Finalize old bubble: remove streaming + strip typing elements
+      if (_aiCurrentBubble) {
+        _aiCurrentBubble.classList.remove('streaming');
+        var oldEls = _aiCurrentBubble.querySelectorAll('.ai-typing-wave, .ai-typing-text');
+        oldEls.forEach(function(el) { el.remove(); });
+      }
+      // Collapse all completed tool cards
       for (var cid in _aiToolCards) { _aiToolCards[cid].classList.remove('expanded'); }
+      // Create fresh bubble for the new turn
       _aiCurrentBubble = appendAiThinkBubble();
       _aiCurrentBubble.classList.add('streaming');
+      _aiBubbleText = '';
+      _aiNewTurn = false;
+    } else {
+      // First text after bubble creation — hide THIS bubble's typing wave
+      var wave = _aiCurrentBubble ? _aiCurrentBubble.querySelector('.ai-typing-wave') : null;
+      if (wave) wave.style.display = 'none';
+      var tip = _aiCurrentBubble ? _aiCurrentBubble.querySelector('.ai-typing-text') : null;
+      if (tip) tip.style.display = 'none';
     }
 
     _aiBubbleText += parsed.content || '';
-    var bubbleContent = _aiCurrentBubble.querySelector('.ai-bubble-content');
-    if (bubbleContent) {
-      bubbleContent.innerHTML = typeof renderSafeMarkdown === 'function'
-        ? renderSafeMarkdown(_aiBubbleText)
-        : _aiBubbleText.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    if (_aiCurrentBubble) {
+      var bubbleContent = _aiCurrentBubble.querySelector('.ai-bubble-content');
+      if (bubbleContent) {
+        bubbleContent.innerHTML = typeof renderSafeMarkdown === 'function'
+          ? renderSafeMarkdown(_aiBubbleText)
+          : _aiBubbleText.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+      }
     }
     updateAiStatus('text', 'Agent 思考中…');
     scrollAiThread();
@@ -1036,6 +1043,13 @@ function getToolLabel(name) {
 
 /* ── Final Summary ── */
 function finishAiSearch(data) {
+  // Clean up typing elements on the last bubble
+  if (_aiCurrentBubble) {
+    _aiCurrentBubble.classList.remove('streaming');
+    var lastEls = _aiCurrentBubble.querySelectorAll('.ai-typing-wave, .ai-typing-text');
+    lastEls.forEach(function(el) { el.remove(); });
+  }
+
   document.getElementById('btnAiStop').style.display = 'none';
   document.getElementById('btnAiSearch').style.display = '';
   document.getElementById('btnAiSearch').disabled = false;
