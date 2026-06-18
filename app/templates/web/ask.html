@@ -68,7 +68,9 @@
     background: rgba(255,255,255,.7); border-right-color: rgba(99,102,241,.08);
     box-shadow: 4px 0 48px rgba(99,102,241,.05);
   }
-  .ask-sidebar .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .ask-sidebar .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; text-decoration: none; cursor: pointer; transition: all var(--spring-soft); }
+  .ask-sidebar .brand:hover { transform: translateX(3px); }
+  .ask-sidebar .brand:hover .dot { transform: scale(1.1); box-shadow: 0 10px 28px rgba(99,102,241,.6); }
   .ask-sidebar .brand .dot {
     width: 34px; height: 34px; border-radius: 10px;
     background: linear-gradient(135deg, #818cf8, #6366f1);
@@ -256,7 +258,7 @@
 <div class="ask-shell">
   <!-- ═══════════════ Sidebar ═══════════════ -->
   <div class="ask-sidebar">
-    <div class="brand"><div class="dot">D</div><span>智能问数</span></div>
+    <a class="brand" href="/home" title="← 返回首页"><div class="dot">D</div><span>智能问数</span></a>
     <h4>📝 查询历史</h4>
     <div class="history-list" id="historyList">
       <div style="color:var(--text-muted);font-size:12px;padding:8px;">暂无查询记录</div>
@@ -372,6 +374,9 @@
 
   /* ── History ── */
   function addHistory(query) {
+    // Remove duplicate entries with the same query text (prevents duplicates
+    // when loadHistory → submitQuery → addHistory re-adds the same query)
+    history = history.filter(function(h) { return h.query !== query; });
     history.unshift({
       query: query, columns: currentColumns.slice(), rowCount: currentRows.length,
       ts: new Date().toLocaleTimeString()
@@ -444,7 +449,10 @@
       var thinkBubble = document.getElementById('thinkBubble');
       thinkBubble.style.display = 'none'; thinkBubble.innerHTML = '';
       document.querySelectorAll('.tool-mini').forEach(function(el) { el.remove(); });
-      if (_chartInstance) { if (_chartResizeHandler) { window.removeEventListener('resize', _chartResizeHandler); _chartResizeHandler = null; } _chartInstance.dispose(); _chartInstance = null; }
+      if (_chartResizeHandler) { window.removeEventListener('resize', _chartResizeHandler); _chartResizeHandler = null; }
+      var _existingChart = typeof echarts !== 'undefined' ? echarts.getInstanceByDom(document.getElementById('chart')) : null;
+      if (_existingChart) _existingChart.dispose();
+      if (_chartInstance) _chartInstance = null;
       runPipelineAnimation();
     } catch(initErr) {
       // If setup fails, still try the fetch
@@ -587,11 +595,17 @@
   /* ── Chart ── */
   function renderChart() {
     if (!currentRows.length || !currentColumns.length) return;
+    if (typeof echarts === 'undefined') { console.error('[ask] echarts not loaded'); return; }
     var chartEl = document.getElementById('chart');
     chartEl.style.display = 'block';
     document.getElementById('chartInfo').style.display = 'block';
-    if (_chartResizeHandler) window.removeEventListener('resize', _chartResizeHandler);
-    if (_chartInstance) _chartInstance.dispose();
+    // Properly clean up any existing echarts instance bound to this DOM element
+    if (_chartResizeHandler) { window.removeEventListener('resize', _chartResizeHandler); _chartResizeHandler = null; }
+    var existing = echarts.getInstanceByDom(chartEl);
+    if (existing) existing.dispose();
+    if (_chartInstance) _chartInstance = null;
+    // Ensure DOM is clean before re-init
+    chartEl.innerHTML = '';
 
     var chart = echarts.init(chartEl);
     _chartInstance = chart;

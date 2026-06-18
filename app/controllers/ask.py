@@ -59,7 +59,10 @@ class AskQueryHandler(AskBaseHandler):
         if not model_row.get("api_key"):
             self.set_header("Content-Type", "application/json")
             return self.write(
-                {"ok": False, "error": "模型 API Key 未设置或已失效，请联系管理员更新模型配置"}
+                {
+                    "ok": False,
+                    "error": "模型 API Key 未设置或已失效，请联系管理员更新模型配置",
+                }
             )
 
         # SSE streaming Agentic query
@@ -93,7 +96,10 @@ class AskQueryHandler(AskBaseHandler):
                 payload = json.dumps({"type": event_type, **data})
                 self.write(f"data: {payload}\n\n")
                 # Extract columns/rows from warehouse_query tool result
-                if event_type == "tool_result" and data.get("name") == "warehouse_query":
+                if (
+                    event_type == "tool_result"
+                    and data.get("name") == "warehouse_query"
+                ):
                     try:
                         result_data = json.loads(str(data.get("content", "[]")))
                         if isinstance(result_data, list) and len(result_data) > 0:
