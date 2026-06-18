@@ -513,6 +513,44 @@
   .glass-input-row textarea::placeholder { color: #58588a; }
   .glass-input-row textarea:focus { border-color: rgba(139, 130, 255, .4); box-shadow: 0 0 0 4px rgba(99, 102, 241, .08), inset 0 2px 6px rgba(0, 0, 0, .1); background: rgba(22, 20, 44, .6); }
 
+  .btn-task-glass {
+    padding: 0 14px;
+    height: 50px;
+    border: 1px solid rgba(129, 140, 248, .25);
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    background: rgba(129, 140, 248, .08);
+    color: #818cf8;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all var(--spring-soft) .3s;
+  }
+
+  .btn-task-glass:hover {
+    background: rgba(129, 140, 248, .18);
+    border-color: rgba(129, 140, 248, .4);
+    color: #a5b4fc;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, .2);
+    transform: translateY(-2px);
+  }
+
+  .btn-task-glass:active { transform: scale(.97); }
+
+  [data-theme="light"] .btn-task-glass {
+    background: rgba(99, 102, 241, .06);
+    border-color: rgba(99, 102, 241, .18);
+    color: #6366f1;
+  }
+
+  [data-theme="light"] .btn-task-glass:hover {
+    background: rgba(99, 102, 241, .12);
+    border-color: rgba(99, 102, 241, .3);
+    color: #4f46e5;
+  }
+
   .btn-send-glass {
     padding: 0 28px;
     height: 50px;
@@ -892,6 +930,10 @@
           placeholder="{% if current_session %}输入消息… Enter 发送，Shift+Enter 换行{% else %}请先点击「✦ 新建对话」开始{% end %}" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" {% if not current_session %}disabled{% end %}></textarea>
         <button class="btn-send-glass" id="sendBtn" onclick="send()" {% if not current_session %}disabled{% end %}>发送</button>
+        <button type="button" class="btn-task-glass"
+          onclick="prependTask()" title="启动TaskAgent多步任务模式">
+          /task
+        </button>
         <a class="glass-export-link" {% if current_session %}href="/chat/export/{{ current_session["id"] }}"{% end %}
           target="_blank" title="导出PDF">📄</a>
       </div>
@@ -1261,6 +1303,16 @@
     } catch(e) {
       console.error('切换模型失败:', e);
     }
+  }
+
+  /* ── /task quick-insert ── */
+  function prependTask() {
+    var inp = document.querySelector('textarea[name="message"], #msgInput');
+    if (!inp) return;
+    if (inp.value.indexOf('/task') !== 0) {
+      inp.value = '/task ' + inp.value;
+    }
+    inp.focus();
   }
 
   document.getElementById('modelRow').addEventListener('click', function(e) {

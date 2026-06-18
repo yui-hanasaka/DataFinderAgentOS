@@ -1,19 +1,23 @@
 import asyncio
 import json
+import random as _random
+import time
 import xml.etree.ElementTree as ET
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from app.models.watchtower import SourceRepository as WatchtowerRepository
 
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-)
+_UA_POOL: list[str] = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
+
 DEFAULT_HEADERS = {
-    "User-Agent": DEFAULT_USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     "Accept-Encoding": "gzip, deflate",
@@ -45,93 +49,137 @@ class WatchtowerScraper:
 
     @staticmethod
     def _ensure_user_agent(headers: dict) -> dict:
-        """确保请求头包含 User-Agent 和基本浏览器伪装头"""
+        """确保请求头包含随机 User-Agent 和基本浏览器伪装头"""
         for key, val in DEFAULT_HEADERS.items():
             if key not in headers and key.lower() not in headers:
                 headers[key] = val
+        if "User-Agent" not in headers:
+            headers["User-Agent"] = _random.choice(_UA_POOL)
         return headers
 
     @staticmethod
     def _scrape_baidu_news(soup: BeautifulSoup) -> list:
-        """抓取百度新闻搜索结果 — 多选择器回退应对布局变更"""
+        """抓取百度新闻搜索结果 — 三层回退应对布局变更"""
         items = []
-        # Try multiple Baidu layout variants (class names change frequently)
-        containers = soup.select(
-            ".result-op, #content_left .c-container, .result.c-container, "
-            ".result, div[tpl], div[class*='result']"
-        )
+        title_selectors = [
+            "h3 a",
+            ".c-title a",
+            ".news-title a",
+            "a.c-link[href]",
+            "h3.t a",
+        ]
+        snippet_selectors = [
+            ".c-font-normal",
+            ".c-abstract",
+            ".content-right_8Zs40",
+            ".c-gap-top-small",
+            ".c-span9",
+            "p.c-author",
+        ]
+        source_selectors = [
+            ".c-color-gray",
+            ".c-author",
+            ".source",
+            ".c-gap-top-xsmall span",
+        ]
+        time_selectors = [".c-color-gray2", ".c-gray", "time", ".c-gap-right"]
+
+        # Layer 1: standard Baidu containers
+        containers = soup.select(".result-op, .c-container, div[tpl]")
         for div in containers:
-            title_elem = div.select_one(
-                "h3 a, .c-title a, .news-title a, a.c-link[href], h3.t a"
+            item = WatchtowerScraper._extract_item_from_container(
+                div,
+                title_selectors,
+                snippet_selectors,
+                source_selectors,
+                time_selectors,
             )
-            if not title_elem:
-                continue
-            href = title_elem.get("href", "")
-            if not href or href == "#":
-                continue
+            if item:
+                items.append(item)
 
-            snippet_elem = div.select_one(
-                ".c-font-normal, .c-abstract, .content-right_8Zs40,"
-                " .c-gap-top-small, .c-span9, p.c-author"
+        # Layer 2: semantic fallback selectors
+        if not items:
+            containers = soup.select(
+                "article, .news-item, div[class*='result'], div[class*='news']"
             )
-            source_elem = div.select_one(
-                ".c-color-gray, .c-author, .source, .c-gap-top-xsmall span"
-            )
-            time_elem = div.select_one(".c-color-gray2, .c-gray, time, .c-gap-right")
+            for div in containers:
+                item = WatchtowerScraper._extract_item_from_container(
+                    div,
+                    [
+                        "h1 a",
+                        "h2 a",
+                        "h3 a",
+                        "a[href]",
+                    ],
+                    ["p", ".desc", ".snippet", ".abstract"],
+                    [".source", ".author", "cite", "span"],
+                    ["time", ".date", ".time", ".pubdate"],
+                )
+                if item:
+                    items.append(item)
 
-            items.append(
-                {
-                    "title": title_elem.get_text(strip=True),
-                    "url": href,
-                    "snippet": snippet_elem.get_text(strip=True)
-                    if snippet_elem
-                    else "",
-                    "source": source_elem.get_text(strip=True)
-                    if source_elem
-                    else "百度",
-                    "published_time": time_elem.get_text(strip=True)
-                    if time_elem
-                    else "",
-                }
-            )
+        # Layer 3: fallback to all links
+        if not items:
+            items = WatchtowerScraper._fallback_extract_all_links(soup)
 
         return items
 
     @staticmethod
     def _scrape_bing_web(soup: BeautifulSoup) -> list:
-        """抓取 Bing 网页搜索结果 — 多选择器回退"""
+        """抓取 Bing 网页搜索结果 — 三层回退"""
         items = []
-        # Try multiple selector patterns Bing uses across regions/versions
+        title_selectors = ["h2 a", "h2 a[href]", ".b_title a"]
+        snippet_selectors = [
+            ".b_caption p",
+            ".b_lineclamp2",
+            ".b_algoSlug",
+            ".b_caption",
+        ]
+        source_selectors = ["cite", ".b_attribution"]
+        time_selectors: list[str] = []
+
+        # Layer 1: standard Bing result selectors
         for li in soup.select(
             "#b_results > li.b_algo, #b_results .b_algo, "
             "ol#b_results > li.b_algo, "
             ".b_results li.b_algo, "
             "li.b_algo"
         ):
-            title_elem = li.select_one("h2 a, h2 a[href], .b_title a")
-            if not title_elem:
-                continue
-
-            snippet_elem = li.select_one(
-                ".b_caption p, .b_lineclamp2, .b_algoSlug, .b_caption"
+            item = WatchtowerScraper._extract_item_from_container(
+                li,
+                title_selectors,
+                snippet_selectors,
+                source_selectors,
+                time_selectors,
             )
-            cite_elem = li.select_one("cite, .b_attribution")
+            if item:
+                items.append(item)
 
-            source_domain = ""
-            if cite_elem:
-                source_domain = cite_elem.get_text(strip=True)
-
-            items.append(
-                {
-                    "title": title_elem.get_text(strip=True),
-                    "url": title_elem.get("href", ""),
-                    "snippet": snippet_elem.get_text(strip=True)
-                    if snippet_elem
-                    else "",
-                    "source": source_domain or "Bing搜索",
-                    "published_time": "",
-                }
+        # Layer 2: semantic fallback selectors
+        if not items:
+            containers = soup.select(
+                "article, .news-item, div[class*='result'], div[class*='algo'], li"
             )
+            for div in containers:
+                item = WatchtowerScraper._extract_item_from_container(
+                    div,
+                    [
+                        "h1 a",
+                        "h2 a",
+                        "h3 a",
+                        "a[href]",
+                    ],
+                    ["p", ".desc", ".snippet", ".abstract", ".caption"],
+                    [".source", ".author", "cite", "span"],
+                    ["time", ".date", ".time"],
+                )
+                if item:
+                    items.append(item)
+
+        # Layer 3: fallback to all links
+        if not items:
+            items = WatchtowerScraper._fallback_extract_all_links(soup)
+
         return items
 
     @staticmethod
@@ -362,6 +410,83 @@ class WatchtowerScraper:
         return items
 
     @staticmethod
+    def _extract_item_from_container(
+        container: "Tag | BeautifulSoup",
+        title_selectors: list[str],
+        snippet_selectors: list[str],
+        source_selectors: list[str],
+        time_selectors: list[str],
+    ) -> dict | None:
+        """Extract an item from a container element with multi-selector fallback."""
+        title_elem = None
+        title_text = ""
+        url = ""
+        for selector in title_selectors:
+            title_elem = container.select_one(selector)
+            if title_elem:
+                title_text = title_elem.get_text(strip=True)
+                url = title_elem.get("href", "")
+                if title_text and url:
+                    break
+        if not title_text:
+            return None
+
+        snippet = ""
+        for selector in snippet_selectors:
+            elem = container.select_one(selector)
+            if elem:
+                snippet = elem.get_text(strip=True)
+                if snippet:
+                    break
+
+        source = ""
+        for selector in source_selectors:
+            elem = container.select_one(selector)
+            if elem:
+                source = elem.get_text(strip=True)
+                if source:
+                    break
+
+        published_time = ""
+        for selector in time_selectors:
+            elem = container.select_one(selector)
+            if elem:
+                published_time = elem.get("datetime", "") or elem.get_text(strip=True)
+                if published_time:
+                    break
+
+        return {
+            "title": title_text[:200],
+            "url": url,
+            "snippet": snippet[:500],
+            "source": source or "未知来源",
+            "published_time": published_time,
+        }
+
+    @staticmethod
+    def _fallback_extract_all_links(soup: "BeautifulSoup") -> list:
+        """Last resort: extract all valid links from page."""
+        items = []
+        for a in soup.select("a[href]"):
+            title = a.get_text(strip=True)
+            url_raw = a.get("href", "")
+            url = str(url_raw) if isinstance(url_raw, str) else ""
+            if len(title) < 10 or not url.startswith("http"):
+                continue
+            if len(items) >= 50:
+                break
+            items.append(
+                {
+                    "title": title[:200],
+                    "url": url,
+                    "snippet": "",
+                    "source": "通用提取",
+                    "published_time": "",
+                }
+            )
+        return items
+
+    @staticmethod
     def _resolve_json_path(data: dict | list, path: str) -> list:
         """按点号分隔的路径从 JSON 结构中提取列表。
 
@@ -431,9 +556,9 @@ class WatchtowerScraper:
 
     @staticmethod
     def _scrape_generic(soup: BeautifulSoup, config: dict) -> list:
-        """通用 HTML 链接提取。
+        """通用 HTML 链接提取 — 三层回退。
 
-        config 可选字段（均为 CSS 选择器）:
+        config 可选字段（均为 CSS 选择器，逗号分隔）:
           - container_selector: 每条结果的容器元素（默认 "article, .post, .item, li"）
           - title_selector: 标题元素（默认 "h1 a, h2 a, h3 a, a.title"）
           - link_selector: 链接元素，与 title_selector 合并使用
@@ -449,50 +574,57 @@ class WatchtowerScraper:
         date_sel = config.get("date_selector") or "time, .date, .time, .pubdate"
         source_sel = config.get("source_selector") or ".source, .author"
 
+        def _split_selectors(sel: str) -> list[str]:
+            return [s.strip() for s in sel.split(",") if s.strip()]
+
+        title_selectors = _split_selectors(title_sel)
+        snippet_selectors = _split_selectors(snippet_sel)
+        source_selectors = _split_selectors(source_sel)
+        time_selectors = _split_selectors(date_sel)
+
+        # Layer 1: config-based selectors
         containers = soup.select(container_sel)
         if not containers:
             containers = [soup]
 
         items = []
         for container in containers:
-            title_elem = container.select_one(title_sel)
-            if not title_elem:
-                continue
-
-            link_elem = None
-            if config.get("link_selector"):
-                link_elem = container.select_one(config["link_selector"])
-            if not link_elem:
-                link_elem = (
-                    title_elem if title_elem.name == "a" else title_elem.find("a")
-                )
-
-            link = ""
-            if link_elem is not None:
-                link = link_elem.get("href", "") or ""
-
-            snippet_elem = container.select_one(snippet_sel)
-            snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
-
-            source_elem = container.select_one(source_sel)
-            source_name = source_elem.get_text(strip=True) if source_elem else ""
-
-            date_elem = container.select_one(date_sel)
-            pubdate = ""
-            if date_elem:
-                pubdate = date_elem.get("datetime", "") or date_elem.get_text(
-                    strip=True
-                )
-
-            items.append(
-                {
-                    "title": title_elem.get_text(strip=True),
-                    "url": link,
-                    "snippet": snippet[:500] if snippet else "",
-                    "source": source_name,
-                    "published_time": pubdate,
-                }
+            item = WatchtowerScraper._extract_item_from_container(
+                container,
+                title_selectors,
+                snippet_selectors,
+                source_selectors,
+                time_selectors,
             )
+            if item:
+                items.append(item)
+
+        # Layer 2: semantic fallback with broader selectors
+        if not items:
+            containers = soup.select(
+                "article, .news-item, div[class*='result'], div[class*='news']"
+            )
+            if not containers:
+                containers = [soup]
+            for container in containers:
+                item = WatchtowerScraper._extract_item_from_container(
+                    container,
+                    [
+                        "h1 a",
+                        "h2 a",
+                        "h3 a",
+                        "a[href]",
+                    ],
+                    ["p", ".desc", ".snippet", ".abstract"],
+                    [".source", ".author", "cite", "span"],
+                    ["time", ".date", ".time", ".pubdate"],
+                )
+                if item:
+                    items.append(item)
+
+        # Layer 3: fallback to all links
+        if not items:
+            items = WatchtowerScraper._fallback_extract_all_links(soup)
 
         return items
 
@@ -502,6 +634,7 @@ class WatchtowerScraper:
         headers: dict,
         source_type: str = "baidu_news",
         config_json: dict | None = None,
+        source_id: int = 0,
     ) -> list:
         """同步抓取单页（在线程池中执行）。
 
@@ -513,36 +646,51 @@ class WatchtowerScraper:
         """
         headers = WatchtowerScraper._ensure_user_agent(headers)
         config = config_json or {}
+        start = time.time()
 
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+        except Exception as e:
+            elapsed = int((time.time() - start) * 1000)
+            if source_id:
+                _log_scrape_result(source_id, url, "error", 0, str(e), elapsed)
+            raise
+
+        elapsed = int((time.time() - start) * 1000)
+        items: list = []
 
         if source_type == "rss":
-            return WatchtowerScraper._scrape_rss(response.content, config)
-        if source_type == "api":
+            items = WatchtowerScraper._scrape_rss(response.content, config)
+        elif source_type == "api":
             try:
                 data = response.json()
             except (json.JSONDecodeError, ValueError):
-                return []
-            return WatchtowerScraper._scrape_api(data, config)
-        if source_type == "bing_web":
+                data = None
+            items = WatchtowerScraper._scrape_api(data, config) if data else []
+        elif source_type == "bing_web":
             soup = BeautifulSoup(response.content, "html.parser")
-            return WatchtowerScraper._scrape_bing_web(soup)
-        if source_type == "bing_news":
+            items = WatchtowerScraper._scrape_bing_web(soup)
+        elif source_type == "bing_news":
             soup = BeautifulSoup(response.content, "html.parser")
-            return WatchtowerScraper._scrape_bing_news(soup)
-        if source_type == "duckduckgo":
+            items = WatchtowerScraper._scrape_bing_news(soup)
+        elif source_type == "duckduckgo":
             soup = BeautifulSoup(response.content, "html.parser")
-            return WatchtowerScraper._scrape_duckduckgo(soup)
-        if source_type == "sogou_web":
+            items = WatchtowerScraper._scrape_duckduckgo(soup)
+        elif source_type == "sogou_web":
             soup = BeautifulSoup(response.content, "html.parser")
-            return WatchtowerScraper._scrape_sogou_web(soup)
-        if source_type == "generic":
+            items = WatchtowerScraper._scrape_sogou_web(soup)
+        elif source_type == "generic":
             soup = BeautifulSoup(response.content, "html.parser")
-            return WatchtowerScraper._scrape_generic(soup, config)
-        # 默认: baidu_news
-        soup = BeautifulSoup(response.content, "html.parser")
-        return WatchtowerScraper._scrape_baidu_news(soup)
+            items = WatchtowerScraper._scrape_generic(soup, config)
+        else:
+            # 默认: baidu_news
+            soup = BeautifulSoup(response.content, "html.parser")
+            items = WatchtowerScraper._scrape_baidu_news(soup)
+
+        if source_id:
+            _log_scrape_result(source_id, url, "success", len(items), None, elapsed)
+        return items
 
     @staticmethod
     async def _scrape_with_crawl4ai(url: str, source_type: str, config: dict) -> list:
@@ -609,6 +757,7 @@ class WatchtowerScraper:
                 headers,
                 source_type,
                 config_json,
+                source_id,
             )
             if keyword:
                 kw_lower = keyword.lower()
@@ -638,14 +787,32 @@ class WatchtowerScraper:
             )
             url = WatchtowerScraper.build_url(url_template, keyword, page)
 
-            items = await IOLoop.current().run_in_executor(
-                None,
-                WatchtowerScraper.scrape_page,
-                url,
-                headers,
-                source_type,
-                config_json,
-            )
+            # 3-retry loop with exponential backoff
+            items: list = []
+            last_exception = None
+            for attempt in range(3):
+                try:
+                    items = await IOLoop.current().run_in_executor(
+                        None,
+                        WatchtowerScraper.scrape_page,
+                        url,
+                        headers,
+                        source_type,
+                        config_json,
+                        source_id,
+                    )
+                    break
+                except Exception as e:
+                    last_exception = e
+                    if attempt < 2:
+                        await asyncio.sleep(1 * (2**attempt))
+
+            if not items and last_exception:
+                from app.models.errors import log_error
+
+                log_error(
+                    f"watchtower scrape failed after 3 retries: {url}", last_exception
+                )
 
             # crawl4ai fallback when requests+BS4 returns nothing (bot protection / JS rendering)
             if not items and source_type in _html_types:
@@ -661,3 +828,24 @@ class WatchtowerScraper:
             await asyncio.sleep(0.5)
 
         return all_items[:limit]
+
+
+def _log_scrape_result(
+    source_id: int,
+    url: str,
+    status: str,
+    items_count: int,
+    error: str | None,
+    response_time: int,
+) -> None:
+    try:
+        from app.models.db import get_connection
+
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT INTO watchtower_logs(source_id, url, status, items_count,"
+                " error_message, response_time) VALUES(?,?,?,?,?,?)",
+                (source_id, url, status, items_count, error, response_time),
+            )
+    except Exception:
+        pass

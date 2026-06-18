@@ -515,6 +515,18 @@ def _init_business_tables(conn: sqlite3.Connection) -> None:
             updated_at TEXT,
             FOREIGN KEY(source_id) REFERENCES watchtower_sources(id)
         );
+        CREATE TABLE IF NOT EXISTS watchtower_logs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id INTEGER NOT NULL,
+            keyword TEXT,
+            url TEXT,
+            status TEXT NOT NULL DEFAULT 'unknown',
+            items_count INTEGER DEFAULT 0,
+            error_message TEXT,
+            response_time INTEGER,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(source_id) REFERENCES watchtower_sources(id) ON DELETE CASCADE
+        );
         CREATE TABLE IF NOT EXISTS deep_tasks(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -1209,6 +1221,17 @@ def _init_mysql_tables() -> None:
         "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
         "updated_at TEXT,"
         "FOREIGN KEY(source_id) REFERENCES watchtower_sources(id))",
+        "CREATE TABLE IF NOT EXISTS watchtower_logs("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "source_id INTEGER NOT NULL,"
+        "keyword TEXT,"
+        "url TEXT,"
+        "status TEXT NOT NULL DEFAULT 'unknown',"
+        "items_count INTEGER DEFAULT 0,"
+        "error_message TEXT,"
+        "response_time INTEGER,"
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+        "FOREIGN KEY(source_id) REFERENCES watchtower_sources(id) ON DELETE CASCADE)",
         "CREATE TABLE IF NOT EXISTS deep_tasks("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "name TEXT NOT NULL,"

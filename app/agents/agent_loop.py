@@ -20,11 +20,13 @@ async def _stream_chat_once(
     messages: list[dict[str, Any]],
     model_row: dict[str, Any],
     stream_cb: StreamCallback,
+    tools: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
     """Call chat_complete with streaming, accumulate text and tool_calls.
 
     Returns (full_text_content, tool_calls_list, usage_dict).
     """
+    active_tools = tools if tools is not None else TOOLS
     resp = await chat_complete(
         str(model_row["base_url"]),
         api_key,
@@ -33,7 +35,7 @@ async def _stream_chat_once(
         temperature=float(model_row.get("temperature") or 0.7),
         max_tokens=int(model_row.get("max_tokens") or 1024),
         stream=True,
-        tools=TOOLS,
+        tools=active_tools,
     )
 
     full_content = ""
@@ -90,6 +92,7 @@ async def run(
     messages: list[dict[str, Any]],
     model_row: dict[str, Any],
     stream_cb: StreamCallback,
+    allowed_tools: list[str] | None = None,
 ) -> str:
     """
     Run the agentic loop.
@@ -102,6 +105,11 @@ async def run(
 
     Returns the full text reply.
     """
+    # Filter tools based on employee's allowed_tools
+    active_tools = TOOLS
+    if allowed_tools is not None:
+        active_tools = [t for t in TOOLS if t["function"]["name"] in allowed_tools]
+
     # model_row["api_key"] is already decrypted by ModelRepository
     api_key: str = str(model_row["api_key"])
     if not api_key:
@@ -116,7 +124,7 @@ async def run(
         for attempt in range(2):
             try:
                 full_content, calls, usage = await _stream_chat_once(
-                    api_key, messages, model_row, stream_cb
+                    api_key, messages, model_row, stream_cb, tools=active_tools
                 )
                 if usage.get("total_tokens"):
                     ModelRepository.record_usage(

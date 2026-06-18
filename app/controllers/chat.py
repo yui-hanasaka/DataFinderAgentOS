@@ -7,6 +7,7 @@ from loguru import logger
 from tornado.iostream import StreamClosedError
 
 from app.agents import agent_loop
+from app.agents.task_agent import TaskAgent
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
@@ -14,6 +15,7 @@ from app.models.employee import EmployeeRepository
 from app.models.errors import log_error
 from app.models.model_engine import ModelRepository
 from app.models.rate_limit import check_rate_limit
+from app.models.intent_router import route_message
 from app.models.skill_dispatcher import dispatch
 from app.models.validators import parse_int
 
@@ -310,6 +312,17 @@ class ChatSendHandler(ChatBaseHandler):
         if session["employee_id"]:
             employee = EmployeeRepository.get_employee(session["employee_id"])
 
+        employee_with_tools = None
+        allowed_tools: list[str] | None = None
+        if employee:
+            employee_with_tools = EmployeeRepository.get_employee_with_tools(
+                session["employee_id"]
+            )
+            if employee_with_tools:
+                allowed_tools = employee_with_tools.get("allowed_tools")
+
+        route_result = route_message(user_text, session["employee_id"])
+
         # Model 3-tier fallback: session override > employee binding > default
         model_row = None
         if session["model_id"]:
@@ -396,7 +409,27 @@ class ChatSendHandler(ChatBaseHandler):
                 logger.warning("SSE write failed — client likely disconnected")
 
         try:
-            await agent_loop.run(user_text, messages, model_row, _sse)
+            if route_result["mode"] == "task_agent":
+                await TaskAgent(
+                    user_text=route_result["cleaned_text"],
+                    model_row=model_row,
+                    allowed_tools=allowed_tools,
+                    max_iterations=route_result.get("task_config", {}).get(
+                        "max_iterations", 8
+                    ),
+                    enable_reflection=route_result.get("task_config", {}).get(
+                        "enable_reflection", True
+                    ),
+                    stream_cb=_sse,
+                ).run()
+            else:
+                await agent_loop.run(
+                    route_result["cleaned_text"],
+                    messages,
+                    model_row,
+                    _sse,
+                    allowed_tools=allowed_tools,
+                )
         except StreamClosedError:
             logger.debug("Client disconnected during SSE streaming")
             return

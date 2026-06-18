@@ -229,3 +229,57 @@ class DatabaseSwitcher:
         except Exception:
             self.rollback()
             raise
+
+
+def validate_mysql_connection(params: dict) -> tuple[bool, str]:
+    """Validate MySQL connection params without side effects."""
+    import pymysql
+
+    try:
+        conn = pymysql.connect(
+            host=str(params["host"]),
+            port=int(params["port"]),
+            user=str(params["user"]),
+            password=str(params["password"]),
+            database=str(params["database"]),
+            cursorclass=pymysql.cursors.DictCursor,
+            connect_timeout=5,
+        )
+        conn.close()
+        return True, "连接成功"
+    except Exception as e:
+        return False, f"连接失败: {e}"
+
+
+def switch_to_mysql(params: dict) -> tuple[bool, str]:
+    """Hot-switch to MySQL with preflight validation."""
+    ok, msg = validate_mysql_connection(params)
+    if not ok:
+        return False, msg
+    try:
+        switcher = DatabaseSwitcher("mysql", params)
+        switcher.run()
+        return True, "已切换到MySQL"
+    except Exception as e:
+        return False, f"切换失败: {e}"
+
+
+def switch_to_sqlite() -> tuple[bool, str]:
+    """Hot-switch back to SQLite."""
+    try:
+        switcher = DatabaseSwitcher("sqlite")
+        switcher.run()
+        return True, "已切换到SQLite"
+    except Exception as e:
+        return False, f"切换失败: {e}"
+
+
+def get_migration_status() -> dict:
+    """Return current database configuration state."""
+    import app.models.db as db_module
+
+    return {
+        "active_db": db_module._active_db_type,
+        "mysql_configured": bool(db_module._mysql_params),
+        "switch_lock_held": db_module._switch_lock.locked(),
+    }

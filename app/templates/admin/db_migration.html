@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block body %}
+<div class="container-fluid p-4">
+  <h4>数据库迁移管理</h4>
+  <div class="card mb-3">
+    <div class="card-body">
+      <p>当前数据库: <strong>{{ status['active_db'] }}</strong></p>
+      <p>MySQL已配置: <strong>{{ '是' if status['mysql_configured'] else '否' }}</strong></p>
+      <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="postAction('export_schema')">导出MySQL结构</button>
+        <button class="btn btn-outline-warning" onclick="postAction('migrate_data')">执行数据迁移</button>
+        <button class="btn btn-outline-success" onclick="postAction('switch_to_mysql')">切换到MySQL</button>
+        <button class="btn btn-outline-secondary" onclick="postAction('switch_to_sqlite')">切回SQLite</button>
+      </div>
+    </div>
+  </div>
+  <h5>各表数据统计</h5>
+  <table class="table table-sm table-striped">
+    <thead><tr><th>表名</th><th>行数</th></tr></thead>
+    <tbody>
+      {% for t in table_stats %}
+      <tr><td>{{ t['name'] }}</td><td>{{ t['rows'] }}</td></tr>
+      {% end %}
+    </tbody>
+  </table>
+</div>
+<script>
+function getXsrf() {
+  var m = document.cookie.match(/_xsrf=([^;]+)/);
+  return m ? m[1] : '';
+}
+function postAction(action) {
+  var body = new URLSearchParams({action: action, _xsrf: getXsrf()}).toString();
+  fetch('/admin/db-migration', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+    .then(function(r) { return r.json().then(function(d) { alert(JSON.stringify(d, null, 2)); }); })
+    .catch(function(e) { alert('请求失败: ' + e); });
+}
+</script>
+{% end %}
