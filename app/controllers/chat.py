@@ -320,7 +320,7 @@ class ChatSendHandler(ChatBaseHandler):
             if employee_with_tools:
                 allowed_tools = employee_with_tools.get("allowed_tools")
 
-        route_result = route_message(user_text, session.get("employee_id"))
+        route_result = route_message(user_text, session["employee_id"])
 
         # Model 3-tier fallback: session override > employee binding > default
         model_row = None
@@ -409,7 +409,10 @@ class ChatSendHandler(ChatBaseHandler):
 
         try:
             await agent_loop.run(
-                route_result["cleaned_text"], messages, model_row, _sse,
+                route_result["cleaned_text"],
+                messages,
+                model_row,
+                _sse,
                 allowed_tools=allowed_tools,
             )
         except StreamClosedError:

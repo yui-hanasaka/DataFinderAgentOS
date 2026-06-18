@@ -13,7 +13,7 @@ def route_message(user_text: str, employee_id: int | None) -> dict:
     """Returns routing decision with mode, cleaned_text, task_config."""
     for prefix, config in TASK_TRIGGERS.items():
         if user_text.startswith(prefix):
-            cleaned = user_text[len(prefix):].strip()
+            cleaned = user_text[len(prefix) :].strip()
             return {
                 "mode": "task_agent",
                 "cleaned_text": cleaned or user_text,
