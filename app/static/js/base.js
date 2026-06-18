@@ -158,8 +158,10 @@ document.addEventListener('DOMContentLoaded', function() {
             startTopProgressBar();
         }
     });
-    document.addEventListener('submit', function() {
-        startTopProgressBar();
+    document.addEventListener('submit', function(e) {
+        if (!e.defaultPrevented) {
+            startTopProgressBar();
+        }
     });
     // Complete progress bar when page is fully loaded
     completeTopProgressBar();
