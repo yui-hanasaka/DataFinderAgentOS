@@ -176,7 +176,7 @@ async def run(
                 "tool_call", {"name": name, "args": args, "call_id": call_id}
             )
 
-            rev = await tool_review(user_text, name, args, api_key, model_row)
+            rev = await tool_review(user_text, name, args, api_key, model_row, messages)
             await stream_cb(
                 "tool_review",
                 {
