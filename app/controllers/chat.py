@@ -7,6 +7,7 @@ from loguru import logger
 from tornado.iostream import StreamClosedError
 
 from app.agents import agent_loop
+from app.agents.task_agent import TaskAgent
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
@@ -408,13 +409,27 @@ class ChatSendHandler(ChatBaseHandler):
                 pass
 
         try:
-            await agent_loop.run(
-                route_result["cleaned_text"],
-                messages,
-                model_row,
-                _sse,
-                allowed_tools=allowed_tools,
-            )
+            if route_result["mode"] == "task_agent":
+                await TaskAgent(
+                    user_text=route_result["cleaned_text"],
+                    model_row=model_row,
+                    allowed_tools=allowed_tools,
+                    max_iterations=route_result.get("task_config", {}).get(
+                        "max_iterations", 8
+                    ),
+                    enable_reflection=route_result.get("task_config", {}).get(
+                        "enable_reflection", True
+                    ),
+                    stream_cb=_sse,
+                ).run()
+            else:
+                await agent_loop.run(
+                    route_result["cleaned_text"],
+                    messages,
+                    model_row,
+                    _sse,
+                    allowed_tools=allowed_tools,
+                )
         except StreamClosedError:
             logger.debug("Client disconnected during SSE streaming")
             return
