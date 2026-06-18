@@ -50,6 +50,7 @@ from app.controllers.model_engine import (
 from app.controllers.permissions import AdminPermissionHandler
 from app.controllers.screen import (
     AdminScreenHandler,
+    BaiduLinkRedirectHandler,
     ScreenDataApiHandler,
     ScreenGlobeDataHandler,
     ScreenWordCloudDataHandler,
@@ -141,6 +142,7 @@ def app() -> tornado.web.Application:
         (r"/admin/sessions", AdminSessionMgrHandler),
         (r"/admin/conversations/(\d+)", AdminConversationDetailHandler),
         (r"/admin/screen", AdminScreenHandler),
+        (r"/link", BaiduLinkRedirectHandler),
         (r"/admin/settings", AdminSettingsHandler),
         (r"/admin/db-migration", AdminDbMigrationHandler),
         (r"/admin/digital-twin", AdminDigitalTwinHandler),

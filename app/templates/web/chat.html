@@ -500,6 +500,511 @@
   .glass-input-row textarea::placeholder { color: #58588a; }
   .glass-input-row textarea:focus { border-color: rgba(139, 130, 255, .4); box-shadow: 0 0 0 4px rgba(99, 102, 241, .08), inset 0 2px 6px rgba(0, 0, 0, .1); background: rgba(22, 20, 44, .6); }
 
+  /* ═══════════════ Right Telemetry Panel ═══════════════ */
+  .glass-telemetry {
+    width: 280px;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px;
+    z-index: 2;
+    position: relative;
+    background: rgba(15, 13, 34, 0.78);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border-left: 1px solid rgba(139, 130, 255, 0.08);
+    box-shadow: -4px 0 48px rgba(0, 0, 0, 0.35), inset 1px 0 0 rgba(255, 255, 255, 0.03);
+    transition: width 0.4s var(--ease-out-expo), min-width 0.4s var(--ease-out-expo), padding 0.4s var(--ease-out-expo);
+  }
+  
+  .glass-telemetry.collapsed {
+    width: 0px !important;
+    min-width: 0px !important;
+    padding: 20px 0 !important;
+    border-left-color: transparent !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  .glass-telemetry > *:not(.telemetry-toggle-btn) {
+    transition: opacity 0.25s ease;
+  }
+  
+  .glass-telemetry.collapsed > *:not(.telemetry-toggle-btn) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .telemetry-toggle-btn {
+    position: absolute;
+    top: 20px;
+    left: -15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(15, 13, 34, 0.9);
+    border: 1px solid rgba(139, 130, 255, 0.2);
+    color: #818cf8;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    z-index: 50;
+    transition: all 0.3s var(--spring-soft);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .telemetry-toggle-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(129, 140, 248, 0.4);
+  }
+  
+  .telemetry-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(139, 130, 255, 0.1);
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  .telemetry-header h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e0e0f8;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Persona Card */
+  .telemetry-persona {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(139, 130, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  
+  .telemetry-avatar-wrapper {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  
+  .telemetry-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1.5px solid rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.1);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+  }
+  
+  .telemetry-ring {
+    position: absolute;
+    inset: -3px;
+    border: 1.5px dashed var(--neon-cyan);
+    border-radius: 50%;
+    animation: rotateRing 8s linear infinite;
+    opacity: 0.6;
+    animation-play-state: paused;
+  }
+  
+  .brain-radar.active ~ .telemetry-persona .telemetry-ring {
+    animation-play-state: running;
+    border-color: var(--neon-pink);
+  }
+  
+  @keyframes rotateRing {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .telemetry-persona-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .telemetry-persona-info .name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .telemetry-persona-info .model {
+    font-size: 10px;
+    color: var(--neon-cyan);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Brain scan telemetry graphic */
+  .telemetry-brain {
+    height: 110px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(139, 130, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  
+  .brain-radar {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .brain-radar-circle {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1.5px solid rgba(0, 242, 254, 0.15);
+    border-radius: 50%;
+  }
+  
+  .brain-radar-sweep {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border-left: 2px solid var(--neon-cyan);
+    border-top: 2px solid transparent;
+    border-right: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+    animation: sweep 1.5s linear infinite;
+    animation-play-state: paused;
+  }
+  
+  .brain-radar.active .brain-radar-sweep {
+    animation-play-state: running;
+    border-left-color: var(--neon-pink);
+  }
+  
+  @keyframes sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .brain-core {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--neon-cyan) 0%, rgba(0, 242, 254, 0.3) 70%);
+    box-shadow: 0 0 12px var(--neon-cyan);
+    z-index: 5;
+    transition: all 0.3s ease;
+  }
+  
+  .brain-radar.active .brain-core {
+    background: radial-gradient(circle, var(--neon-pink) 0%, rgba(251, 194, 235, 0.3) 70%);
+    box-shadow: 0 0 16px var(--neon-pink);
+    animation: pulseCore 1s infinite alternate;
+  }
+  
+  @keyframes pulseCore {
+    0% { transform: scale(0.9); }
+    100% { transform: scale(1.2); }
+  }
+  
+  .brain-status-text {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  
+  .brain-radar.active ~ .brain-status-text {
+    color: var(--neon-pink);
+    text-shadow: 0 0 5px rgba(251, 194, 235, 0.5);
+  }
+
+  /* Thought Console Terminal */
+  .telemetry-console {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(139, 130, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  
+  .console-title {
+    font-size: 10px;
+    color: #6b6b9e;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    padding-bottom: 4px;
+    flex-shrink: 0;
+  }
+  
+  .console-log-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    list-style: none;
+    font-size: 10px;
+    line-height: 1.4;
+    padding-right: 4px;
+    max-height: 140px;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+  }
+  .console-log-list.collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .console-log-list::-webkit-scrollbar { width: 3px; }
+  .console-log-list::-webkit-scrollbar-thumb { background: rgba(0, 242, 254, 0.2); }
+  
+  .console-item {
+    word-break: break-all;
+    white-space: pre-wrap;
+    opacity: 0.9;
+    animation: logFadeIn 0.3s ease-out both;
+  }
+  
+  @keyframes logFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 0.9; transform: translateY(0); }
+  }
+  
+  .console-item.router { color: #818cf8; } /* Purple/Blue */
+  .console-item.engine { color: #a18cd1; } /* Lavender */
+  .console-item.tool { color: var(--neon-cyan); } /* Cyan */
+  .console-item.safety { color: var(--neon-yellow); } /* Yellow */
+  .console-item.output { color: var(--neon-green); } /* Green */
+  .console-item.stream { color: var(--neon-pink); } /* Pink */
+  .console-item.system { color: #6b6b9e; } /* Muted */
+
+  /* ── Telemetry Action Card ── */
+  .telemetry-action-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(161, 140, 209, 0.04));
+    border: 1px solid rgba(139, 130, 255, 0.15);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s var(--spring-soft);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Neon states */
+  .telemetry-action-card.thinking {
+    border-color: rgba(0, 242, 254, 0.35);
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.1), rgba(139, 130, 255, 0.04));
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+  }
+  .telemetry-action-card.tool_call {
+    border-color: rgba(236, 72, 153, 0.35);
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(99, 102, 241, 0.04));
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.15);
+  }
+  .telemetry-action-card.tool_review {
+    border-color: rgba(251, 191, 36, 0.35);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.02));
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.15);
+  }
+  .telemetry-action-card.streaming {
+    border-color: rgba(52, 211, 153, 0.35);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.1), rgba(99, 102, 241, 0.04));
+    box-shadow: 0 0 15px rgba(52, 211, 153, 0.15);
+  }
+  .telemetry-action-card.error {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(0, 0, 0, 0.1));
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+  }
+  
+  .action-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 20px;
+    align-self: flex-start;
+  }
+  
+  .telemetry-action-card.thinking .action-icon-wrapper {
+    border-color: var(--neon-cyan);
+    background: rgba(0, 242, 254, 0.08);
+    animation: pulseIcon 1.5s infinite alternate;
+  }
+  .telemetry-action-card.tool_call .action-icon-wrapper {
+    border-color: var(--neon-pink);
+    background: rgba(236, 72, 153, 0.08);
+    animation: rotateIcon 2s linear infinite;
+  }
+  .telemetry-action-card.tool_review .action-icon-wrapper {
+    border-color: var(--neon-yellow);
+    background: rgba(251, 191, 36, 0.08);
+    animation: pulseIcon 1.2s infinite alternate;
+  }
+  .telemetry-action-card.streaming .action-icon-wrapper {
+    border-color: var(--neon-green);
+    background: rgba(52, 211, 153, 0.08);
+    animation: bounceIcon 1s infinite alternate;
+  }
+  
+  @keyframes rotateIcon {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulseIcon {
+    from { box-shadow: 0 0 4px transparent; transform: scale(0.95); }
+    to { box-shadow: 0 0 12px currentColor; transform: scale(1.05); }
+  }
+  @keyframes bounceIcon {
+    from { transform: translateY(0); }
+    to { transform: translateY(-4px); }
+  }
+  
+  .action-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .action-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  
+  .action-desc {
+    font-size: 11px;
+    color: #a0a0d0;
+    line-height: 1.4;
+  }
+  
+  .action-progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  
+  .action-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .telemetry-action-card.thinking .action-progress-bar {
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    animation: shimmyProgress 2s infinite linear;
+  }
+  .telemetry-action-card.tool_call .action-progress-bar {
+    background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple));
+  }
+  .telemetry-action-card.tool_review .action-progress-bar {
+    background: linear-gradient(90deg, var(--neon-yellow), #d97706);
+  }
+  .telemetry-action-card.streaming .action-progress-bar {
+    background: linear-gradient(90deg, var(--neon-green), #059669);
+  }
+  
+  @keyframes shimmyProgress {
+    0% { width: 10%; }
+    50% { width: 85%; }
+    100% { width: 10%; }
+  }
+
+  [data-theme="light"] .telemetry-action-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(161, 140, 209, 0.02));
+    border-color: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.05);
+  }
+  [data-theme="light"] .action-title {
+    color: #2d2a4a;
+  }
+  [data-theme="light"] .action-desc {
+    color: #6b67a0;
+  }
+  [data-theme="light"] .action-icon-wrapper {
+    background: rgba(99, 102, 241, 0.03);
+    border-color: rgba(99, 102, 241, 0.08);
+  }
+
+  /* Light theme support */
+  [data-theme="light"] .glass-telemetry {
+    background: rgba(255, 255, 255, 0.7);
+    border-left-color: rgba(99, 102, 241, 0.08);
+    box-shadow: -4px 0 40px rgba(99, 102, 241, 0.03);
+  }
+  [data-theme="light"] .telemetry-toggle-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(99, 102, 241, 0.15);
+  }
+  [data-theme="light"] .telemetry-header h3 {
+    color: #2d2a4a;
+  }
+  [data-theme="light"] .telemetry-persona {
+    background: rgba(99, 102, 241, 0.03);
+    border-color: rgba(99, 102, 241, 0.08);
+  }
+  [data-theme="light"] .telemetry-persona-info .name {
+    color: #2d2a4a;
+  }
+  [data-theme="light"] .telemetry-console {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(99, 102, 241, 0.08);
+  }
+  [data-theme="light"] .console-item.router { color: #4f46e5; }
+  [data-theme="light"] .console-item.engine { color: #7c3aed; }
+  [data-theme="light"] .console-item.tool { color: #0891b2; }
+  [data-theme="light"] .console-item.safety { color: #d97706; }
+  [data-theme="light"] .console-item.output { color: #059669; }
+  [data-theme="light"] .console-item.stream { color: #db2777; }
+
   .btn-task-glass {
     padding: 0 14px;
     height: 50px;
@@ -847,6 +1352,61 @@
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════ Right Telemetry Panel ═══════════════ -->
+  <div class="glass-telemetry" id="telemetryPanel">
+    <button class="telemetry-toggle-btn" id="telemetryToggle" onclick="toggleTelemetry()" title="切换遥测面板">⟫</button>
+    <div class="telemetry-header">
+      <h3><i class="fa-solid fa-microchip"></i> Agent 遥测中心</h3>
+    </div>
+    
+    <div class="telemetry-persona">
+      <div class="telemetry-avatar-wrapper">
+        <div class="telemetry-avatar-placeholder" id="telemetryAvatar">🤖</div>
+        <div class="telemetry-ring"></div>
+      </div>
+      <div class="telemetry-persona-info">
+        <div class="name" id="telemetryEmpName">数字员工</div>
+        <div class="model" id="telemetryModelName">模型加载中...</div>
+      </div>
+    </div>
+    
+    <div class="telemetry-brain">
+      <div class="brain-radar" id="brainRadar">
+        <div class="brain-radar-circle"></div>
+        <div class="brain-radar-sweep"></div>
+        <div class="brain-core"></div>
+      </div>
+      <div class="brain-status-text" id="brainStatus">STANDBY (就绪)</div>
+    </div>
+    
+    <!-- Action Card -->
+    <div class="telemetry-action-card" id="telemetryActionCard">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="action-icon-wrapper">
+          <span class="action-icon" id="actionIcon">🟢</span>
+        </div>
+        <div class="action-details" style="flex: 1;">
+          <div class="action-title" id="actionTitle">就绪 (Ready)</div>
+          <div class="action-desc" id="actionDesc">数字员工状态良好，等待您的指令。</div>
+        </div>
+      </div>
+      <div class="action-progress" id="actionProgress">
+        <div class="action-progress-bar" id="actionProgressBar" style="width: 100%"></div>
+      </div>
+    </div>
+    
+    <div class="telemetry-console">
+      <div class="console-title" onclick="toggleConsoleLogs()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span>THOUGHT TRACE LOG</span>
+        <span id="consoleToggleIcon" style="font-size: 8px; color: #6b6b9e;">▾</span>
+      </div>
+      <ul class="console-log-list collapsed" id="consoleLogList">
+        <li class="console-item system">> [SYSTEM] 初始化遥测链路...</li>
+        <li class="console-item system">> [SYSTEM] 状态: 就绪</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -856,20 +1416,122 @@
     el.innerHTML = renderSafeMarkdown(el.textContent);
   });
 
-  // Show current employee's bound model name
-  (function updateModelTag() {
+  // Show current employee's bound model name & update telemetry panel
+  function updateModelTagAndTelemetry() {
     var sel = document.getElementById('empSelect');
     var opt = sel && sel.options[sel.selectedIndex];
     var mn = (opt && opt.dataset.modelName) || '';
     var span = document.querySelector('#modelInfoTag span');
     if (span) span.textContent = mn || '';
+    
+    var tEmpName = document.getElementById('telemetryEmpName');
+    var tModelName = document.getElementById('telemetryModelName');
+    var tAvatar = document.getElementById('telemetryAvatar');
+    if (sel && opt) {
+      if (tEmpName) tEmpName.textContent = opt.textContent;
+      if (tModelName) tModelName.textContent = mn || '未绑定模型';
+      if (tAvatar) {
+        var name = opt.textContent.trim();
+        tAvatar.textContent = name ? name.charAt(0) : '🤖';
+      }
+    }
+  }
+  (function initTelemetryAndTags() {
+    updateModelTagAndTelemetry();
+    
+    // Telemetry collapsible panel initialization
+    const panel = document.getElementById('telemetryPanel');
+    const btn = document.getElementById('telemetryToggle');
+    if (panel && btn) {
+      const collapsed = localStorage.getItem('telemetry_collapsed') === 'true';
+      if (collapsed) {
+        panel.classList.add('collapsed');
+        btn.innerHTML = '⟪';
+      } else {
+        panel.classList.remove('collapsed');
+        btn.innerHTML = '⟫';
+      }
+    }
   })();
+  
   document.getElementById('empSelect').addEventListener('change', function() {
-    var opt = this.options[this.selectedIndex];
-    var mn = (opt && opt.dataset.modelName) || '';
-    var span = document.querySelector('#modelInfoTag span');
-    if (span) span.textContent = mn || '';
+    updateModelTagAndTelemetry();
   });
+
+  function toggleTelemetry() {
+    const panel = document.getElementById('telemetryPanel');
+    const btn = document.getElementById('telemetryToggle');
+    if (!panel || !btn) return;
+    if (panel.classList.contains('collapsed')) {
+      panel.classList.remove('collapsed');
+      btn.innerHTML = '⟫';
+      localStorage.setItem('telemetry_collapsed', 'false');
+    } else {
+      panel.classList.add('collapsed');
+      btn.innerHTML = '⟪';
+      localStorage.setItem('telemetry_collapsed', 'true');
+    }
+  }
+
+  function toggleConsoleLogs() {
+    const list = document.getElementById('consoleLogList');
+    const icon = document.getElementById('consoleToggleIcon');
+    if (!list || !icon) return;
+    if (list.classList.contains('collapsed')) {
+      list.classList.remove('collapsed');
+      icon.innerHTML = '▴';
+    } else {
+      list.classList.add('collapsed');
+      icon.innerHTML = '▾';
+    }
+  }
+
+  function updateActionCard(state, title, desc, progressPercentage, icon) {
+    const card = document.getElementById('telemetryActionCard');
+    const iconEl = document.getElementById('actionIcon');
+    const titleEl = document.getElementById('actionTitle');
+    const descEl = document.getElementById('actionDesc');
+    const barEl = document.getElementById('actionProgressBar');
+    if (!card || !iconEl || !titleEl || !descEl || !barEl) return;
+    
+    // Reset classes
+    card.className = 'telemetry-action-card ' + state;
+    
+    iconEl.textContent = icon || '🤖';
+    titleEl.textContent = title;
+    descEl.textContent = desc;
+    barEl.style.width = progressPercentage + '%';
+  }
+
+  function appendTelemetryLog(type, text) {
+    const list = document.getElementById('consoleLogList');
+    if (!list) return;
+    const li = document.createElement('li');
+    li.className = 'console-item ' + type;
+    // timestamp
+    const now = new Date();
+    const timeStr = String(now.getHours()).padStart(2, '0') + ':' + 
+                    String(now.getMinutes()).padStart(2, '0') + ':' + 
+                    String(now.getSeconds()).padStart(2, '0');
+    li.textContent = '[' + timeStr + '] [' + type.toUpperCase() + '] ' + text;
+    list.appendChild(li);
+    while (list.children.length > 80) {
+      list.removeChild(list.firstChild);
+    }
+    requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  }
+
+  function setAgentState(state, statusText) {
+    const radar = document.getElementById('brainRadar');
+    const status = document.getElementById('brainStatus');
+    if (!radar || !status) return;
+    if (state === 'active') {
+      radar.classList.add('active');
+    } else {
+      radar.classList.remove('active');
+    }
+    status.textContent = statusText;
+  }
 
   function getCookie(name) {
     const v = document.cookie.split('; ').find(r => r.startsWith(name + '='));
@@ -946,9 +1608,16 @@
     if (!content) return;
     input.value = '';
 
+    // Initialize telemetry log and state
+    setAgentState('active', 'THINKING (意图分发中...)');
+    updateActionCard('thinking', '理解意图与规划中...', '正在阅读您的输入并规划最佳的执行路径...', 30, '🧠');
+    appendTelemetryLog('router', '收到用户请求: "' + (content.length > 30 ? content.slice(0, 30) + '...' : content) + '"');
+    appendTelemetryLog('engine', '激活智能体引擎...');
+
     // Auto-create session on first message (lazy init)
     if (!SESSION_ID) {
       var empId = document.getElementById('empSelect').value || 0;
+      appendTelemetryLog('system', '新对话，正在懒加载初始化会话...');
       try {
         var cr = await fetch('/chat/new', {
           method: 'POST',
@@ -963,10 +1632,14 @@
             history.replaceState(null, '', '/chat/session/' + SESSION_ID);
             document.getElementById('exportLink').href = '/chat/export/' + SESSION_ID;
             document.getElementById('exportLink').style.visibility = '';
+            appendTelemetryLog('system', '会话初始化成功, ID: ' + SESSION_ID);
           }
         }
       } catch (e2) {
         appendAssistantMsg('❌ 创建对话失败：' + e2.message).style.color = '#f87171';
+        appendTelemetryLog('system', '会话初始化失败: ' + e2.message);
+        setAgentState('idle', 'ERROR (初始化失败)');
+        updateActionCard('error', '会话初始化失败', e2.message, 100, '❌');
         return;
       }
     }
@@ -1017,7 +1690,10 @@
           var line = lines[li];
           if (line.startsWith('data: ')) {
             var payload = line.slice(6);
-            if (payload === '[DONE]') return;
+            if (payload === '[DONE]') {
+              appendTelemetryLog('system', '服务端流式输出完成。');
+              return;
+            }
             try {
               var parsed = JSON.parse(payload);
               if (parsed.type === 'text') {
@@ -1026,19 +1702,34 @@
                   _bubbleText = '';
                   _newTurn = false;
                 }
+                if (_bubbleText === '') {
+                  appendTelemetryLog('stream', '开始流式输出回复内容...');
+                  setAgentState('active', 'STREAMING (内容输出中...)');
+                  updateActionCard('streaming', '撰写回复中...', '正在为您流式输出回复内容...', 90, '✍');
+                }
                 _bubbleText += parsed.content || '';
                 _currentBubble.innerHTML = renderSafeMarkdown(_bubbleText);
                 scrollBottom();
               } else if (parsed.type === 'music_html') {
+                appendTelemetryLog('stream', '渲染音乐卡片组件');
                 _currentBubble.innerHTML = parsed.html || '';
                 scrollBottom();
               } else if (parsed.type === 'tool_call') {
+                appendTelemetryLog('tool', '意图触发工具调用: ' + parsed.name + ' - 参数: ' + JSON.stringify(parsed.args || {}));
+                setAgentState('active', 'EXECUTING TOOL (' + parsed.name + ')');
+                updateActionCard('tool_call', '调用外部技能...', '正在调用内置工具 [' + parsed.name + '] 获取最新数据...', 60, '🛠');
                 appendToolCard(parsed);
                 scrollBottom();
               } else if (parsed.type === 'tool_review') {
+                var statusMsg = parsed.approved ? '已批准' : '被拦截';
+                appendTelemetryLog('safety', '工具安全审计: 状态 = ' + (parsed.approved ? '已批准 (Approved)' : '被拦截 (Denied)') + (parsed.reason ? ' 原因: ' + parsed.reason : ''));
+                updateActionCard('tool_review', '安全合规审计...', '对工具执行权限进行审计检查 (' + statusMsg + ')...', 75, '🛡');
                 updateToolReview(parsed);
               } else if (parsed.type === 'tool_result') {
                 _newTurn = true;
+                appendTelemetryLog('output', '工具执行返回: 数据长度 = ' + (parsed.content ? parsed.content.length : 0) + ' 字节');
+                setAgentState('active', 'PROCESSING RESULT');
+                updateActionCard('thinking', '处理数据返回...', '成功获取工具响应，正在提取和整合信息...', 80, '📥');
                 updateToolResult(parsed);
               }
             } catch (e3) { /* partial SSE chunk */ }
@@ -1047,17 +1738,31 @@
       }
     } catch (e) {
       if (e.name === 'AbortError') {
-        // User clicked stop — clean exit, no error message
+        appendTelemetryLog('system', '操作已被用户中止。');
+        setAgentState('idle', 'STOPPED (已手动中止)');
+        updateActionCard('error', '操作已被中止', '已根据您的要求中止了当前的执行任务。', 100, '⏹');
         return;
       }
       const typing = document.getElementById('typingMsg');
       if (typing) typing.remove();
       const errDiv = appendAssistantMsg('❌ 请求失败：' + e.message);
       errDiv.style.color = '#f87171';
+      appendTelemetryLog('system', '遥测异常: ' + e.message);
+      setAgentState('idle', 'ERROR (请求失败)');
+      updateActionCard('error', '执行发生异常', e.message, 100, '❌');
     } finally {
       _abortController = null;
       document.getElementById('stopBtn').style.display = 'none';
       document.getElementById('sendBtn').style.display = '';
+      // Wait a second then restore standby if not in error state
+      setTimeout(() => {
+        const statusEl = document.getElementById('brainStatus');
+        if (statusEl && (statusEl.textContent.includes('STREAMING') || statusEl.textContent.includes('PROCESSING'))) {
+          setAgentState('idle', 'STANDBY (就绪)');
+          updateActionCard('standby', '就绪 (Ready)', '数字员工状态良好，随时等待您的指令。', 100, '🟢');
+          appendTelemetryLog('system', '遥测链路恢复就绪。');
+        }
+      }, 1500);
     }
   }
 

@@ -1,6 +1,8 @@
 import json
 import math
 
+import tornado.web
+
 from app.controllers.admin import AdminBaseHandler
 from app.models.chat import ChatRepository
 from app.models.db import get_connection
@@ -164,3 +166,11 @@ def _collect_stats() -> dict[str, object]:
         "sentiment_dist": sentiment_dist,
         "hot_words": [{"name": w, "value": c} for w, c in hot_words],
     }
+
+
+class BaiduLinkRedirectHandler(tornado.web.RequestHandler):
+    """Handler to redirect local 404 relative Baidu /link?url=... urls back to www.baidu.com"""
+    def get(self) -> None:
+        uri = self.request.uri or ""
+        target_url = "https://www.baidu.com" + uri
+        self.redirect(target_url)

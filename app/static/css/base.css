@@ -2371,3 +2371,275 @@ body {
         padding: 42px 22px;
     }
 }
+
+/* ═══════════════ GLOBAL RECONSTRUCTION STYLES ═══════════════ */
+:root {
+	--spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--spring-soft: cubic-bezier(0.25, 1.2, 0.5, 1);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	
+	/* Colors */
+	--neon-cyan: #00f2fe;
+	--neon-blue: #4facfe;
+	--neon-purple: #a18cd1;
+	--neon-pink: #fbc2eb;
+	--neon-green: #2ecc71;
+	--neon-yellow: #f1c40f;
+	--neon-red: #ff4d4d;
+}
+
+/* Scrollbar styling for all layout */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(99, 102, 241, 0.25);
+	border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/* Global input focus styling */
+.admin-grid-form input:focus, 
+.admin-grid-form select:focus, 
+.admin-grid-form textarea:focus,
+.admin-search input:focus,
+.adm-modal-body input:focus,
+.adm-modal-body select:focus {
+	border-color: var(--neon-cyan) !important;
+	box-shadow: 0 0 10px rgba(0, 242, 254, 0.3) !important;
+	outline: none;
+	transition: all 0.25s ease;
+}
+
+/* Admin Card & Table Hover Transitions */
+.admin-table-card, .adm-welcome-card {
+	transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.admin-table-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 12px 36px rgba(99, 102, 241, 0.08);
+}
+
+/* Top Progress bar color */
+#topProgressBar {
+	box-shadow: 0 0 10px var(--neon-cyan), 0 0 4px var(--neon-blue);
+}
+
+/* Collapsible Sidebar Styles */
+.adm-sidebar {
+	transition: width 0.4s var(--ease-out-expo), min-width 0.4s var(--ease-out-expo), background 0.4s, border-color 0.4s, box-shadow 0.4s !important;
+}
+
+.adm-sidebar.collapsed {
+	width: 68px !important;
+	min-width: 68px !important;
+	padding: 20px 8px !important;
+}
+
+.adm-sidebar.collapsed .adm-brand strong,
+.adm-sidebar.collapsed .adm-brand span,
+.adm-sidebar.collapsed .adm-nav-label,
+.adm-sidebar.collapsed .adm-nav a span.nav-text,
+.adm-sidebar.collapsed .adm-sidebar-footer span.adm-user,
+.adm-sidebar.collapsed .adm-sidebar-footer form button {
+	display: none !important;
+}
+
+.adm-sidebar.collapsed .adm-brand {
+	justify-content: center;
+	padding-bottom: 12px;
+}
+
+.adm-sidebar.collapsed .adm-brand-dot {
+	margin: 0;
+}
+
+.adm-sidebar.collapsed .adm-nav a {
+	justify-content: center;
+	padding: 10px 0 !important;
+}
+
+.adm-sidebar.collapsed .adm-nav a .nav-icon {
+	margin: 0 !important;
+	font-size: 16px;
+}
+
+.adm-sidebar.collapsed .adm-sidebar-footer {
+	flex-direction: column;
+	gap: 12px;
+	align-items: center;
+}
+
+/* Tooltip for collapsed sidebar items */
+.sidebar-tooltip {
+	position: fixed;
+	left: 80px;
+	background: rgba(10, 15, 30, 0.85);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(0, 242, 254, 0.3);
+	color: #fff;
+	padding: 6px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	z-index: 9999;
+	pointer-events: none;
+	opacity: 0;
+	transform: translateX(-10px);
+	transition: all 0.25s var(--spring-soft);
+	box-shadow: 0 4px 16px rgba(0, 242, 254, 0.15);
+}
+.sidebar-tooltip.show {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+/* Command Palette / Control Panel Overlay */
+.adm-cmd-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(6, 9, 19, 0.7);
+	backdrop-filter: blur(15px);
+	z-index: 10000;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.3s ease;
+	display: flex;
+	justify-content: center;
+	padding-top: 15vh;
+}
+
+.adm-cmd-overlay.show {
+	opacity: 1;
+	visibility: visible;
+}
+
+.adm-cmd-modal {
+	width: 580px;
+	max-width: 90%;
+	background: rgba(10, 15, 30, 0.8);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 16px;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 242, 254, 0.1);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	transform: scale(0.95) translateY(-20px);
+	transition: all 0.3s var(--spring-soft);
+}
+
+.adm-cmd-overlay.show .adm-cmd-modal {
+	transform: scale(1) translateY(0);
+	border-color: rgba(0, 242, 254, 0.35);
+}
+
+.adm-cmd-search-wrapper {
+	display: flex;
+	align-items: center;
+	padding: 16px 20px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	gap: 12px;
+}
+
+.adm-cmd-search-wrapper i {
+	color: var(--neon-cyan);
+	font-size: 16px;
+}
+
+.adm-cmd-input {
+	flex: 1;
+	background: transparent;
+	border: none;
+	color: #fff;
+	font-size: 15px;
+	outline: none;
+}
+
+.adm-cmd-input::placeholder {
+	color: rgba(255, 255, 255, 0.35);
+}
+
+.adm-cmd-results {
+	max-height: 300px;
+	overflow-y: auto;
+	list-style: none;
+	padding: 8px;
+}
+
+.adm-cmd-item {
+	padding: 10px 16px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	color: #e2e8f0;
+	cursor: pointer;
+	font-size: 13px;
+	transition: all 0.2s ease;
+}
+
+.adm-cmd-item.active, .adm-cmd-item:hover {
+	background: rgba(0, 242, 254, 0.15);
+	color: #fff;
+	text-shadow: 0 0 5px rgba(0, 242, 254, 0.5);
+}
+
+.adm-cmd-item .cmd-badge {
+	font-size: 10px;
+	background: rgba(255, 255, 255, 0.08);
+	padding: 2px 6px;
+	border-radius: 4px;
+	color: #8b949e;
+}
+
+.adm-cmd-item.active .cmd-badge {
+	background: rgba(0, 242, 254, 0.25);
+	color: var(--neon-cyan);
+}
+
+.adm-cmd-footer {
+	padding: 12px 20px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 11px;
+	color: #8b949e;
+	background: rgba(0, 0, 0, 0.15);
+}
+
+.adm-cmd-footer kbd {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 3px;
+	padding: 1px 4px;
+	font-family: inherit;
+	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* ── Unified Focus and Micro-Animations ── */
+input, select, textarea {
+	transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+input:focus, select:focus, textarea:focus {
+	border-color: var(--neon-cyan) !important;
+	box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15), 0 0 10px rgba(0, 242, 254, 0.2) !important;
+	outline: none;
+}
+[data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus {
+	background: rgba(0, 0, 0, 0.35) !important;
+}
+
+button, .btn, .btn-glass, .btn-send-glass, .btn-play-music {
+	transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+button:hover, .btn:hover, .btn-glass:hover, .btn-send-glass:hover {
+	transform: translateY(-1px);
+	filter: brightness(1.08);
+}
+button:active, .btn:active, .btn-glass:active, .btn-send-glass:active {
+	transform: translateY(1px);
+	filter: brightness(0.95);
+}

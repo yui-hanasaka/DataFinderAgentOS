@@ -8,6 +8,40 @@
   <link rel="stylesheet" href="{{ static_url('css/base.css') }}">
   <link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
   {% block head_extra %}{% end %}
+  <style>
+    @keyframes floatOrbOne {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(5vw, 5vh) scale(1.1); }
+    }
+    @keyframes floatOrbTwo {
+      0% { transform: translate(0, 0) scale(1.1); }
+      100% { transform: translate(-5vw, -5vh) scale(0.9); }
+    }
+    .adm-collapse-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #8b949e;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.25s;
+    }
+    .adm-collapse-btn:hover {
+      border-color: var(--neon-cyan);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+    }
+    [data-theme="light"] .adm-collapse-btn {
+      border-color: rgba(99, 102, 241, 0.25);
+      color: #4d4a70;
+    }
+    [data-theme="light"] .adm-collapse-btn:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+    }
+  </style>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -81,6 +115,7 @@
 
       <div class="adm-sidebar-footer">
         <button class="adm-theme-btn" id="themeIcon" onclick="toggleTheme()" title="切换暗色主题">🌙</button>
+        <button class="adm-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="折叠侧栏" style="margin: 0 6px;">◀</button>
         <span class="adm-user">{{ username }}</span>
         <form method="post" action="/admin/logout">
           {% module xsrf_form_html() %}
@@ -241,6 +276,214 @@
         head.classList.toggle('scrolled', ws.scrollTop > 8);
       });
     })();
+  </script>
+
+  <!-- Background Orbs -->
+  <div class="orb-container" aria-hidden="true" style="position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;">
+    <div class="orb-one" style="position:absolute;width:30vw;height:30vw;border-radius:50%;background:radial-gradient(circle,rgba(0,242,254,0.06) 0%,transparent 70%);left:-10vw;top:10vh;filter:blur(40px);animation:floatOrbOne 20s infinite alternate;"></div>
+    <div class="orb-two" style="position:absolute;width:40vw;height:40vw;border-radius:50%;background:radial-gradient(circle,rgba(161,140,209,0.05) 0%,transparent 70%);right:-15vw;bottom:-10vh;filter:blur(40px);animation:floatOrbTwo 25s infinite alternate;"></div>
+  </div>
+
+  <!-- Command Palette Overlay -->
+  <div class="adm-cmd-overlay" id="cmdOverlay" onclick="closeCommandPalette(event)">
+    <div class="adm-cmd-modal" onclick="event.stopPropagation()">
+      <div class="adm-cmd-search-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="adm-cmd-input" id="cmdInput" placeholder="输入菜单名称进行快捷跳转..." oninput="filterCommandPalette()">
+      </div>
+      <ul class="adm-cmd-results" id="cmdResults">
+        <!-- Dynamically populated -->
+      </ul>
+      <div class="adm-cmd-footer">
+        <span>使用 <kbd>↑</kbd> <kbd>↓</kbd> 移动，<kbd>Enter</kbd> 跳转</span>
+        <span>按 <kbd>ESC</kbd> 退出</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Collapsible Sidebar JS ── */
+    function toggleSidebarCollapse() {
+      var sidebar = document.getElementById('admSidebar');
+      var btn = document.getElementById('sidebarCollapseBtn');
+      if (sidebar.classList.contains('collapsed')) {
+        sidebar.classList.remove('collapsed');
+        if (btn) {
+          btn.innerHTML = '◀';
+          btn.title = '折叠侧栏';
+        }
+        localStorage.setItem('sidebar_collapsed', 'false');
+      } else {
+        sidebar.classList.add('collapsed');
+        if (btn) {
+          btn.innerHTML = '▶';
+          btn.title = '展开侧栏';
+        }
+        localStorage.setItem('sidebar_collapsed', 'true');
+      }
+    }
+
+    (function initSidebar() {
+      var collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+      var sidebar = document.getElementById('admSidebar');
+      var btn = document.getElementById('sidebarCollapseBtn');
+      if (collapsed && sidebar) {
+        sidebar.classList.add('collapsed');
+        if (btn) {
+          btn.innerHTML = '▶';
+          btn.title = '展开侧栏';
+        }
+      }
+    })();
+
+    /* ── Tooltips for Collapsed Navigation Items ── */
+    document.querySelectorAll('.adm-nav a').forEach(function(link) {
+      link.addEventListener('mouseenter', function(e) {
+        var sidebar = document.getElementById('admSidebar');
+        if (!sidebar || !sidebar.classList.contains('collapsed')) return;
+        
+        var existing = document.querySelector('.sidebar-tooltip');
+        if (existing) existing.remove();
+        
+        var tooltip = document.createElement('div');
+        tooltip.className = 'sidebar-tooltip';
+        tooltip.textContent = link.textContent.trim();
+        document.body.appendChild(tooltip);
+        
+        var rect = link.getBoundingClientRect();
+        tooltip.style.top = (rect.top + (rect.height - tooltip.offsetHeight) / 2) + 'px';
+        
+        tooltip.offsetHeight; 
+        tooltip.classList.add('show');
+      });
+      
+      link.addEventListener('mouseleave', function() {
+        var tooltip = document.querySelector('.sidebar-tooltip');
+        if (tooltip) {
+          tooltip.classList.remove('show');
+          setTimeout(function() { tooltip.remove(); }, 250);
+        }
+      });
+    });
+
+    /* ── Command Palette JS ── */
+    let cmdItems = [];
+    let activeCmdIndex = 0;
+    
+    function buildCommandList() {
+      cmdItems = [];
+      document.querySelectorAll('.adm-nav a').forEach(function(link) {
+        var text = link.textContent.trim();
+        var icon = link.querySelector('.nav-icon') ? link.querySelector('.nav-icon').textContent : '';
+        cmdItems.push({
+          name: text,
+          url: link.getAttribute('href'),
+          icon: icon
+        });
+      });
+    }
+    
+    function toggleCommandPalette() {
+      var overlay = document.getElementById('cmdOverlay');
+      if (!overlay) return;
+      if (overlay.classList.contains('show')) {
+        overlay.classList.remove('show');
+      } else {
+        buildCommandList();
+        overlay.classList.add('show');
+        var input = document.getElementById('cmdInput');
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        renderCommandResults(cmdItems);
+      }
+    }
+    
+    function closeCommandPalette(e) {
+      var overlay = document.getElementById('cmdOverlay');
+      if (overlay) overlay.classList.remove('show');
+    }
+    
+    function renderCommandResults(items) {
+      var list = document.getElementById('cmdResults');
+      if (!list) return;
+      list.replaceChildren();
+      activeCmdIndex = 0;
+      
+      if (items.length === 0) {
+        var empty = document.createElement('li');
+        empty.style.padding = '16px';
+        empty.style.textAlign = 'center';
+        empty.style.color = '#8b949e';
+        empty.style.fontSize = '13px';
+        empty.textContent = '无匹配项';
+        list.appendChild(empty);
+        return;
+      }
+      
+      items.forEach(function(item, idx) {
+        var li = document.createElement('li');
+        li.className = 'adm-cmd-item' + (idx === 0 ? ' active' : '');
+        li.dataset.url = item.url;
+        
+        var nameSpan = document.createElement('span');
+        nameSpan.innerHTML = '<span style="margin-right: 8px">' + item.icon + '</span>' + item.name;
+        li.appendChild(nameSpan);
+        
+        var badge = document.createElement('span');
+        badge.className = 'cmd-badge';
+        badge.textContent = '跳转';
+        li.appendChild(badge);
+        
+        li.onclick = function() {
+          window.location.href = item.url;
+        };
+        
+        list.appendChild(li);
+      });
+    }
+    
+    function filterCommandPalette() {
+      var query = document.getElementById('cmdInput').value.trim().toLowerCase();
+      var filtered = cmdItems.filter(function(item) {
+        return item.name.toLowerCase().includes(query) || item.url.toLowerCase().includes(query);
+      });
+      renderCommandResults(filtered);
+    }
+    
+    document.addEventListener('keydown', function(e) {
+      var overlay = document.getElementById('cmdOverlay');
+      if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        toggleCommandPalette();
+      } else if (e.key === 'Escape') {
+        if (overlay && overlay.classList.contains('show')) {
+          overlay.classList.remove('show');
+        }
+      } else if (overlay && overlay.classList.contains('show')) {
+        var items = document.querySelectorAll('.adm-cmd-item');
+        if (items.length === 0) return;
+        
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          items[activeCmdIndex].classList.remove('active');
+          activeCmdIndex = (activeCmdIndex + 1) % items.length;
+          items[activeCmdIndex].classList.add('active');
+          items[activeCmdIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          items[activeCmdIndex].classList.remove('active');
+          activeCmdIndex = (activeCmdIndex - 1 + items.length) % items.length;
+          items[activeCmdIndex].classList.add('active');
+          items[activeCmdIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          var url = items[activeCmdIndex].dataset.url;
+          if (url) window.location.href = url;
+        }
+      }
+    });
   </script>
 </body>
 

@@ -688,6 +688,18 @@ class WatchtowerScraper:
             soup = BeautifulSoup(response.content, "html.parser")
             items = WatchtowerScraper._scrape_baidu_news(soup)
 
+        # Normalize relative URLs to absolute URLs using page URL origin
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            for item in items:
+                item_url = item.get("url", "")
+                if item_url and item_url.startswith("/"):
+                    item["url"] = origin + item_url
+        except Exception:
+            pass
+
         if source_id:
             _log_scrape_result(source_id, url, "success", len(items), None, elapsed)
         return items
@@ -709,17 +721,31 @@ class WatchtowerScraper:
                     return []
                 soup = BeautifulSoup(result.html, "html.parser")
                 if source_type == "baidu_news":
-                    return WatchtowerScraper._scrape_baidu_news(soup)
-                if source_type == "bing_web":
-                    return WatchtowerScraper._scrape_bing_web(soup)
-                if source_type == "bing_news":
-                    return WatchtowerScraper._scrape_bing_news(soup)
-                if source_type == "duckduckgo":
-                    return WatchtowerScraper._scrape_duckduckgo(soup)
-                if source_type == "sogou_web":
-                    return WatchtowerScraper._scrape_sogou_web(soup)
-                # generic
-                return WatchtowerScraper._scrape_generic(soup, config)
+                    items = WatchtowerScraper._scrape_baidu_news(soup)
+                elif source_type == "bing_web":
+                    items = WatchtowerScraper._scrape_bing_web(soup)
+                elif source_type == "bing_news":
+                    items = WatchtowerScraper._scrape_bing_news(soup)
+                elif source_type == "duckduckgo":
+                    items = WatchtowerScraper._scrape_duckduckgo(soup)
+                elif source_type == "sogou_web":
+                    items = WatchtowerScraper._scrape_sogou_web(soup)
+                else:
+                    # generic
+                    items = WatchtowerScraper._scrape_generic(soup, config)
+
+                # Normalize relative URLs to absolute URLs using page URL origin
+                from urllib.parse import urlparse
+                try:
+                    parsed = urlparse(url)
+                    origin = f"{parsed.scheme}://{parsed.netloc}"
+                    for item in items:
+                        item_url = item.get("url", "")
+                        if item_url and item_url.startswith("/"):
+                            item["url"] = origin + item_url
+                except Exception:
+                    pass
+                return items
         except Exception:
             return []
 

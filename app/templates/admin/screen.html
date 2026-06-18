@@ -4,11 +4,28 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>数智大屏</title>
+	<title>数智舆情大屏 · AgentOS</title>
+	<link rel="stylesheet" href="{{ static_url('fontawesome/fontawesome-free-6.4.0-web/css/all.min.css') }}">
 	<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2/dist/echarts-gl.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2/dist/echarts-wordcloud.min.js"></script>
 	<style>
+		:root {
+			--bg-color: #060913;
+			--panel-bg: rgba(10, 15, 30, 0.45);
+			--panel-border: rgba(255, 255, 255, 0.08);
+			--panel-border-hover: rgba(0, 242, 254, 0.35);
+			--text-primary: #ffffff;
+			--text-secondary: #a0aec0;
+			--cyan: #00f2fe;
+			--blue: #4facfe;
+			--purple: #a18cd1;
+			--pink: #fbc2eb;
+			--red: #ff4d4d;
+			--green: #2ecc71;
+			--yellow: #f1c40f;
+		}
+
 		* {
 			box-sizing: border-box;
 			margin: 0;
@@ -16,303 +33,1132 @@
 		}
 
 		body {
-			background: #0d1117;
-			color: #c9d1d9;
-			font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+			background-color: var(--bg-color);
+			color: var(--text-primary);
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 			height: 100vh;
+			width: 100vw;
+			overflow: hidden;
 			display: flex;
 			flex-direction: column;
+			position: relative;
+		}
+
+		/* Background glowing orbs */
+		.glowing-orbs {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			z-index: -1;
+			pointer-events: none;
+		}
+
+		.orb {
+			position: absolute;
+			border-radius: 50%;
+			filter: blur(120px);
+			opacity: 0.12;
+			animation: float 25s infinite alternate ease-in-out;
+		}
+
+		.orb-1 {
+			width: 500px;
+			height: 500px;
+			background: radial-gradient(circle, var(--cyan) 0%, rgba(0, 242, 254, 0) 70%);
+			top: 15%;
+			left: 10%;
+		}
+
+		.orb-2 {
+			width: 600px;
+			height: 600px;
+			background: radial-gradient(circle, var(--purple) 0%, rgba(161, 140, 209, 0) 70%);
+			bottom: 10%;
+			right: 15%;
+			animation-delay: -5s;
+		}
+
+		.orb-3 {
+			width: 400px;
+			height: 400px;
+			background: radial-gradient(circle, var(--pink) 0%, rgba(251, 194, 235, 0) 70%);
+			top: 40%;
+			right: 45%;
+			animation-delay: -12s;
+		}
+
+		@keyframes float {
+			0% {
+				transform: translate(0, 0) scale(1);
+			}
+			50% {
+				transform: translate(60px, 40px) scale(1.15);
+			}
+			100% {
+				transform: translate(-40px, -60px) scale(0.9);
+			}
+		}
+
+		/* Glassmorphism panels */
+		.glass-panel {
+			background: var(--panel-bg);
+			backdrop-filter: blur(25px) saturate(180%);
+			-webkit-backdrop-filter: blur(25px) saturate(180%);
+			border: 1px solid var(--panel-border);
+			border-radius: 12px;
+			box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+			transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 			overflow: hidden;
 		}
 
+		.glass-panel:hover {
+			border-color: var(--panel-border-hover);
+			box-shadow: 0 10px 40px 0 rgba(0, 242, 254, 0.12);
+			transform: translateY(-2px);
+		}
+
+		/* Header */
 		.screen-header {
+			height: 64px;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			padding: 0 24px;
-			height: 52px;
-			background: #161b22;
-			border-bottom: 1px solid #21262d;
+			position: relative;
+			background: rgba(6, 9, 19, 0.8);
+			backdrop-filter: blur(10px);
+			border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 			flex-shrink: 0;
+			z-index: 10;
 		}
 
-		.screen-header h1 {
-			font-size: 16px;
-			font-weight: 600;
-			color: #e6edf3;
-			letter-spacing: .5px;
-		}
-
-		.screen-header .clock {
-			font-size: 14px;
-			color: #8b949e;
-		}
-
-		.screen-stats {
+		.header-left {
 			display: flex;
-			gap: 12px;
-			padding: 12px 16px;
-			flex-shrink: 0;
+			align-items: center;
+			gap: 8px;
 		}
 
-		.stat-card {
-			flex: 1;
-			background: #161b22;
-			border: 1px solid #21262d;
-			border-radius: 6px;
-			padding: 12px 16px;
+		.status-dot {
+			width: 8px;
+			height: 8px;
+			background-color: var(--green);
+			border-radius: 50%;
+			box-shadow: 0 0 10px var(--green);
+			animation: pulse 1.5s infinite;
 		}
 
-		.stat-card .label {
+		@keyframes pulse {
+			0% {
+				transform: scale(0.9);
+				opacity: 0.6;
+			}
+			50% {
+				transform: scale(1.2);
+				opacity: 1;
+				box-shadow: 0 0 14px var(--green);
+			}
+			100% {
+				transform: scale(0.9);
+				opacity: 0.6;
+			}
+		}
+
+		.status-text {
 			font-size: 12px;
-			color: #8b949e;
-			margin-bottom: 4px;
+			color: var(--text-secondary);
+			letter-spacing: 0.5px;
+			font-weight: 500;
 		}
 
-		.stat-card .value {
-			font-size: 28px;
+		.header-title h1 {
+			font-size: 20px;
 			font-weight: 700;
-			color: #e6edf3;
+			letter-spacing: 2px;
+			background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 		}
 
-		.screen-main {
+		.header-right {
 			display: flex;
-			gap: 12px;
-			padding: 0 16px;
+			align-items: center;
+			gap: 16px;
+		}
+
+		.clock {
+			font-family: 'Courier New', Courier, monospace;
+			font-size: 14px;
+			color: var(--cyan);
+			text-shadow: 0 0 5px rgba(0, 242, 254, 0.5);
+			margin-right: 8px;
+		}
+
+		.screen-btn {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 6px;
+			color: var(--text-primary);
+			font-size: 12px;
+			padding: 6px 12px;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			text-decoration: none;
+			transition: all 0.2s ease;
+		}
+
+		.screen-btn:hover {
+			background: rgba(0, 242, 254, 0.15);
+			border-color: var(--cyan);
+			color: var(--cyan);
+			box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+		}
+
+		/* Main Layout */
+		.screen-content {
+			display: flex;
+			gap: 16px;
+			padding: 16px;
 			flex: 1;
 			min-height: 0;
+			position: relative;
+			z-index: 1;
 		}
 
-		.screen-globe-col {
-			flex: 3;
+		.col-left,
+		.col-right {
+			width: 28%;
 			display: flex;
 			flex-direction: column;
+			gap: 16px;
+		}
+
+		.col-center {
+			width: 44%;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		/* Indicators Grid */
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
 			gap: 12px;
-		}
-
-		.screen-right-col {
-			flex: 4;
-			display: flex;
-			flex-direction: column;
-			gap: 12px;
-		}
-
-		.chart-box {
-			background: #161b22;
-			border: 1px solid #21262d;
-			border-radius: 6px;
-			display: flex;
-			flex-direction: column;
-			overflow: hidden;
-		}
-
-		.chart-box .chart-title {
-			font-size: 13px;
-			color: #8b949e;
-			padding: 10px 14px 0;
 			flex-shrink: 0;
 		}
 
-		.chart-box .chart-area {
+		.stat-card-glass {
+			background: rgba(10, 15, 30, 0.4);
+			backdrop-filter: blur(20px);
+			border: 1px solid rgba(255, 255, 255, 0.06);
+			border-radius: 10px;
+			padding: 14px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			transition: all 0.3s ease;
+		}
+
+		.stat-card-glass:hover {
+			transform: translateY(-2px);
+			border-color: var(--panel-border-hover);
+			background: rgba(10, 15, 30, 0.65);
+		}
+
+		.stat-icon {
+			width: 42px;
+			height: 42px;
+			border-radius: 8px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 18px;
+			background: rgba(255, 255, 255, 0.04);
+			border: 1px solid rgba(255, 255, 255, 0.05);
+		}
+
+		.stat-icon.cyan {
+			color: var(--cyan);
+			background: rgba(0, 242, 254, 0.08);
+			border-color: rgba(0, 242, 254, 0.2);
+		}
+
+		.stat-icon.purple {
+			color: var(--purple);
+			background: rgba(161, 140, 209, 0.08);
+			border-color: rgba(161, 140, 209, 0.2);
+		}
+
+		.stat-icon.pink {
+			color: var(--pink);
+			background: rgba(251, 194, 235, 0.08);
+			border-color: rgba(251, 194, 235, 0.2);
+		}
+
+		.stat-icon.green {
+			color: var(--green);
+			background: rgba(46, 204, 113, 0.08);
+			border-color: rgba(46, 204, 113, 0.2);
+		}
+
+		.stat-info {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.stat-info .label {
+			font-size: 11px;
+			color: var(--text-secondary);
+			margin-bottom: 2px;
+		}
+
+		.stat-info .value {
+			font-size: 22px;
+			font-weight: 700;
+			color: #ffffff;
+			letter-spacing: 0.5px;
+		}
+
+		/* Chart Box Structure */
+		.chart-box {
+			display: flex;
+			flex-direction: column;
 			flex: 1;
 			min-height: 0;
+		}
+
+		.chart-header {
+			padding: 12px 16px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+			background: rgba(255, 255, 255, 0.01);
+			flex-shrink: 0;
+		}
+
+		.chart-header i {
+			font-size: 14px;
+			color: var(--cyan);
+		}
+
+		.chart-header h2 {
+			font-size: 13px;
+			font-weight: 600;
+			letter-spacing: 1px;
+			color: var(--text-primary);
+		}
+
+		.chart-area {
+			flex: 1;
+			min-height: 0;
+			position: relative;
+		}
+
+		/* Specific Box Adjustments */
+		.sentiment-box {
+			flex: 1.2;
 		}
 
 		.globe-box {
+			flex: 2.2;
+		}
+
+		/* News Scrolling Ticker */
+		.news-box {
 			flex: 1;
 			min-height: 0;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.news-list-container {
+			flex: 1;
+			overflow: hidden;
+			position: relative;
+			padding: 8px 16px;
+		}
+
+		.news-list {
+			list-style: none;
+			position: relative;
+			transition: transform 0.5s ease-in-out;
+		}
+
+		.news-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 8px 0;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+			font-size: 12px;
+			gap: 12px;
+			transition: background 0.2s ease;
+		}
+
+		.news-item:hover {
+			background: rgba(255, 255, 255, 0.02);
+		}
+
+		.news-title {
+			flex: 1;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			color: #e2e8f0;
+		}
+
+		.news-meta {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			flex-shrink: 0;
+		}
+
+		.news-tag {
+			padding: 2px 6px;
+			border-radius: 4px;
+			font-size: 9px;
+			font-weight: 600;
+		}
+
+		.news-tag.sentiment-positive {
+			background: rgba(46, 204, 113, 0.15);
+			color: var(--green);
+			border: 1px solid rgba(46, 204, 113, 0.3);
+		}
+
+		.news-tag.sentiment-negative {
+			background: rgba(231, 76, 60, 0.15);
+			color: var(--red);
+			border: 1px solid rgba(231, 76, 60, 0.3);
+		}
+
+		.news-tag.sentiment-neutral {
+			background: rgba(241, 196, 15, 0.15);
+			color: var(--yellow);
+			border: 1px solid rgba(241, 196, 15, 0.3);
+		}
+
+		.news-tag.sentiment-unknown {
+			background: rgba(52, 152, 219, 0.15);
+			color: var(--blue);
+			border: 1px solid rgba(52, 152, 219, 0.3);
+		}
+
+		.news-risk {
+			padding: 2px 6px;
+			border-radius: 4px;
+			font-size: 9px;
+			background: rgba(255, 255, 255, 0.05);
+			color: var(--text-secondary);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.news-item.high-risk {
+			background: rgba(255, 77, 77, 0.05);
+			border-left: 2px solid var(--red);
+			padding-left: 6px;
+			animation: warningGlow 2s infinite alternate;
+		}
+
+		@keyframes warningGlow {
+			0% {
+				border-left-color: var(--red);
+			}
+
+			100% {
+				border-left-color: rgba(255, 77, 77, 0.2);
+				background-color: rgba(255, 77, 77, 0.08);
+			}
 		}
 
 		.trend-box {
-			flex: 3;
-		}
-
-		.sentiment-box {
-			flex: 2;
+			flex: 1.2;
 		}
 
 		.wordcloud-box {
-			flex: 2;
+			flex: 1;
 		}
 	</style>
 </head>
 
 <body>
-	<header class="screen-header">
-		<h1 id="siteName">数智大屏</h1>
-		<span class="clock" id="clock"></span>
-	</header>
-	<div class="screen-stats">
-		<div class="stat-card">
-			<div class="label">用户总数</div>
-			<div class="value" id="s-users">{{ stats.get('user_count', 0) }}</div>
-		</div>
-		<div class="stat-card">
-			<div class="label">会话总数</div>
-			<div class="value" id="s-sessions">{{ stats.get('session_count', 0) }}</div>
-		</div>
-		<div class="stat-card">
-			<div class="label">消息总数</div>
-			<div class="value" id="s-msgs">{{ stats.get('msg_count', 0) }}</div>
-		</div>
-		<div class="stat-card">
-			<div class="label">瞭望条目数</div>
-			<div class="value" id="s-items">{{ stats.get('item_count', 0) }}</div>
-		</div>
+	<!-- Background Orbs -->
+	<div class="glowing-orbs">
+		<div class="orb orb-1"></div>
+		<div class="orb orb-2"></div>
+		<div class="orb orb-3"></div>
 	</div>
-	<div class="screen-main">
-		<div class="screen-globe-col">
-			<div class="chart-box globe-box">
-				<div class="chart-title">瞭望数据地球</div>
-				<div class="chart-area" id="globeChart"></div>
-			</div>
+
+	<!-- Header -->
+	<header class="screen-header">
+		<div class="header-left">
+			<div class="status-dot"></div>
+			<span class="status-text">系统实时监测中</span>
 		</div>
-		<div class="screen-right-col">
-			<div class="chart-box trend-box">
-				<div class="chart-title">最近7天消息趋势</div>
-				<div class="chart-area" id="msgChart"></div>
+		<div class="header-title">
+			<h1 id="siteName">数智舆情监测大屏</h1>
+		</div>
+		<div class="header-right">
+			<span class="clock" id="clock"></span>
+			<a href="/admin/home" class="screen-btn"><i class="fa-solid fa-arrow-left"></i> 返回后台</a>
+			<button class="screen-btn fs-btn" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i> 全屏切换</button>
+		</div>
+	</header>
+
+	<!-- Main Content Area -->
+	<div class="screen-content">
+		<!-- Left Panel -->
+		<div class="col-left">
+			<!-- Stats Telemetry Grid -->
+			<div class="stats-grid">
+				<div class="stat-card-glass">
+					<div class="stat-icon cyan">
+						<i class="fa-solid fa-users"></i>
+					</div>
+					<div class="stat-info">
+						<span class="label">用户总数</span>
+						<span class="value" id="s-users">0</span>
+					</div>
+				</div>
+				<div class="stat-card-glass">
+					<div class="stat-icon purple">
+						<i class="fa-solid fa-comments"></i>
+					</div>
+					<div class="stat-info">
+						<span class="label">会话总数</span>
+						<span class="value" id="s-sessions">0</span>
+					</div>
+				</div>
+				<div class="stat-card-glass">
+					<div class="stat-icon pink">
+						<i class="fa-solid fa-paper-plane"></i>
+					</div>
+					<div class="stat-info">
+						<span class="label">消息总数</span>
+						<span class="value" id="s-msgs">0</span>
+					</div>
+				</div>
+				<div class="stat-card-glass">
+					<div class="stat-icon green">
+						<i class="fa-solid fa-satellite"></i>
+					</div>
+					<div class="stat-info">
+						<span class="label">瞭望条目数</span>
+						<span class="value" id="s-items">0</span>
+					</div>
+				</div>
 			</div>
-			<div class="chart-box sentiment-box">
-				<div class="chart-title">舆情情感分布</div>
+
+			<!-- Sentiment Distribution Donut -->
+			<div class="chart-box glass-panel sentiment-box">
+				<div class="chart-header">
+					<i class="fa-solid fa-chart-pie"></i>
+					<h2>舆情情感分布</h2>
+				</div>
 				<div class="chart-area" id="sentimentChart"></div>
 			</div>
-			<div class="chart-box wordcloud-box">
-				<div class="chart-title">热词云</div>
+		</div>
+
+		<!-- Center Panel -->
+		<div class="col-center">
+			<!-- 3D Globe Box -->
+			<div class="chart-box glass-panel globe-box">
+				<div class="chart-header">
+					<i class="fa-solid fa-earth-asia"></i>
+					<h2>数智舆情瞭望地球</h2>
+				</div>
+				<div class="chart-area" id="globeChart"></div>
+			</div>
+
+			<!-- Real-time Sentiment Log Stream -->
+			<div class="chart-box glass-panel news-box">
+				<div class="chart-header">
+					<i class="fa-solid fa-tower-broadcast"></i>
+					<h2>实时舆情情报播报</h2>
+				</div>
+				<div class="news-list-container">
+					<ul class="news-list" id="newsList">
+						<li class="news-item">
+							<span class="news-title">正在建立情报连接流...</span>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<!-- Right Panel -->
+		<div class="col-right">
+			<!-- 7 Days Message Trend -->
+			<div class="chart-box glass-panel trend-box">
+				<div class="chart-header">
+					<i class="fa-solid fa-chart-line"></i>
+					<h2>最近7天消息趋势</h2>
+				</div>
+				<div class="chart-area" id="msgChart"></div>
+			</div>
+
+			<!-- Word Cloud -->
+			<div class="chart-box glass-panel wordcloud-box">
+				<div class="chart-header">
+					<i class="fa-solid fa-cloud"></i>
+					<h2>舆情热词云</h2>
+				</div>
 				<div class="chart-area" id="wordCloud"></div>
 			</div>
 		</div>
 	</div>
+
+	<!-- Hidden Server Data -->
 	<div id="screen-data" hidden>{% raw stats_json %}</div>
+
 	<script>
+		// Init ECharts instances
 		var msgChart = echarts.init(document.getElementById('msgChart'), 'dark');
 		var sentimentChart = echarts.init(document.getElementById('sentimentChart'), 'dark');
 		var wordCloudChart = echarts.init(document.getElementById('wordCloud'), 'dark');
 		var globeChart = echarts.init(document.getElementById('globeChart'), 'dark');
 
+		// Parse initial data
 		var initData = JSON.parse(document.getElementById('screen-data').textContent);
 
-		function renderCharts(data) {
-			msgChart.setOption({
-				backgroundColor: 'transparent',
-				tooltip: { trigger: 'axis' },
-				grid: { top: 20, right: 20, bottom: 30, left: 40 },
-				xAxis: { type: 'category', data: data.msg_trend.map(function (d) { return d.date; }), axisLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#8b949e' } },
-				yAxis: { type: 'value', splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e' } },
-				series: [{ type: 'line', data: data.msg_trend.map(function (d) { return d.count; }), smooth: true, areaStyle: { opacity: 0.15 }, lineStyle: { color: '#58a6ff' }, itemStyle: { color: '#58a6ff' } }]
-			});
-			sentimentChart.setOption({
-				backgroundColor: 'transparent',
-				tooltip: { trigger: 'item' },
-				legend: { bottom: 8, textStyle: { color: '#8b949e' } },
-				series: [{ type: 'pie', radius: ['40%', '65%'], center: ['50%', '45%'], data: data.sentiment_dist, label: { color: '#c9d1d9' } }]
-			});
-			wordCloudChart.setOption({
-				backgroundColor: 'transparent',
-				series: [{ type: 'wordCloud', gridSize: 6, sizeRange: [12, 36], rotationRange: [-45, 45], shape: 'circle', width: '100%', height: '100%', data: data.hot_words, textStyle: { color: function () { return 'rgb(' + [Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100)].join(',') + ')'; } } }]
-			});
+		// Number count-up animation function
+		function animateValue(id, start, end, duration) {
+			var obj = document.getElementById(id);
+			if (!obj) return;
+			var startValue = parseInt(start) || 0;
+			var endValue = parseInt(end) || 0;
+			if (startValue === endValue) {
+				obj.textContent = endValue;
+				return;
+			}
+			
+			var range = endValue - startValue;
+			var startTime = new Date().getTime();
+			var endTime = startTime + duration;
+			var timer;
+			
+			function run() {
+				var now = new Date().getTime();
+				var remaining = Math.max((endTime - now) / duration, 0);
+				var value = Math.round(endValue - (remaining * range));
+				obj.textContent = value;
+				if (value === endValue) {
+					clearInterval(timer);
+				}
+			}
+			
+			timer = setInterval(run, 30);
+			run();
 		}
 
-		function renderGlobe(points) {
-			var scatterData = points.map(function (p) {
-				return [p.lng, p.lat, Math.max(0.3, p.risk / 10 || 0.5)];
-			});
-			globeChart.setOption({
+		// Keep track of current statistics
+		var currentStats = {
+			user_count: 0,
+			session_count: 0,
+			msg_count: 0,
+			item_count: 0
+		};
+
+		function updateStatsWithAnimation(newData) {
+			animateValue('s-users', currentStats.user_count, newData.user_count || 0, 1000);
+			animateValue('s-sessions', currentStats.session_count, newData.session_count || 0, 1000);
+			animateValue('s-msgs', currentStats.msg_count, newData.msg_count || 0, 1000);
+			animateValue('s-items', currentStats.item_count, newData.item_count || 0, 1000);
+			
+			currentStats.user_count = newData.user_count || 0;
+			currentStats.session_count = newData.session_count || 0;
+			currentStats.msg_count = newData.msg_count || 0;
+			currentStats.item_count = newData.item_count || 0;
+		}
+
+		// Fullscreen Toggle
+		function toggleFullscreen() {
+			if (!document.fullscreenElement) {
+				document.documentElement.requestFullscreen().catch(function (err) {
+					console.log("Error enabling fullscreen: " + err.message);
+				});
+			} else {
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				}
+			}
+		}
+
+		document.addEventListener('fullscreenchange', function () {
+			var btn = document.querySelector('.fs-btn');
+			if (document.fullscreenElement) {
+				btn.innerHTML = '<i class="fa-solid fa-compress"></i> 退出全屏';
+			} else {
+				btn.innerHTML = '<i class="fa-solid fa-expand"></i> 全屏切换';
+			}
+		});
+
+		// Render standard ECharts
+		function renderCharts(data) {
+			// Message Trend Line Chart
+			msgChart.setOption({
 				backgroundColor: 'transparent',
-				globe: {
-					baseTexture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/earth.jpg',
-					heightTexture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/earth.jpg',
-					displacementScale: 0.04,
-					shading: 'realistic',
-					environment: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/starfield.jpg',
-					realisticMaterial: {
-						roughness: 0.9
-					},
-					postEffect: {
-						enable: true
-					},
-					light: {
-						main: {
-							intensity: 1.2,
-							shadow: true
-						},
-						ambientCubemap: {
-							texture: 'https://cdn.jsdelivr.net/npm/echarts-gl@2/asset/pisa.hdr',
-							diffuseIntensity: 0.8
-						}
-					},
-					viewControl: {
-						autoRotate: true,
-						autoRotateSpeed: 3,
-						targetCoord: [104, 35, 0]
-					}
+				tooltip: {
+					trigger: 'axis',
+					backgroundColor: 'rgba(10, 15, 30, 0.85)',
+					borderColor: 'rgba(0, 242, 254, 0.3)',
+					borderWidth: 1,
+					textStyle: { color: '#ffffff' }
+				},
+				grid: { top: 30, right: 15, bottom: 30, left: 45 },
+				xAxis: {
+					type: 'category',
+					data: data.msg_trend.map(function (d) { return d.date; }),
+					axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+					axisLabel: { color: '#8b949e', fontSize: 10 },
+					splitLine: { show: false }
+				},
+				yAxis: {
+					type: 'value',
+					axisLine: { show: false },
+					splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+					axisLabel: { color: '#8b949e', fontSize: 10 }
 				},
 				series: [{
-					type: 'scatter3D',
-					coordinateSystem: 'globe',
-					blendMode: 'lighter',
-					symbolSize: function (val) {
-						return Math.max(4, val[2] * 12);
+					type: 'line',
+					data: data.msg_trend.map(function (d) { return d.count; }),
+					smooth: true,
+					symbol: 'circle',
+					symbolSize: 6,
+					showSymbol: false,
+					lineStyle: {
+						color: '#00f2fe',
+						width: 3,
+						shadowBlur: 10,
+						shadowColor: 'rgba(0, 242, 254, 0.5)'
 					},
 					itemStyle: {
-						color: function (params) {
-							var risk = points[params.dataIndex] && points[params.dataIndex].risk || 0;
-							if (risk >= 7) return '#ff4444';
-							if (risk >= 4) return '#ffaa00';
-							return '#58a6ff';
-						},
-						opacity: 0.8
+						color: '#00f2fe',
+						borderColor: '#ffffff',
+						borderWidth: 1
+					},
+					areaStyle: {
+						color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+							{ offset: 0, color: 'rgba(0, 242, 254, 0.35)' },
+							{ offset: 1, color: 'rgba(0, 242, 254, 0)' }
+						])
+					}
+				}]
+			});
+
+			// Sentiment Donut Chart
+			sentimentChart.setOption({
+				backgroundColor: 'transparent',
+				tooltip: {
+					trigger: 'item',
+					backgroundColor: 'rgba(10, 15, 30, 0.85)',
+					borderColor: 'rgba(0, 242, 254, 0.3)',
+					borderWidth: 1,
+					textStyle: { color: '#ffffff' }
+				},
+				legend: {
+					bottom: 5,
+					left: 'center',
+					textStyle: { color: '#8b949e', fontSize: 10 },
+					itemWidth: 10,
+					itemHeight: 10,
+					icon: 'circle'
+				},
+				series: [{
+					type: 'pie',
+					radius: ['45%', '70%'],
+					center: ['50%', '42%'],
+					avoidLabelOverlap: false,
+					itemStyle: {
+						borderRadius: 6,
+						borderColor: '#060913',
+						borderWidth: 2
 					},
 					label: {
+						show: false,
+						position: 'center'
+					},
+					emphasis: {
+						label: {
+							show: true,
+							fontSize: 14,
+							fontWeight: 'bold',
+							formatter: '{b}\n{d}%',
+							color: '#ffffff'
+						}
+					},
+					labelLine: {
 						show: false
 					},
-					data: scatterData
+					data: data.sentiment_dist.map(function (item) {
+						var color = '#3498db'; // Default Blue
+						var labelName = item.name || '未分析';
+						if (labelName === '正面' || labelName === 'positive') color = '#2ecc71';
+						else if (labelName === '负面' || labelName === 'negative') color = '#ff4d4d';
+						else if (labelName === '中性' || labelName === 'neutral') color = '#f1c40f';
+						
+						return {
+							name: labelName,
+							value: item.value,
+							itemStyle: { color: color }
+						};
+					})
+				}]
+			});
+
+			// Word Cloud Chart
+			wordCloudChart.setOption({
+				backgroundColor: 'transparent',
+				series: [{
+					type: 'wordCloud',
+					gridSize: 8,
+					sizeRange: [12, 32],
+					rotationRange: [-45, 45],
+					shape: 'circle',
+					width: '100%',
+					height: '100%',
+					data: data.hot_words,
+					textStyle: {
+						fontFamily: 'sans-serif',
+						fontWeight: 'bold',
+						color: function () {
+							var colors = ['#00f2fe', '#a18cd1', '#fbc2eb', '#2ecc71', '#f1c40f', '#3498db'];
+							return colors[Math.floor(Math.random() * colors.length)];
+						}
+					},
+					emphasis: {
+						textStyle: {
+							shadowBlur: 10,
+							shadowColor: 'rgba(0, 242, 254, 0.4)'
+						}
+					}
 				}]
 			});
 		}
 
+		// Generate a local wireframe grid texture for the globe (100% offline & robust)
+		function createGlobeTexture() {
+			var canvas = document.createElement('canvas');
+			canvas.width = 1024;
+			canvas.height = 512;
+			var ctx = canvas.getContext('2d');
+			
+			// Deep space background for the globe
+			ctx.fillStyle = '#0a1020';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			// Draw horizontal grid lines (latitudes)
+			ctx.strokeStyle = 'rgba(0, 242, 254, 0.18)';
+			ctx.lineWidth = 1.2;
+			var latStep = 15;
+			for (var lat = -90; lat <= 90; lat += latStep) {
+				var y = ((90 - lat) / 180) * canvas.height;
+				ctx.beginPath();
+				ctx.moveTo(0, y);
+				ctx.lineTo(canvas.width, y);
+				ctx.stroke();
+			}
+			
+			// Draw vertical grid lines (longitudes)
+			var lngStep = 15;
+			for (var lng = -180; lng <= 180; lng += lngStep) {
+				var x = ((lng + 180) / 360) * canvas.width;
+				ctx.beginPath();
+				ctx.moveTo(x, 0);
+				ctx.lineTo(x, canvas.height);
+				ctx.stroke();
+			}
+			
+			// Draw decorative subtle neon dots at intersections
+			ctx.fillStyle = 'rgba(0, 242, 254, 0.4)';
+			for (var lat = -90; lat <= 90; lat += latStep * 2) {
+				var y = ((90 - lat) / 180) * canvas.height;
+				for (var lng = -180; lng <= 180; lng += lngStep * 2) {
+					var x = ((lng + 180) / 360) * canvas.width;
+					ctx.beginPath();
+					ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			}
+			return canvas;
+		}
+
+		// Fallback 2D radar grid visualization (100% WebGL-independent)
+		function render2DCoordinateGrid(points) {
+			var scatterData = points.map(function (p) {
+				return [p.lng, p.lat, Math.max(3, p.risk || 5), p.title, p.sentiment];
+			});
+			
+			globeChart.setOption({
+				backgroundColor: 'transparent',
+				title: {
+					text: '📡 舆情空间坐标监测雷达 (WebGL未启用)',
+					left: 'center',
+					top: 15,
+					textStyle: { color: 'rgba(0, 242, 254, 0.7)', fontSize: 13, fontWeight: 'bold' }
+				},
+				tooltip: {
+					trigger: 'item',
+					formatter: function (params) {
+						var val = params.value;
+						var riskColor = val[2] >= 7 ? '#ff4d4d' : (val[2] >= 4 ? '#f1c40f' : '#2ecc71');
+						return '<div style="padding: 6px 10px; font-size:12px; line-height: 1.6; max-width: 260px; white-space: normal; word-break: break-all;">' +
+							'<strong style="color: #00f2fe; display: block; margin-bottom: 4px;">' + val[3] + '</strong>' +
+							'<span>舆情情感: ' + val[4] + '</span><br/>' +
+							'<span>安全风险: <span style="color:' + riskColor + '; font-weight:bold;">' + val[2] + '</span></span>' +
+							'</div>';
+					},
+					backgroundColor: 'rgba(10, 15, 30, 0.85)',
+					borderColor: 'rgba(0, 242, 254, 0.3)',
+					borderWidth: 1,
+					textStyle: { color: '#ffffff' }
+				},
+				grid: {
+					top: 55, bottom: 40, left: 50, right: 30
+				},
+				xAxis: {
+					type: 'value',
+					min: -180, max: 180,
+					splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+					axisLabel: { color: '#8b949e', fontSize: 10 }
+				},
+				yAxis: {
+					type: 'value',
+					min: -90, max: 90,
+					splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+					axisLabel: { color: '#8b949e', fontSize: 10 }
+				},
+				series: [{
+					type: 'scatter',
+					symbolSize: function (val) {
+						return Math.max(8, val[2] * 2.2);
+					},
+					itemStyle: {
+						color: function (params) {
+							var risk = params.value[2];
+							if (risk >= 7) return '#ff4d4d';
+							if (risk >= 4) return '#f1c40f';
+							return '#00f2fe';
+						},
+						shadowBlur: 10,
+						shadowColor: 'rgba(0, 242, 254, 0.6)',
+						opacity: 0.85
+					},
+					data: scatterData
+				}]
+			}, true);
+		}
+
+		// Render 3D Globe with fallbacks
+		function renderGlobe(points) {
+			try {
+				// Safety check: is ECharts GL loaded?
+				if (!echarts.graphic || !echarts.graphic.LinearGradient) {
+					throw new Error("ECharts not properly initialized");
+				}
+				
+				var scatterData = points.map(function (p) {
+					return [p.lng, p.lat, Math.max(0.3, p.risk / 10 || 0.5)];
+				});
+				
+				globeChart.setOption({
+					backgroundColor: 'transparent',
+					tooltip: {
+						show: true,
+						formatter: function (params) {
+							var p = points[params.dataIndex];
+							if (!p) return '';
+							var riskColor = p.risk >= 7 ? '#ff4d4d' : (p.risk >= 4 ? '#f1c40f' : '#2ecc71');
+							return '<div style="padding: 6px 10px; font-size:12px; line-height: 1.6; max-width: 260px; white-space: normal; word-break: break-all;">' +
+								'<strong style="color: #00f2fe; display: block; margin-bottom: 4px;">' + p.title + '</strong>' +
+								'<span>舆情情感: <span style="font-weight:bold;">' + p.sentiment + '</span></span><br/>' +
+								'<span>安全风险: <span style="color:' + riskColor + '; font-weight:bold;">' + p.risk + '</span></span>' +
+								'</div>';
+						},
+						backgroundColor: 'rgba(10, 15, 30, 0.85)',
+						borderColor: 'rgba(0, 242, 254, 0.3)',
+						borderWidth: 1,
+						textStyle: { color: '#ffffff' }
+					},
+					globe: {
+						baseTexture: createGlobeTexture(),
+						shading: 'color', // Use color shading to eliminate light textures dependency
+						environment: '#060913', // Solid background color instead of starfield img
+						viewControl: {
+							autoRotate: true,
+							autoRotateSpeed: 2.2,
+							targetCoord: [104, 35, 0]
+						}
+					},
+					series: [{
+						type: 'scatter3D',
+						coordinateSystem: 'globe',
+						blendMode: 'lighter',
+						symbolSize: function (val) {
+							return Math.max(6, val[2] * 15);
+						},
+						itemStyle: {
+							color: function (params) {
+								var risk = points[params.dataIndex] && points[params.dataIndex].risk || 0;
+								if (risk >= 7) return '#ff4d4d'; // Red
+								if (risk >= 4) return '#f1c40f'; // Yellow
+								return '#00f2fe'; // Cyan
+							},
+							opacity: 0.85
+						},
+						label: {
+							show: false
+						},
+						data: scatterData
+					}]
+				});
+			} catch (e) {
+				console.warn("ECharts-GL or WebGL not available, falling back to 2D coordinates grid:", e);
+				render2DCoordinateGrid(points);
+			}
+		}
+
+		// scrolling News Ticker
+		var scrollInterval = null;
+		function renderNewsList(points) {
+			var newsList = document.getElementById('newsList');
+			newsList.innerHTML = '';
+			
+			if (!points || points.length === 0) {
+				newsList.innerHTML = '<li class="news-item"><span class="news-title">暂无实时舆情情报</span></li>';
+				return;
+			}
+			
+			points.forEach(function (p) {
+				var li = document.createElement('li');
+				li.className = 'news-item';
+				if (p.risk >= 7) {
+					li.className += ' high-risk';
+				}
+				
+				var sentimentClass = 'sentiment-unknown';
+				var sentimentText = p.sentiment || '未分析';
+				if (sentimentText === '正面' || sentimentText === 'positive') sentimentClass = 'sentiment-positive';
+				else if (sentimentText === '负面' || sentimentText === 'negative') sentimentClass = 'sentiment-negative';
+				else if (sentimentText === '中性' || sentimentText === 'neutral') sentimentClass = 'sentiment-neutral';
+				
+				li.innerHTML = `
+					<span class="news-title" title="${p.title}">${p.title}</span>
+					<div class="news-meta">
+						<span class="news-tag ${sentimentClass}">${sentimentText}</span>
+						<span class="news-risk">风险: ${p.risk}</span>
+					</div>
+				`;
+				if (p.url) {
+					li.style.cursor = 'pointer';
+					li.onclick = function () {
+						window.open(p.url, '_blank');
+					};
+				}
+				newsList.appendChild(li);
+			});
+			
+			startNewsScroll();
+		}
+
+		function startNewsScroll() {
+			if (scrollInterval) clearInterval(scrollInterval);
+			
+			var newsList = document.getElementById('newsList');
+			var itemHeight = 33; // Match single news item height
+			
+			scrollInterval = setInterval(function () {
+				if (newsList.children.length <= 4) return;
+				
+				newsList.style.transition = 'transform 0.5s ease-in-out';
+				newsList.style.transform = 'translateY(-' + itemHeight + 'px)';
+				
+				setTimeout(function () {
+					newsList.style.transition = 'none';
+					newsList.style.transform = 'translateY(0)';
+					newsList.appendChild(newsList.firstElementChild);
+				}, 500);
+			}, 4000);
+		}
+
+		// Initial loading execution
+		var xsrfToken = (document.cookie.match(/_xsrf=([^;]+)/) || [])[1] || '';
+
+		updateStatsWithAnimation(initData);
 		renderCharts(initData);
 
-		// Load globe data
-		var xsrfToken = (document.cookie.match(/_xsrf=([^;]+)/) || [])[1] || '';
+		// Load Globe & News List Data
 		fetch('/admin/screen/data/globe', { headers: { 'X-XSRFToken': xsrfToken } })
 			.then(function (r) { return r.json(); })
-			.then(function (d) { renderGlobe(d.points || []); })
+			.then(function (d) {
+				renderGlobe(d.points || []);
+				renderNewsList(d.points || []);
+			})
 			.catch(function () { });
 
+		// Digital Monospace Clock
 		function updateClock() {
 			var now = new Date();
-			document.getElementById('clock').textContent = now.toLocaleString('zh-CN');
+			var year = now.getFullYear();
+			var month = String(now.getMonth() + 1).padStart(2, '0');
+			var date = String(now.getDate()).padStart(2, '0');
+			var hours = String(now.getHours()).padStart(2, '0');
+			var minutes = String(now.getMinutes()).padStart(2, '0');
+			var seconds = String(now.getSeconds()).padStart(2, '0');
+			
+			var dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+			var day = dayNames[now.getDay()];
+			
+			document.getElementById('clock').textContent = `${year}-${month}-${date} ${hours}:${minutes}:${seconds} ${day}`;
 		}
 		updateClock();
 		setInterval(updateClock, 1000);
 
+		// Refresh data logic
 		function refreshData() {
-			fetch('/api/screen/data', { headers: { 'X-XSRFToken': xsrfToken } }).then(function (r) { return r.json(); }).then(function (d) {
-				document.getElementById('s-users').textContent = d.user_count || 0;
-				document.getElementById('s-sessions').textContent = d.session_count || 0;
-				document.getElementById('s-msgs').textContent = d.msg_count || 0;
-				document.getElementById('s-items').textContent = d.item_count || 0;
-				renderCharts(d);
-			}).catch(function () { });
-			// Refresh wordcloud from dedicated endpoint
+			fetch('/api/screen/data', { headers: { 'X-XSRFToken': xsrfToken } })
+				.then(function (r) { return r.json(); })
+				.then(function (d) {
+					updateStatsWithAnimation(d);
+					renderCharts(d);
+				}).catch(function () { });
+
+			// Refresh wordcloud
 			fetch('/admin/screen/data/wordcloud', { headers: { 'X-XSRFToken': xsrfToken } })
 				.then(function (r) { return r.json(); })
 				.then(function (d) {
 					wordCloudChart.setOption({
-						backgroundColor: 'transparent',
-						series: [{ type: 'wordCloud', gridSize: 6, sizeRange: [12, 36], rotationRange: [-45, 45], shape: 'circle', width: '100%', height: '100%', data: d.words || [], textStyle: { color: function () { return 'rgb(' + [Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100), Math.round(Math.random() * 100 + 100)].join(',') + ')'; } } }]
+						series: [{ data: d.words || [] }]
 					});
 				}).catch(function () { });
-			// Refresh globe
+
+			// Refresh globe & news ticker
 			fetch('/admin/screen/data/globe', { headers: { 'X-XSRFToken': xsrfToken } })
 				.then(function (r) { return r.json(); })
-				.then(function (d) { renderGlobe(d.points || []); })
+				.then(function (d) {
+					renderGlobe(d.points || []);
+					renderNewsList(d.points || []);
+				})
 				.catch(function () { });
 		}
+		
+		// 30-seconds refresh rate
 		setInterval(refreshData, 30000);
 
+		// Window resize adjustment
 		window.addEventListener('resize', function () {
-			msgChart.resize(); sentimentChart.resize(); wordCloudChart.resize(); globeChart.resize();
+			msgChart.resize();
+			sentimentChart.resize();
+			wordCloudChart.resize();
+			globeChart.resize();
 		});
 	</script>
 </body>

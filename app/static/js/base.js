@@ -102,3 +102,65 @@ window.toggleTheme = toggleTheme;
 window.initThemeIcon = initThemeIcon;
 window.renderSafeMarkdown = renderSafeMarkdown;
 window.escapeHtml = escapeHtml;
+
+// ── Top Progress Loading Bar ──
+var _progressBarTimer = null;
+function startTopProgressBar() {
+    var bar = document.getElementById('topProgressBar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'topProgressBar';
+        bar.style.position = 'fixed';
+        bar.style.top = '0';
+        bar.style.left = '0';
+        bar.style.height = '3px';
+        bar.style.background = 'linear-gradient(90deg, #00f2fe, #4facfe, #a18cd1)';
+        bar.style.boxShadow = '0 0 8px #00f2fe';
+        bar.style.zIndex = '99999';
+        bar.style.width = '0%';
+        bar.style.transition = 'width 0.4s ease, opacity 0.4s ease';
+        document.body.appendChild(bar);
+    }
+    bar.style.opacity = '1';
+    bar.style.width = '0%';
+    
+    if (_progressBarTimer) clearInterval(_progressBarTimer);
+    
+    var progress = 0;
+    _progressBarTimer = setInterval(function() {
+        if (progress < 85) {
+            progress += Math.random() * 8;
+            bar.style.width = progress + '%';
+        }
+    }, 250);
+}
+
+function completeTopProgressBar() {
+    var bar = document.getElementById('topProgressBar');
+    if (!bar) return;
+    if (_progressBarTimer) clearInterval(_progressBarTimer);
+    bar.style.width = '100%';
+    setTimeout(function() {
+        bar.style.opacity = '0';
+        setTimeout(function() {
+            bar.style.width = '0%';
+        }, 400);
+    }, 300);
+}
+
+window.startTopProgressBar = startTopProgressBar;
+window.completeTopProgressBar = completeTopProgressBar;
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        var a = e.target.closest('a');
+        if (a && a.href && !a.getAttribute('href').startsWith('#') && !a.getAttribute('href').startsWith('javascript:') && a.target !== '_blank' && !e.ctrlKey && !e.metaKey) {
+            startTopProgressBar();
+        }
+    });
+    document.addEventListener('submit', function() {
+        startTopProgressBar();
+    });
+    // Complete progress bar when page is fully loaded
+    completeTopProgressBar();
+});
