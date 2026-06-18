@@ -5,6 +5,62 @@ from app.models.db import get_connection
 
 
 class EmployeeRepository:
+    _SKILL_TO_TOOL: dict[str, str] = {
+        "web_search": "web_search",
+        "code_exec": "code_execute",
+        "watchtower": "watchtower_search",
+        "warehouse": "warehouse_query",
+        "deep_crawl": "deep_collect",
+        "env_check": "env_info",
+    }
+
+    @staticmethod
+    def get_employee_with_tools(employee_id: int) -> dict | None:
+        """Return employee dict with allowed_tools derived from skills field."""
+        from app.models.db import get_connection
+
+        emp_row = EmployeeRepository.get_employee(employee_id)
+        if not emp_row:
+            return None
+
+        skills_raw = emp_row["skills"] or "[]"
+        try:
+            skills_data = json.loads(skills_raw)
+        except (json.JSONDecodeError, TypeError):
+            skills_data = []
+
+        if isinstance(skills_data, list):
+            skill_ids = skills_data
+            force_task_agent = False
+            task_config: dict = {}
+        elif isinstance(skills_data, dict):
+            skill_ids = skills_data.get("skill_ids", [])
+            force_task_agent = skills_data.get("force_task_agent", False)
+            task_config = skills_data.get("task_config", {})
+        else:
+            skill_ids = []
+            force_task_agent = False
+            task_config = {}
+
+        allowed_tools: list[str] = []
+        if skill_ids:
+            with get_connection() as conn:
+                placeholders = ",".join(["?"] * len(skill_ids))
+                rows = conn.execute(
+                    f"SELECT code FROM skills WHERE id IN ({placeholders}) AND status='enabled'",
+                    skill_ids,
+                ).fetchall()
+                for row in rows:
+                    tool_name = EmployeeRepository._SKILL_TO_TOOL.get(row["code"])
+                    if tool_name and tool_name not in allowed_tools:
+                        allowed_tools.append(tool_name)
+
+        result = dict(emp_row)
+        result["allowed_tools"] = allowed_tools if allowed_tools else None
+        result["force_task_agent"] = force_task_agent
+        result["task_config"] = task_config
+        return result
+
     @staticmethod
     def list_employees(
         keyword: str = "", page: int = 1
