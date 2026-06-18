@@ -34,6 +34,7 @@ from app.controllers.chat import (
     ChatSessionHandler,
     MusicSearchHandler,
 )
+from app.controllers.db_migration import AdminDbMigrationHandler
 from app.controllers.deep import AdminDeepHandler
 from app.controllers.digital_twin import (
     AdminDigitalTwinHandler,
@@ -141,6 +142,7 @@ def app() -> tornado.web.Application:
         (r"/admin/conversations/(\d+)", AdminConversationDetailHandler),
         (r"/admin/screen", AdminScreenHandler),
         (r"/admin/settings", AdminSettingsHandler),
+        (r"/admin/db-migration", AdminDbMigrationHandler),
         (r"/admin/digital-twin", AdminDigitalTwinHandler),
         (r"/admin/digital-twin/scenes/(\d+)", AdminDigitalTwinSceneHandler),
         # api
