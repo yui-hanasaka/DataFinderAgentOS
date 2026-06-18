@@ -81,35 +81,38 @@ class WatchtowerCollectHandler(AdminBaseHandler):
 
         all_items = []
         errors: list[dict] = []
-        for src_id in source_ids:
+
+        async def _scrape_one(src_id: int) -> tuple[list, str | None]:
             source = SourceRepository.get_source(src_id)
             if not source or source["status"] != "enabled":
-                continue
+                return [], None
             try:
-                items = await WatchtowerScraper.scrape_source_async(
-                    src_id, keyword, pages, limit
+                items = await asyncio.wait_for(
+                    WatchtowerScraper.scrape_source_async(
+                        src_id, keyword, pages, limit
+                    ),
+                    timeout=25,
                 )
                 for item in items:
                     item["source_id"] = src_id
                     item["source_name"] = source["name"]
-                all_items.extend(items)
                 if not items:
-                    errors.append(
-                        {
-                            "source_id": src_id,
-                            "source_name": source["name"],
-                            "msg": "采集结果为空（可能遭遇反爬或选择器失效）",
-                        }
+                    return (
+                        [],
+                        f"{source['name']}: 采集结果为空（可能遭遇反爬或选择器失效）",
                     )
+                return items, None
+            except asyncio.TimeoutError:
+                return [], f"{source['name']}: 采集超时（>25s）"
             except Exception as e:
                 log_error(f"采集源 {src_id} 抓取失败", e)
-                errors.append(
-                    {
-                        "source_id": src_id,
-                        "source_name": source["name"],
-                        "msg": str(e)[:200],
-                    }
-                )
+                return [], f"{source['name']}: {str(e)[:200]}"
+
+        results = await asyncio.gather(*[_scrape_one(src_id) for src_id in source_ids])
+        for items, err in results:
+            all_items.extend(items)
+            if err:
+                errors.append({"msg": err})
 
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write(
