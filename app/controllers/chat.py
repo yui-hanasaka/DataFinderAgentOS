@@ -557,11 +557,14 @@ class ChatExportHandler(ChatBaseHandler):
 class MusicSearchHandler(ChatBaseHandler):
     """Server-side music search aggregator.
 
-    Queries all configured external music APIs plus built-in free sources
-    in parallel, then returns aggregated results as JSON.
+    Query flow (first-success-wins per source, all sources run in parallel):
+    1. Default built-in: Netease API at https://music.chinokou.cn/ (no config needed)
+    2. External: configured API keys in admin panel (QQ, Netease custom, generic)
+    3. Fallback: iTunes free API
     """
 
     _MUSIC_API_TYPES = ("music", "music_qq", "music_netease")
+    _DEFAULT_NETEASE = "https://music.chinokou.cn"
 
     async def post(self) -> None:
         try:
@@ -579,31 +582,75 @@ class MusicSearchHandler(ChatBaseHandler):
             self.write({"error": "请输入有效的搜索关键词（1-200字符）"})
             return
 
-        # Gather configured external API keys
         external_keys = self._get_music_api_keys()
-
-        # Query external and built-in sources in parallel
         sources: list[dict[str, object]] = []
 
-        # External API calls
-        for key_info in external_keys:
-            result = await self._query_external(query, key_info)
-            if result:
-                sources.append(result)
+        # Run all queries in parallel
+        tasks: list[asyncio.Task[dict[str, object] | None]] = []
 
-        # Built-in free sources (run in parallel)
-        builtin_tasks = [
-            self._query_itunes(query),
-            self._query_musicbrainz(query),
-            self._query_duckduckgo_music(query),
-        ]
-        builtin_results = await asyncio.gather(*builtin_tasks, return_exceptions=True)
-        for r in builtin_results:
+        # 1. Default built-in Netease API
+        tasks.append(asyncio.create_task(self._query_chinokou(query)))
+
+        # 2. External configured APIs
+        for key_info in external_keys:
+            tasks.append(asyncio.create_task(self._query_external(query, key_info)))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for r in results:
             if isinstance(r, dict) and r.get("items"):
                 sources.append(r)
 
+        # 3. Fallback: iTunes (only if nothing found)
+        if not sources:
+            itunes = await self._query_itunes(query)
+            if itunes and itunes.get("items"):
+                sources.append(itunes)
+
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write({"sources": sources, "query": query})
+
+    # ── Default built-in Netease API ──────────────────────────────────
+
+    async def _query_chinokou(self, query: str) -> dict[str, object] | None:
+        """Query the default NeteaseCloudMusicApiEnhanced at music.chinokou.cn."""
+        import urllib.parse
+
+        url = (
+            f"{self._DEFAULT_NETEASE}/cloudsearch"
+            f"?keywords={urllib.parse.quote(query)}&type=1&limit=10"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(12)) as client:
+                r = await client.get(url, follow_redirects=True)
+            data = r.json()
+            songs = data.get("result", {}).get("songs", [])
+            if not songs:
+                return None
+            items: list[dict[str, str]] = []
+            for song in songs[:10]:
+                artists = ", ".join(
+                    ar.get("name", "") for ar in song.get("ar", []) if ar.get("name")
+                )
+                album = (
+                    song.get("al", {}).get("name", "")
+                    if isinstance(song.get("al"), dict)
+                    else ""
+                )
+                song_id = str(song.get("id", ""))
+                items.append(
+                    {
+                        "title": song.get("name", "未知歌曲"),
+                        "artist": artists,
+                        "album": album,
+                        "url": f"https://music.163.com/song?id={song_id}",
+                        "song_id": song_id,
+                    }
+                )
+            return {"source": "网易云音乐 (内置)", "items": items} if items else None
+        except Exception:
+            return None
+
+    # ── External API keys ─────────────────────────────────────────────
 
     def _get_music_api_keys(self) -> list[dict[str, str]]:
         """Return list of enabled music API key configs with decrypted keys."""
@@ -611,7 +658,7 @@ class MusicSearchHandler(ChatBaseHandler):
 
         with get_connection() as conn:
             rows = conn.execute(
-                "SELECT name, api_type, endpoint, api_key, config_json"
+                "SELECT name, api_type, endpoint, api_key"
                 " FROM api_keys"
                 " WHERE api_type IN (?,?,?) AND status='enabled'",
                 self._MUSIC_API_TYPES,
@@ -627,7 +674,6 @@ class MusicSearchHandler(ChatBaseHandler):
                         "api_type": row["api_type"],
                         "endpoint": (row["endpoint"] or "").strip(),
                         "api_key": raw,
-                        "config_json": row["config_json"] or "{}",
                     }
                 )
         return keys
@@ -731,7 +777,7 @@ class MusicSearchHandler(ChatBaseHandler):
 
         config: dict[str, object] = {}
         try:
-            config = json.loads(key_info["config_json"])
+            config = json.loads(key_info.get("config_json", "{}"))
         except (json.JSONDecodeError, TypeError):
             pass
 

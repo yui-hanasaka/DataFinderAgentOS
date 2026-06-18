@@ -1253,13 +1253,19 @@
         h += '<div style="font-size:0.8em;color:var(--text-muted);margin-bottom:6px">📡 ' + escHtml(src.source) + '</div>';
         (src.items || []).forEach(function (item) {
           const url = item.url || '#';
-          h += '<a href="' + escHtml(url) + '" target="_blank" style="display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--text);text-decoration:none;border-bottom:1px solid var(--border-light)">';
+          var sid = item.song_id || '';
+          h += '<div style="border-bottom:1px solid var(--border-light);padding:6px 0">';
+          h += '<a href="' + escHtml(url) + '" target="_blank" style="display:flex;align-items:center;gap:8px;color:var(--text);text-decoration:none">';
           h += '<span>🎶</span>';
           h += '<div style="flex:1"><div style="font-weight:500">' + escHtml(item.title || '未知歌曲') + '</div>';
           if (item.artist) h += '<div style="font-size:0.85em;color:var(--text-muted)">' + escHtml(item.artist) + '</div>';
           h += '</div>';
           if (item.album) h += '<span style="font-size:0.8em;color:var(--text-muted)">' + escHtml(item.album) + '</span>';
           h += '</a>';
+          if (sid) {
+            h += '<audio controls src="https://music.163.com/song/media/outer/url?id=' + escHtml(sid) + '.mp3" style="width:100%;height:36px;margin-top:4px" preload="none"></audio>';
+          }
+          h += '</div>';
         });
         h += '</div>';
       });

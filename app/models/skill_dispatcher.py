@@ -179,9 +179,8 @@ def _music_html() -> str:
             )
 
         builtin_list = (
-            "<li><strong>iTunes Search</strong> — Apple Music 全球曲库（免费，无需密钥）</li>"
-            "<li><strong>MusicBrainz</strong> — 开源音乐元数据库（免费，无需密钥）</li>"
-            "<li><strong>DuckDuckGo</strong> — 网络音乐搜索（免费，无需密钥）</li>"
+            "<li><strong>网易云音乐 (music.chinokou.cn)</strong> — 默认源，开箱即用</li>"
+            "<li><strong>iTunes Search</strong> — Apple Music 全球曲库（免费兜底）</li>"
         )
 
         external_html = ""
@@ -196,7 +195,7 @@ def _music_html() -> str:
         else:
             external_html = (
                 "<p>💡 管理员可在 <strong>接口管理</strong> 中配置第三方音乐 API"
-                "（支持 QQ音乐、网易云音乐 及自定义接口）。</p>"
+                "（支持 QQ音乐、网易云音乐 及自定义接口），替代默认源。</p>"
             )
 
         # Note: the musicSearch() JavaScript function is defined in
@@ -206,7 +205,7 @@ def _music_html() -> str:
         return (
             "\U0001f3b5 **音乐搜索**\n\n"
             "请输入歌曲名称或歌手名进行搜索：\n\n"
-            '<form onsubmit="return musicSearch(this)" style="display:flex;gap:8px;margin:12px 0">'
+            '<form onsubmit="event.preventDefault();musicSearch(this)" style="display:flex;gap:8px;margin:12px 0">'
             '<input type="text" name="q" placeholder="输入歌曲名或歌手..." '
             'style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);'
             'background:var(--bg-card);color:var(--text)" />'
