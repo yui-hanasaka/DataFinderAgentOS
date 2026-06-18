@@ -1,28 +1,40 @@
 from app.controllers.admin import AdminBaseHandler
 from app.models.warehouse import WarehouseRepository
+from app.models.watchtower import ItemRepository
 
 PER_PAGE = 20
 
 
 class AdminWarehouseHandler(AdminBaseHandler):
     def get(self) -> None:
+        tab = self.get_query_argument("tab", "queries")
         keyword = self.get_query_argument("keyword", "").strip()
         page = self._page()
+
         queries, total = WarehouseRepository.list_queries(keyword, page)
         edit_id = self.get_query_argument("edit", "")
         edit_query = (
             WarehouseRepository.get_query(int(edit_id)) if edit_id.isdigit() else None
         )
+
+        items: list = []
+        items_total = 0
+        if tab == "browse":
+            items, items_total = ItemRepository.list_items(keyword, page)
+
         self.render(
             "admin/warehouse.html",
             title="数据仓库",
             username=self.current_user,
+            tab=tab,
             queries=queries,
             total=total,
             page=page,
             per_page=PER_PAGE,
             keyword=keyword,
             edit_query=edit_query,
+            items=items,
+            items_total=items_total,
             msg=self._message(),
         )
 
@@ -33,6 +45,11 @@ class AdminWarehouseHandler(AdminBaseHandler):
             ok, msg = WarehouseRepository.delete_query(int(q_id))
             return self._redirect_with_message(
                 "/admin/warehouse", msg or "已删除" if ok else msg
+            )
+        if action == "delete_item" and q_id.isdigit():
+            ok, msg = ItemRepository.delete_item(int(q_id))
+            return self._redirect_with_message(
+                "/admin/warehouse?tab=browse", msg or "已删除" if ok else msg
             )
         if action == "execute":
             raw_sql = self.get_body_argument("query", "").strip()

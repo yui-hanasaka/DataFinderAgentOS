@@ -278,6 +278,18 @@ class ItemRepository:
             ).fetchone()
 
     @staticmethod
+    def delete_item(item_id: int) -> tuple[bool, str | None]:
+        """删除采集条目及其关联的深度采集内容。"""
+        try:
+            with get_connection() as conn:
+                conn.execute("DELETE FROM deep_contents WHERE item_id=?", (item_id,))
+                conn.execute("DELETE FROM watchtower_items WHERE id=?", (item_id,))
+            return True, None
+        except Exception as e:
+            log_error("Watchtower.delete_item", e)
+            return False, "删除采集数据失败"
+
+    @staticmethod
     def batch_add_items(items: list[dict]) -> tuple[int, list[int]]:
         """批量保存采集条目，返回 (成功插入数量, 新插入的ID列表)。
 
